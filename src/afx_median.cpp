@@ -161,9 +161,7 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
       input0().fetchPlane(in_plane); // Fetch plane
       afx::CudaStreamArray streams;
       foreach (z, in_plane.channels()) { // For each channel in plane
-        //in_imgs_.AddImage(req_bnds_); // FIXME THIS FUNCTION CRASHES. Overriding base member function Add and accessing protected ptr_list
-        in_imgs_.Add();
-        in_imgs_.GetBackPtr()->Create(req_bnds_);
+        in_imgs_.AddImage(req_bnds_);
         in_imgs_.GetBackPtr()->AddAttribute("channel", z); // Add channel attribute to image
         streams.Add(); // Add stream
         in_imgs_.GetBackPtr()->MemCpyToDevice(&in_plane.readable()[in_plane.chanNo(z) * in_plane.chanStride()], in_plane.rowStride() * sizeof(float),
@@ -175,32 +173,31 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
     }
   } // End first time guard
 
-// FIXME optimization to reduce heap memory allocation.  If I add an afx_anti_alias after the median, some of the row are incorrect.
-// TODO test. Was crashing with GCC 4.2.1 build on Nuke 9. Seems to work on Nuke 10 GCC 4.8
-  int thread_id = Thread::thisIndex();
-  std::vector<afx::Attribute> row_attributes;
-  row_attributes.push_back(afx::Attribute("thread_id", thread_id));
-  row_attributes.push_back(afx::Attribute("x", x));
-  row_attributes.push_back(afx::Attribute("r", r));
-  { Guard guard(lock_);
-    if (!row_imgs_.HasAttributes(row_attributes)) {
-      //row_imgs_.AddImage(row_bnds); // FIXME THIS FUNCTION CRASHES. Overriding base member function Add and accessing protected ptr_list
-      row_imgs_.Add();
-      row_imgs_.GetBackPtr()->Create(row_bnds);
-      row_imgs_.GetBackPtr()->AddAttributes(row_attributes); // FIXME crashing when cuda_helper.cpp is compiled as lib and linked to afx_media.so at runtime.
-    }
-    if (!streams_.HasAttributes(row_attributes)) {
-      streams_.Add();
-      streams_.GetBackPtr()->AddAttributes(row_attributes);
-    }
-  } // End thread lock
-  afx::CudaImage* cuda_row_ptr = row_imgs_.GetPtrByAttributes(row_attributes);
-  afx::CudaStream* stream_ptr = streams_.GetPtrByAttributes(row_attributes);
+// TODO This reuses the same memory for each row per thread. Sometimes rows are not rendered correctly. I need to investigate.
+//   int thread_id = Thread::thisIndex();
+//   std::vector<afx::Attribute> row_attributes;
+//   row_attributes.push_back(afx::Attribute("thread_id", thread_id));
+//   row_attributes.push_back(afx::Attribute("x", x));
+//   row_attributes.push_back(afx::Attribute("r", r));
+//   { Guard guard(lock_);
+//     if (!row_imgs_.HasAttributes(row_attributes)) {
+//       row_imgs_.AddImage(row_bnds);
+//       row_imgs_.GetBackPtr()->Create(row_bnds);
+//       row_imgs_.GetBackPtr()->AddAttributes(row_attributes);
+//     }
+//     if (!streams_.HasAttributes(row_attributes)) {
+//       streams_.Add();
+//       streams_.GetBackPtr()->AddAttributes(row_attributes);
+//     }
+//   } // End thread lock
+//   afx::CudaImage* cuda_row_ptr = row_imgs_.GetPtrByAttributes(row_attributes);
+//   afx::CudaStream* stream_ptr = streams_.GetPtrByAttributes(row_attributes);
 
-//   afx::CudaImage temp_i(row_bnds);
-//   afx::CudaImage* cuda_row_ptr = &temp_i;
-//   afx::CudaStream temp_s;
-//   afx::CudaStream* stream_ptr = &temp_s;
+// TODO be inefficient with memory until the above is solid.
+  afx::CudaImage temp_i(row_bnds);
+  afx::CudaImage* cuda_row_ptr = &temp_i;
+  afx::CudaStream temp_s;
+  afx::CudaStream* stream_ptr = &temp_s;
 
   if (aborted()) { return; }
 
