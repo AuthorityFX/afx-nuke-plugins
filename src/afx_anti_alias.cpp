@@ -84,7 +84,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   } catch (cudaError err) {}
 
   //initialize knobs
-  k_threshold_ = 0.5f;
+  k_threshold_ = 0.05f;
 }
 void ThisClass::knobs(Knob_Callback f) {
 
