@@ -17,6 +17,9 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 set(CMAKE_BUILD_TYPE Release)
 
+if(APPLE)
+  set(CMAKE_MACOSX_RPATH 1)
+endif()
 
 # afx include files
 include_directories(${PROJECT_SOURCE_DIR}/include/)
