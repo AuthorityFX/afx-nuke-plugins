@@ -36,8 +36,6 @@ enum inputs
   iSourceAtTime = 1,
   iScreenMatte = 2,
   iScreenMatteAtTime = 3,
-  iIgnore = 4,
-  iGarbage = 5
 };
 
 using namespace DD::Image;
@@ -52,9 +50,7 @@ private:
 
   float k_chroma_clean_;
   float k_luma_clean_;
-  float k_gray_restore_;
-  float k_value_restore_;
-  float k_smoothness_;
+  float k_falloff_;
 
   float k_screen_mean_[3];
 
@@ -80,8 +76,8 @@ private:
 
   afx::Threader threader_;
 
-  int maximum_inputs() const { return 4; }
-  int minimum_inputs() const { return 4; }
+  int maximum_inputs() const { return 2; }
+  int minimum_inputs() const { return 2; }
 
   void MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, float* ref_hsv, double* sum_rgb, double* sum, double* sum_sqrs, unsigned int& num);
   void ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row);
@@ -122,9 +118,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
 
   k_chroma_clean_ = 0.5f;
   k_luma_clean_ = 0.5f;
-  k_gray_restore_ = 0.0f;
-  k_value_restore_ = 0.0f;
-  k_smoothness_ = 0.5f;
+  k_falloff_ = 0.5f;
 }
 void ThisClass::knobs(Knob_Callback f) {
   Color_knob(f, k_screen_color_, "screen_color", "Screen Color");
@@ -140,8 +134,6 @@ void ThisClass::knobs(Knob_Callback f) {
   SetRange(f, 0.0, 150.0);
   SetFlags(f, Knob::STARTLINE | Knob::HIDDEN | Knob::EARLY_STORE);
 
-  Divider(f, "Settings");
-
   Float_knob(f, &k_chroma_clean_, "chrome_clean", "Chroma Clean");
   Tooltip(f, "Cleanup screen");
   SetRange(f, 0.0, 1.0);
@@ -150,19 +142,9 @@ void ThisClass::knobs(Knob_Callback f) {
   Tooltip(f, "Cleanup screen");
   SetRange(f, 0.0, 1.0);
 
-  Float_knob(f, &k_gray_restore_, "gray_restoration", "Gray Restoration");
-  Tooltip(f, "Increase matte in areas of low saturation");
-  SetRange(f, 0.0, 1);
-
-  Float_knob(f, &k_value_restore_, "value_restoration", "value Restoration");
-  Tooltip(f, "Increase matte in areas of low value");
-  SetRange(f, 0.0, 2.0);
-
-  Float_knob(f, &k_smoothness_, "falloff", "Falloff");
+  Float_knob(f, &k_falloff_, "falloff", "Falloff");
   Tooltip(f, "Matte Falloff");
   SetRange(f, 0.0, 1.0);
-
-  Divider(f, "Output");
 
 }
 int ThisClass::knob_changed(Knob* k) {
@@ -189,14 +171,6 @@ const char* ThisClass::input_label(int input, char* buffer) const {
     case 1: {
       input_longlabel(input) = "Screen Matte";
       return "Screen Matte";
-    }
-    case 2: {
-      input_longlabel(input) = "Ignore Matte";
-      return "Ignore Matte";
-    }
-    case 3: {
-      input_longlabel(input) = "Garbage Matte";
-      return "Garbage Matte";
     }
     default: {
       return 0;
@@ -235,7 +209,7 @@ void ThisClass::_validate(bool) {
 
     info_.black_outside(true);
     // Process knob values
-    smoothness_ = k_smoothness_ * 10.f;
+    smoothness_ = k_falloff_ * 10.f;
 
   } else {
     set_out_channels(Mask_None);
@@ -246,18 +220,12 @@ void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int c
   //Request source
   if (input(iSource) != default_input(iSource)) {
     input(iSource)->request(channels, count);
+    input(iSourceAtTime)->request(channels, count);
   }
   //Request screen matte
   if (input(iScreenMatte) != nullptr) {
     input(iScreenMatte)->request(channels, count);
-  }
-  //Request ignore matte
-  if (input(iIgnore) != nullptr) {
-    input(iIgnore)->request(Mask_Alpha, count);
-  }
-  //Request garbage matte
-  if (input(iGarbage) != nullptr) {
-    input(iGarbage)->request(Mask_Alpha, count);
+    input(iScreenMatteAtTime)->request(channels, count);
   }
 }
 void ThisClass::_open() {
@@ -294,7 +262,7 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
       ImagePlane screen_plane(Box(req_bnds_.x1(), req_bnds_.y1(), req_bnds_.x2() + 1, req_bnds_.y2() + 1), false, Mask_RGB); // Create plane "false" = non-packed.
       if (k_specify_source_frame_) {
         input(iSource)->fetchPlane(source_plane);
-        if (input(iScreenMatte) != nullptr) { input(iScreenMatte)->fetchPlane(screen_plane); }
+        if (input(iScreenMatte) != nullptr) { input(iScreenMatteAtTime)->fetchPlane(screen_plane); }
       } else {
         input(iSourceAtTime)->fetchPlane(source_plane);
         if (input(iScreenMatte) != nullptr) { input(iScreenMatteAtTime)->fetchPlane(screen_plane); }
@@ -411,8 +379,6 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
         + powf(fabsf(lab[2] - mean_lab_[2]), 2.0f) / powf(3.0f * k_chroma_clean_ * std_dev_lab_[2], 2.0f)
         + powf(fabsf(lab[0] - mean_lab_[0]), 2.0f) / powf(3.0f * k_luma_clean_   * std_dev_lab_[0], 2.0f);
     s_res = v_res = 0.0f;
-    if (hsv[1] < k_gray_restore_ ) { s_res = rad * powf(k_gray_restore_ / hsv[1], 2.0f); }
-    if (hsv[2] < k_value_restore_ ) { v_res = rad * powf(k_value_restore_ / hsv[2], 2.0f); }
     rad = afx::max3(rad, s_res, v_res);
     rad = fmaxf(rad - 1.0f, 0.0f);
     matte = 0.0f;
@@ -437,7 +403,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 // Plug in abs(pixel - mean) for x, y ,z in elipsoid equation
 // If value is greater than 1 or less, pixel is chroma screen.
 //
-// The mean and std_dev can be scewed by the size of the mask areas. A big area will carry more weight.
+// The mean and std_dev can be skewed by the size of the mask areas. A big area will carry more weight.
 // I want to sample only the points within the mask region and create a non-convex hull boundind the sample points
 // Furthermore, I plotted the A B of LAB space. It's not a normal distribution and it doesn't look like an elipse.
 //
