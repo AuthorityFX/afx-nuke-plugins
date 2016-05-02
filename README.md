@@ -60,6 +60,8 @@ Redistributable Libraries
 TODO
 --------------------------------------------------
 
+* Write documentation
+* Create youtube videos for suggested usage and tips
 * Add expand border bbox option to afx_glow
 * Finish writing cufft implementation for afx_glow
 * Write afx_keyer 2.0 — notes are in afx_chrome_key.cpp
@@ -67,5 +69,6 @@ TODO
 * Write montecarlo noise removal tools
 * Improve mlaa algorithm
 * Make icons for plugins
+* Add MAXOS support to CMakeLists.txt
 
 If you like these plugins, help me make them better. Help me write more!
