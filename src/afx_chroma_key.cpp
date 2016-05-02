@@ -51,6 +51,7 @@ private:
   float k_chroma_clean_;
   float k_luma_clean_;
   float k_falloff_;
+  bool k_premultiply_;
 
   float k_screen_mean_[3];
 
@@ -119,6 +120,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_chroma_clean_ = 0.5f;
   k_luma_clean_ = 0.5f;
   k_falloff_ = 0.5f;
+  k_premultiply_ = true;
 }
 void ThisClass::knobs(Knob_Callback f) {
   Color_knob(f, k_screen_color_, "screen_color", "Screen Color");
@@ -145,6 +147,10 @@ void ThisClass::knobs(Knob_Callback f) {
   Float_knob(f, &k_falloff_, "falloff", "Falloff");
   Tooltip(f, "Matte Falloff");
   SetRange(f, 0.0, 1.0);
+
+  Bool_knob(f, &k_premultiply_, "premultiply", "Premultiply");
+  SetFlags(f, Knob::STARTLINE);
+  Tooltip(f, "Premultiply by alpha");
 
 }
 int ThisClass::knob_changed(Knob* k) {
@@ -388,7 +394,11 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
       matte = 1.0f;
     }
     for (int i = 0; i < 3; ++i) {
-      out.SetVal(in.GetVal(i) * matte, i);
+      if (k_premultiply_) {
+        out.SetVal(in.GetVal(i) * matte, i);
+      } else {
+        out.SetVal(in.GetVal(i), i);
+      }
     }
     out.SetVal(matte, 3);
     in++;
