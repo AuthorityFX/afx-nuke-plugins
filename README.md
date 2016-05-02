@@ -8,17 +8,22 @@ Requirements
 * BOOST
 * Nuke NDK
 
-Install
--------
-* git clone https://github.com/AuthorityFX/afx-nuke-plugins.git
-* cd afx-nuke-plugins
-* mkdir build
-* cd build
-* cmake -DCMAKE_INSTALL_PREFIX="wherever-you-want/afx-nuke-plugins" ..
-* make -j{N} (where N is the num of threads)
-* make install
+Build and Install
+-----------------
 
-Add to init.py in your nuke directory
+On Linux, Cuda and Boost can be installed from your distros package management system. I perfer to download the latest version of CUDA from https://developer.nvidia.com/cuda-downloads and BOOST from https://sourceforge.net/projects/boost/files/boost/; though not required.  Intel IPP is quick to install with no addional setup required.
+
+1. git clone https://github.com/AuthorityFX/afx-nuke-plugins.git
+2. cd afx-nuke-plugins
+3. mkdir build
+4. cd build
+5. cmake -DCMAKE_INSTALL_PREFIX="wherever-you-want/afx-nuke-plugins" ..
+6. make -j{N} (where N is the num of threads)
+7. make install
+
+To tell Nuke where to find the plugins, you need to add some python code to an init.py script, or put the plugins into your Nuke home directory. https://www.thefoundry.co.uk/products/nuke/developers/63/pythondevguide/installing_plugins.html
+
+I have a custom init.py on my network drive. In my .profile script I added "export NUKE_PATH="path to my nuke folder with the custon init.py".  In the init.py I aded:
 
 if nuke.env['LINUX']:
         nuke.pluginAddPath(wherever-you-installed/afx-nuke-plugins)
@@ -69,6 +74,6 @@ TODO
 * Write montecarlo noise removal tools
 * Improve mlaa algorithm
 * Make icons for plugins
-* Add MAXOS support to CMakeLists.txt
+* Add MacOS support to CMakeLists.txt
 
 If you like these plugins, help me make them better. Help me write more!
