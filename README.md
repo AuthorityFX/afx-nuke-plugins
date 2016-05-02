@@ -1,4 +1,4 @@
-﻿afx_nuke_plugins
+﻿afx-nuke-plugins
 ================
 
 Requirements
@@ -10,18 +10,18 @@ Requirements
 
 Install
 -------
-* git clone https://github.com/AuthorityFX/afx_nuke_plugins.git
-* cd afx_nuke_plugins
+* git clone https://github.com/AuthorityFX/afx-nuke-plugins.git
+* cd afx-nuke-plugins
 * mkdir build
 * cd build
-* cmake -DCMAKE_INSTALL_PREFIX="wherever-you-want/afx_nuke_plugins" ..
+* cmake -DCMAKE_INSTALL_PREFIX="wherever-you-want/afx-nuke-plugins" ..
 * make -j{N} (where N is the num of threads)
 * make install
 
 Add to init.py in your nuke directory
 
 if nuke.env['LINUX']:
-        nuke.pluginAddPath(wherever-you-installed/afx_nuke_plugins)
+        nuke.pluginAddPath(wherever-you-installed/afx-nuke-plugins)
 
 Plugin Descriptions
 ===================
