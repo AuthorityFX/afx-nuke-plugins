@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(afx_nuke_plugins)
 
-set(afx_nuke_plugins_VERSION_MAJOR 1)
+set(afx_nuke_plugins_VERSION_MAJOR 0)
 set(afx_nuke_plugins_VERSION_MINOR 0)
 
 configure_file (
