@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
-project(afx_nuke_plugins)
+project(afx-nuke-plugins)
 
 set(afx_nuke_plugins_VERSION_MAJOR 0)
 set(afx_nuke_plugins_VERSION_MINOR 0)
@@ -10,7 +10,7 @@ configure_file (
   )
 
 #Enable for redistributable build, place all redistributable library dependencies in lib folder
-#set(CMAKE_SKIP_RPATH  TRUE)
+set(CMAKE_SKIP_RPATH  TRUE)
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-rpath,'$ORIGIN/lib'")
 #Disable rpath stripping at install
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -25,7 +25,7 @@ endif()
 include_directories(${PROJECT_SOURCE_DIR}/include/)
 
 # NUKE NDK INCLUDES AND LIBRARIES
-set(NUKE_ROOT /usr/local/Nuke10.0v1/)
+set(NUKE_ROOT /usr/local/Nuke10.5v1/)
 include_directories(${NUKE_ROOT}/include/)
 set(NUKE_LIB_PATH ${NUKE_ROOT}/)
 
