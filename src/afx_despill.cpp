@@ -25,8 +25,6 @@ static const char* HELP = "Remove Spill";
 
 #define ThisClass AFXDeSpill
 
-extern "C" void EdgeMatteCuda(afx::Bounds in_bnds);
-
 enum inputs
 {
   iSource = 0,
@@ -52,6 +50,7 @@ private:
 
   // members to store knob values
   float k_amount_;
+  float k_lightness_adj;
   int k_algorithm_;
   ChannelSet k_spill_matte_channel_;
 
@@ -101,8 +100,9 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   } catch (cudaError err) {}
 
   //initialize knobs
-  k_algorithm_ = afx::kHard;
+  k_algorithm_ = afx::kHarder;
   k_amount_ = 1.0f;
+  k_lightness_adj = 1.0f;
   k_screen_color_[0] = k_screen_color_[2] = 0.0f;
   k_screen_color_[1] = 1.0f;
 }
@@ -114,9 +114,15 @@ void ThisClass::knobs(Knob_Callback f) {
 
   Divider(f, "Settings");
 
-  Float_knob(f, &k_amount_, "amount", "Amount");
-  Tooltip(f, "Amount to remove");
+  Float_knob(f, &k_amount_, "amount", "Spill Amount");
+  Tooltip(f, "Amount of spill to remove");
   SetRange(f, 0.0, 1.0);
+  SetFlags(f, Knob::FORCE_RANGE);
+
+  Float_knob(f, &k_lightness_adj, "lightness_adj", "Lightness Adjustment");
+  Tooltip(f, "Adjust perceived lightness");
+  SetRange(f, 0.0, 1.0);
+  SetFlags(f, Knob::FORCE_RANGE);
 
   Enumeration_knob(f, &k_algorithm_, algorithm_list, "algorithm", "Algorithm");
   Tooltip(f, "Spill Algorithm");
@@ -172,7 +178,7 @@ void ThisClass::_validate(bool) {
 
     // Process knob values
 
-    // 1/3 hue is pure green. (1/3 - mean) * 360 is the degress from pure green
+    // 1/3 hue is pure green. (1/3 - mean) * 360 is the angular distance in degrees form pure green
     float hsv[3];
     float ref_rgb[3];
     for (int i = 0; i < 3; i++) { ref_rgb[i] = k_screen_color_[i]; }
@@ -180,7 +186,7 @@ void ThisClass::_validate(bool) {
     float hue_rotation = 360.0f * (1.0f/3.0f - hsv[0]);
     hue_shifter_.BuildMatrix(hue_rotation); //Initialize hue shifter object
     hue_shifter_.Rotate(ref_rgb); // Rotate hue of ref RGB so that the mean hue is pure green
-    ref_suppression_ = afx::SpillSupression(ref_rgb, afx::kLight); // Spill suppressoin of ref_rgb
+    ref_suppression_ = afx::SpillSupression(ref_rgb, k_algorithm_); // Spill suppressoin of ref_rgb
     hue_shifter_inv_ = hue_shifter_;
     hue_shifter_inv_.Invert();
 
@@ -240,12 +246,19 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
     if (input(iMatte) != nullptr) { m = *m_ptr; }
     for (int i = 0; i < 3; i++) { rgb[i] = in_px.GetVal(i); }
 
+    float L1 = powf(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2], 1.0f / 3.0f); // Lightness - cubic root of relative luminance
+
     hue_shifter_.Rotate(rgb); //Shift hue so mean hue is 1/3 on hue scale
     float suppression = k_amount_ * m * afx::SpillSupression(rgb, k_algorithm_); //Calculate suppression
     rgb[1] -= suppression;
     hue_shifter_inv_.Rotate(rgb);
-    for (int i = 0; i < 3; i++) { rgb[i] = fmaxf(rgb[i], 0.0f); }
-    suppression_matte = clamp(suppression / ref_suppression_, 0.0f, 1.0f);
+
+    float L2 = powf(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2], 1.0f / 3.0f);
+    float lightness_adjust = k_lightness_adj * (L1 / L2 - 1) + 1;
+
+    for (int i = 0; i < 3; i++) { rgb[i] = fmaxf(rgb[i] * lightness_adjust, 0.0f); }
+
+    suppression_matte = afx::Clamp(suppression / ref_suppression_, 0.0f, 1.0f);
 
     for (int i = 0; i < 3; i++) {
       out_px[i] = rgb[i];
