@@ -1,0 +1,4 @@
+*-swp
+build/
+*.kdev4
+.kdev4/
