@@ -83,7 +83,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
       Channel rgb_chan[3];
       for (int i = 0; i < 3; ++i) {
         rgb_chan[i] = brother(z, i); // Find brother rgb channel
-        if (rgb_chan[i] == Chan_Black || !(rgb_chan[i] & channels)) { has_all_rgb = false; } // If brother does not exist
+        if (rgb_chan[i] == Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; } // If brother does not exist
       }
       if (has_all_rgb) {
         afx::ReadOnlyPixel in_px;

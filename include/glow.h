@@ -72,7 +72,7 @@ public:
 
 class FindFFTSize {
 private:
-  std::vector<unsigned int> size_;
+  std::vector<unsigned int> sizes_;
 
   //https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
   unsigned int NextPowerOfTwo_(unsigned int n) {
@@ -98,25 +98,24 @@ private:
   }
 
   void CalculateSizes_() {
-    const unsigned int pow2_thresh = IntPow_(2, 10);
-    const unsigned int max_s = IntPow_(2, 16);
-    for (int i2 = 1; i2 <= 16; ++i2) {
+    const unsigned int max_size = IntPow_(2, 16); // Max size that will be stored
+    for (int i2 = 0; i2 <= 16; ++i2) { // Loop powers of 2 from 2^0 to 2^16
       unsigned int pow2 = IntPow_(2, i2);
-      if (pow2 < pow2_thresh) { size_.push_back(pow2); }
-      for (int i3 = 0; i3 <= 10; ++i3) {
+      for (int i3 = 0; i3 <= 10; ++i3) { // Loop powers of 3 from 3^0 to 3^10 - 59,049
         unsigned int pow3 = IntPow_(3, i3);
-        for (int i5 = 0; i5 <= 7; ++i5) {
+        for (int i5 = 0; i5 <= 7; ++i5) { // Loop powers of 5 from 5^0 to 5^7 - 78,125
           unsigned int pow5 = IntPow_(5, i5);
-          for (int i7 = 0; i7 <= 6; ++i7) {
+          for (int i7 = 0; i7 <= 6; ++i7) { // Loop powers of 7 from 7^0 to 7^6 - 117,649
             unsigned int pow7 = IntPow_(7, i7);
-            unsigned int s = pow2 * pow3 * pow5 * pow7;
-            if (s > max_s) { break; }
-            if (s > pow2_thresh) { size_.push_back(s); }
+            unsigned int multiple = pow2 * pow3 * pow5 * pow7; // Multiple power of 2, 3, 5. and 7
+            if (multiple > max_size) { break; } // if multiple is greater than max size break loop
+            sizes_.push_back(multiple);
           }
         }
       }
     }
-    std::sort(size_.begin(), size_.end());
+    std::sort(sizes_.begin(), sizes_.end());
+    sizes_.erase(sizes_.begin()); // Erase pow 2^0
   }
 
 public:
@@ -126,8 +125,8 @@ public:
   unsigned int GetNextSize(unsigned int size, float pow2_threshold = 1.2) {
     unsigned int next_size = NextPowerOfTwo_(size);
     if ((float)next_size / (float)size > pow2_threshold ) {
-      std::vector<unsigned int>::iterator it = std::lower_bound(size_.begin(), size_.end(), size);
-      if (it != size_.end()) {
+      std::vector<unsigned int>::iterator it = std::lower_bound(sizes_.begin(), sizes_.end(), size);
+      if (it != sizes_.end()) {
         next_size = *it;
       }
     }
