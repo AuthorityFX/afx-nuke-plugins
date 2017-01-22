@@ -25,12 +25,21 @@ static const char* const HELP = "Soft Clip.";
 
 #define ThisClass AFXSoftClip
 
+const char* metric_list[8] =
+{
+  "Value",
+  "Luminance",
+  "Lightness",
+  0
+};
+
 using namespace DD::Image;
 
 class ThisClass : public Iop {
  private:
   float knee_;
   float clip_;
+  int k_metric_;
 
  public:
   ThisClass(Node* node);
@@ -51,8 +60,12 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   //initialize knobs
   knee_ = 0.5f;
   clip_ = 5.0f;
+  k_metric_ = 1;
 }
 void ThisClass::knobs(Knob_Callback f) {
+  Enumeration_knob(f, &k_metric_, metric_list, "metric", "Metric");
+  Tooltip(f, "Spill Algorithm");
+
   Float_knob(f, &clip_, "clip", "Clip");
   Tooltip(f, "Clip Value");
   SetRange(f, 0, 10);
@@ -94,8 +107,22 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
           out_px.SetPtr(row.writable(rgb_chan[i]) + x, i);
         }
         for (int x0 = x; x0 < r; ++x0) {
-          float lightness = powf(0.2126 * in_px.GetVal(0) + 0.7152 * in_px.GetVal(1) + 0.0722 * in_px.GetVal(2), 1.0f / 3.0f);
-          float scale = afx::SoftClip(lightness, clip_, knee_) / fmaxf(lightness, 0.000001f); // Calculate soft clip scale
+          float metric = 0;
+          switch(k_metric_) {
+            case 0: {
+              metric = afx::max3(in_px.GetVal(0), in_px.GetVal(1), in_px.GetVal(2));
+              break;
+            }
+            case 1: {
+              metric = 0.3f * in_px.GetVal(0) + 0.59f * in_px.GetVal(1) + 0.11f * in_px.GetVal(2);
+              break;
+            }
+            case 2: {
+              metric = powf(0.2126 * in_px.GetVal(0) + 0.7152 * in_px.GetVal(1) + 0.0722 * in_px.GetVal(2), 1.0f / 3.0f);
+              break;
+            }
+          }
+          float scale = afx::SoftClip(metric, clip_, knee_) / fmaxf(metric, 0.000001f); // Calculate soft clip scale
           for (int i = 0; i < 3; ++i) {
             out_px[i] = in_px[i] * scale; // Scale RGB by the soft clip scale
           }
