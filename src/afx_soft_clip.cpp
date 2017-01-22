@@ -94,9 +94,8 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
           out_px.SetPtr(row.writable(rgb_chan[i]) + x, i);
         }
         for (int x0 = x; x0 < r; ++x0) {
-          float val = in_px.GetVal(0);
-          float luma = 0.3f * in_px.GetVal(0) + 0.59f * in_px.GetVal(1) + 0.11f * in_px.GetVal(2);
-          float scale = afx::SoftClip(luma, clip_, knee_) / fmaxf(val, 0.000001f); // Calculate soft clip scale
+          float lightness = powf(0.2126 * in_px.GetVal(0) + 0.7152 * in_px.GetVal(1) + 0.0722 * in_px.GetVal(2), 1.0f / 3.0f);
+          float scale = afx::SoftClip(lightness, clip_, knee_) / fmaxf(lightness, 0.000001f); // Calculate soft clip scale
           for (int i = 0; i < 3; ++i) {
             out_px[i] = in_px[i] * scale; // Scale RGB by the soft clip scale
           }
