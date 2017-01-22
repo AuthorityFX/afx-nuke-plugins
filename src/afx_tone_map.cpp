@@ -25,10 +25,19 @@ static const char* const HELP = "Tone mapping";
 
 #define ThisClass AFXToneMap
 
+const char* metric_list[8] =
+{
+  "Value",
+  "Luminance",
+  "Lightness",
+  0
+};
+
 using namespace DD::Image;
 
 class ThisClass : public Iop {
  private:
+  int k_metric_;
   float k_darks_;
   float k_clip_;
   float k_exposure_;
@@ -57,6 +66,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   inputs(1);
 
   //initialize knobs
+  k_metric_ = 1;
   k_darks_ = 1.0f;
   k_exposure_ = 0.0f;
   k_clip_ = 5.0f;
@@ -64,6 +74,9 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   do_limit_ = 0;
 }
 void ThisClass::knobs(Knob_Callback f) {
+  Enumeration_knob(f, &k_metric_, metric_list, "metric", "Metric");
+  Tooltip(f, "Metric");
+
   Float_knob(f, &k_exposure_, "exposure", "Exposure");
   Tooltip(f, "Exposure");
   SetRange(f, -5, 5);
@@ -121,9 +134,22 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
           out_px.SetPtr(row.writable(rgb_chan[i]) + x, i);
         }
         for (int x0 = x; x0 < r; ++x0) {
-          float val = in_px.GetVal(0);
-          float luma = 0.3f * in_px.GetVal(0) + 0.59f * in_px.GetVal(1) + 0.11f * in_px.GetVal(2);
-          float scale = afx::SoftClip(exposure_ * (luma > 1.0f ? luma : powf(luma, darks_)), clip_, knee_) / fmaxf(luma, 0.000001f);
+          float metric = 0;
+          switch(k_metric_) {
+            case 0: {
+              metric = afx::max3(in_px.GetVal(0), in_px.GetVal(1), in_px.GetVal(2));
+              break;
+            }
+            case 1: {
+              metric = 0.3f * in_px.GetVal(0) + 0.59f * in_px.GetVal(1) + 0.11f * in_px.GetVal(2);
+              break;
+            }
+            case 2: {
+              metric = powf(0.2126 * in_px.GetVal(0) + 0.7152 * in_px.GetVal(1) + 0.0722 * in_px.GetVal(2), 1.0f / 3.0f);
+              break;
+            }
+          }
+          float scale = afx::SoftClip(exposure_ * (metric > 1.0f ? metric : powf(metric, darks_)), clip_, knee_) / fmaxf(metric, 0.000001f);
           for (int i = 0; i < 3; ++i) {
             out_px[i] = in_px[i] * scale; // Scale RGB by the soft clip scale
           }

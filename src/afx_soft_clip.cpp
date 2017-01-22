@@ -64,7 +64,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
 }
 void ThisClass::knobs(Knob_Callback f) {
   Enumeration_knob(f, &k_metric_, metric_list, "metric", "Metric");
-  Tooltip(f, "Spill Algorithm");
+  Tooltip(f, "Metric");
 
   Float_knob(f, &clip_, "clip", "Clip");
   Tooltip(f, "Clip Value");
