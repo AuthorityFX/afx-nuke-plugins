@@ -186,7 +186,7 @@ void ThisClass::_validate(bool) {
     float hue_rotation = 360.0f * (1.0f/3.0f - hsv[0]);
     hue_shifter_.BuildMatrix(hue_rotation); //Initialize hue shifter object
     hue_shifter_.Rotate(ref_rgb); // Rotate hue of ref RGB so that the mean hue is pure green
-    ref_suppression_ = afx::SpillSupression(ref_rgb, k_algorithm_); // Spill suppressoin of ref_rgb
+    ref_suppression_ = afx::SpillSuppression(ref_rgb, k_algorithm_); // Spill suppressoin of ref_rgb
     hue_shifter_inv_ = hue_shifter_;
     hue_shifter_inv_.Invert();
 
@@ -249,7 +249,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
     float L1 = powf(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2], 1.0f / 3.0f); // Lightness - cubic root of relative luminance
 
     hue_shifter_.Rotate(rgb); //Shift hue so mean hue is 1/3 on hue scale
-    float suppression = k_amount_ * m * afx::SpillSupression(rgb, k_algorithm_); //Calculate suppression
+    float suppression = k_amount_ * m * afx::SpillSuppression(rgb, k_algorithm_); //Calculate suppression
     rgb[1] -= suppression;
     hue_shifter_inv_.Rotate(rgb);
 

@@ -37,7 +37,7 @@ inline float max3(const float& a, const float& b, const float& c) {
 }
 inline void RGBtoHSV(const float (&RGB)[3], float* HSV);
 inline void HSVtoRGB(const float (&HSV)[3], float* RGB);
-inline float SpillSupression(const float (&RGB)[3], int algorithm);
+inline float SpillSuppression(const float (&RGB)[3], int algorithm);
 
 inline float SoftClip(float value, float clip, float knee) {
   if (value <= 0.0f) { return value; }
@@ -226,7 +226,7 @@ void LabtoRGB(const float (&lab)[3], float (&rgb)[3]) {
   float Z = 108.883f * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f) + (1.0f / 200.0f) * lab[2]);
 }
 
-float SpillSupression(const float (&RGB)[3], int algorithm) {
+float SpillSuppression(const float (&RGB)[3], int algorithm) {
   float temp = 0.0f;
   float suppression = 0.0f;
 
