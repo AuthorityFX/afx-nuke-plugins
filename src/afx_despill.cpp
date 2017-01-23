@@ -258,7 +258,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 
     for (int i = 0; i < 3; i++) { rgb[i] = fmaxf(rgb[i] * lightness_adjust, 0.0f); }
 
-    suppression_matte = afx::Clamp(suppression / ref_suppression_, 0.0f, 1.0f);
+    suppression_matte = suppression / fmaxf(ref_suppression_, 0.0f);
 
     for (int i = 0; i < 3; i++) {
       out_px[i] = rgb[i];
