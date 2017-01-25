@@ -68,8 +68,8 @@ class RotateColor {
 
 RotateColor::RotateColor() {
   //Initialize identity matrix.
-  for (int r=0; r<3; r++) {
-    for (int c=0; c<3; c++) {
+  for (int r=0; r<3; ++r) {
+    for (int c=0; c<3; ++c) {
       if (c==r) {
         m_[r][c] = 1.0f;
       }
@@ -128,18 +128,16 @@ void RotateColor::BuildMatrix(float deg) {
 }
 void RotateColor::Rotate(float* color) {
   float temp[3] = {0.0f, 0.0f, 0.0f};
-  for (int r=0; r<3; r++) {
-    for (int c=0; c<3; c++) {
+  for (int r=0; r<3; ++r) {
+    for (int c=0; c<3; ++c) {
       temp[r] += m_[r][c] * color[c];
     }
-  }
-  for (int i=0; i<3; i++) {
-    color[i] = temp[i];
+    color[r] = temp[r];
   }
 }
 void RotateColor::Invert() {
-  for (int r=0; r<3; r++) {
-    for (int c=r; c<3; c++) {
+  for (int r=0; r<3; ++r) {
+    for (int c=r; c<3; ++c) {
       float temp;
       temp = m_[r][c];
       m_[r][c] = m_[c][r];

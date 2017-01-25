@@ -136,15 +136,15 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
         for (int x0 = x; x0 < r; ++x0) {
           float metric = 0;
           switch(k_metric_) {
-            case 0: {
+            case 0: { // value
               metric = afx::max3(in_px.GetVal(0), in_px.GetVal(1), in_px.GetVal(2));
               break;
             }
-            case 1: {
+            case 1: { // luminance
               metric = 0.3f * in_px.GetVal(0) + 0.59f * in_px.GetVal(1) + 0.11f * in_px.GetVal(2);
               break;
             }
-            case 2: {
+            case 2: { // lightness - cubic root of relative Luminance
               metric = powf(0.2126 * in_px.GetVal(0) + 0.7152 * in_px.GetVal(1) + 0.0722 * in_px.GetVal(2), 1.0f / 3.0f);
               break;
             }

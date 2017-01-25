@@ -146,7 +146,13 @@ private:
     Dispose();
     size_ = size;
     pixel_ = new const float*[size_];
-    for (unsigned int x = 0; x < size_; x++) { pixel_[x] = nullptr; }
+    for (unsigned int x = 0; x < size_; ++x) { pixel_[x] = nullptr; }
+  }
+  void CopyPixel(const ReadOnlyPixel& other) {
+    Init(other.size_);
+    for (unsigned int i = 0; i < size_; ++i) {
+      pixel_[i] = other.pixel_[i];
+    }
   }
   void Dispose() {
     if (pixel_ != nullptr) {
@@ -157,15 +163,15 @@ private:
 public:
   ReadOnlyPixel() : pixel_(nullptr) { Init(3); }
   ReadOnlyPixel(unsigned int size) : pixel_(nullptr) { Init(size); }
-  ReadOnlyPixel(const ReadOnlyPixel& other) { Init(other.size_); }
+  ReadOnlyPixel(const ReadOnlyPixel& other) { CopyPixel(other); }
   ReadOnlyPixel& operator=(const ReadOnlyPixel& other) {
-    Init(other.size_);
+    CopyPixel(other);
     return *this;
   }
   ~ReadOnlyPixel() { Dispose(); }
 
   inline void NextPixel() {
-    for (unsigned int i = 0; i < size_; i++) {
+    for (unsigned int i = 0; i < size_; ++i) {
       if (pixel_ != nullptr) { pixel_[i]++; }
     }
   }
@@ -189,7 +195,13 @@ private:
     Dispose();
     size_ = size;
     pixel_ = new float*[size_];
-    for (unsigned int x = 0; x < size_; x++) { pixel_[x] = nullptr; }
+    for (unsigned int x = 0; x < size_; ++x) { pixel_[x] = nullptr; }
+  }
+  void CopyPixel(const Pixel& other) {
+    Init(other.size_);
+    for (unsigned int i = 0; i < size_; ++i) {
+      pixel_[i] = other.pixel_[i];
+    }
   }
   void Dispose() {
     if (pixel_ != nullptr) {
@@ -200,15 +212,15 @@ private:
 public:
   Pixel() : pixel_(nullptr) { Init(3); }
   Pixel(unsigned int size) : pixel_(nullptr) { Init(size); }
-  Pixel(const Pixel& other) { Init(other.size_); }
+  Pixel(const Pixel& other) { CopyPixel(other); }
   Pixel& operator=(const Pixel& other) {
-    Init(other.size_);
+    CopyPixel(other);
     return *this;
   }
   ~Pixel() { Dispose(); }
 
   void NextPixel() {
-    for (unsigned int i = 0; i < size_; i++) {
+    for (unsigned int i = 0; i < size_; ++i) {
       if (pixel_ != nullptr) { pixel_[i]++; }
     }
   }
