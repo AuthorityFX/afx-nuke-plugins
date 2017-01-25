@@ -129,7 +129,7 @@ void ThisClass::knobs(Knob_Callback f) {
 
   Divider(f, "Output");
 
-  ChannelMask_knob(f, &k_spill_matte_channel_, "Spill Matte");
+  ChannelSet_knob(f, &k_spill_matte_channel_, "Spill Matte");
 
 }
 int ThisClass::knob_changed(Knob* k) {
