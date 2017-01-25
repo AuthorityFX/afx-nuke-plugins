@@ -25,6 +25,11 @@ enum SuppresionAlgorithm {
   kUber = 6
 };
 
+enum ScreenColor {
+  kGreen = 0,
+  kBlue = 1
+};
+
 template <typename T>
 inline T AfxClamp(T value, T min, T max) {
   return std::max(std::min(value, max), min);
@@ -37,7 +42,7 @@ inline float max3(const float& a, const float& b, const float& c) {
 }
 inline void RGBtoHSV(const float (&RGB)[3], float* HSV);
 inline void HSVtoRGB(const float (&HSV)[3], float* RGB);
-inline float SpillSuppression(const float (&RGB)[3], int algorithm);
+inline float SpillSuppression(const float (&RGB)[3], int algorithm, ScreenColor color);
 
 inline float SoftClip(float value, float clip, float knee) {
   if (value <= 0.0f) { return value; }
@@ -224,43 +229,57 @@ void LabtoRGB(const float (&lab)[3], float (&rgb)[3]) {
   float Z = 108.883f * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f) + (1.0f / 200.0f) * lab[2]);
 }
 
-float SpillSuppression(const float (&RGB)[3], int algorithm) {
+float SpillSuppression(const float (&RGB)[3], int algorithm, ScreenColor color) {
   float temp = 0.0f;
   float suppression = 0.0f;
 
+  float s, other;
+  switch (color) {
+    case kGreen: {
+      s = RGB[1];
+      other = RGB[2];
+      break;
+    }
+    case kBlue: {
+      s = RGB[2];
+      other = RGB[1];
+      break;
+    }
+  }
+
   switch (algorithm) {
     case kLight: {
-      temp = RGB[1] - fmaxf(RGB[0], RGB[2]);
+      temp = s - fmaxf(RGB[0], other);
       if (temp > 0) { suppression = temp; }
       break;
     }
     case kMedium: {
-      temp = 2 * RGB[1] - fmaxf(RGB[0], RGB[2]) - (RGB[0] + RGB[2]) / 2.0f;
+      temp = 2 * s - fmaxf(RGB[0], other) - (RGB[0] + other) / 2.0f;
       if (temp > 0) { suppression = temp / 2.0f; }
       break;
     }
     case kHard: {
-      temp = RGB[1] - (RGB[0] + RGB[2]) / 2.0f;
+      temp = s - (RGB[0] + other) / 2.0f;
       if (temp > 0) { suppression = temp; }
       break;
     }
     case kHarder: {
-      temp = 3 * RGB[1] - (RGB[0] + RGB[2]) - fminf(RGB[0], RGB[2]);
+      temp = 3 * s - (RGB[0] + other) - fminf(RGB[0], other);
       if (temp > 0) { suppression = temp / 3.0f; }
       break;
     }
     case kEvenHarder: {
-      temp = 2 * RGB[1] - (RGB[0] + RGB[2]) / 2.0f - fminf(RGB[0], RGB[2]);
+      temp = 2 * s - (RGB[0] + other) / 2.0f - fminf(RGB[0], other);
       if (temp > 0) { suppression = temp / 2.0f; }
       break;
     }
     case kExtreme: {
-      temp = 3 * RGB[1] - (RGB[0] + RGB[2]) / 2.0f - 2 * fminf(RGB[0], RGB[2]);
+      temp = 3 * s - (RGB[0] + other) / 2.0f - 2 * fminf(RGB[0], other);
       if (temp > 0) { suppression = temp / 3.0f; }
       break;
     }
     case kUber: {
-      temp = 4 * RGB[1] - (RGB[0] + RGB[2]) / 2.0f - 2 * fminf(RGB[0], RGB[2]);
+      temp = 4 * s - (RGB[0] + other) / 2.0f - 2 * fminf(RGB[0], other);
       if (temp > 0) { suppression = temp / 4.0f; }
       break;
     }

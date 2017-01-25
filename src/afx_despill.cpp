@@ -69,6 +69,7 @@ private:
   afx::RotateColor hue_shifter_;
   afx::RotateColor hue_shifter_inv_;
   float ref_suppression_;
+  afx::ScreenColor color_;
 
   void MetricsCPU(afx::Bounds region, const ImagePlane& source, const ImagePlane& matte, float* ref_hsv, double* sum, double* sum_sqrs, unsigned int& num);
   void ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row);
@@ -129,7 +130,7 @@ void ThisClass::knobs(Knob_Callback f) {
 
   Divider(f, "Output");
 
-  ChannelSet_knob(f, &k_spill_matte_channel_, "Spill Matte");
+  ChannelSet_knob(f, &k_spill_matte_channel_, "spill_matte", "Spill Matte");
 
 }
 int ThisClass::knob_changed(Knob* k) {
@@ -150,8 +151,8 @@ const char* ThisClass::input_label(int input, char* buffer) const {
       return "Source";
     }
     case 1: {
-      input_longlabel(input) = "Spill Matte";
-      return "Spill Matte";
+      input_longlabel(input) = "Spill Holdout";
+      return "Spill Holdout";
     }
     default: {
       return 0;
@@ -178,15 +179,29 @@ void ThisClass::_validate(bool) {
 
     // Process knob values
 
-    // 1/3 hue is pure green. (1/3 - mean) * 360 is the angular distance in degrees form pure green
+    // 1/3 hue is green, 2/3 hue is blue.
+    // center_ chosen based on max(g, b)
+    // (center_ - mean) * 360 is the angular distance in degrees from ideal screen hue
+
     float hsv[3];
     float ref_rgb[3];
     for (int i = 0; i < 3; i++) { ref_rgb[i] = k_screen_color_[i]; }
     afx::RGBtoHSV(ref_rgb, hsv);
-    float hue_rotation = 360.0f * (1.0f/3.0f - hsv[0]);
+
+    float center;
+    if (ref_rgb[1] > ref_rgb[2]) {
+      center = 1.0f/3.0f;
+      color_ = afx::kGreen;
+    }
+    else if (ref_rgb[2] > ref_rgb[1]) {
+      center = 2.0f/3.0f;
+      color_ = afx::kBlue;
+    }
+
+    float hue_rotation = 360.0f * (center - hsv[0]);
     hue_shifter_.BuildMatrix(hue_rotation); //Initialize hue shifter object
     hue_shifter_.Rotate(ref_rgb); // Rotate hue of ref RGB so that the mean hue is pure green
-    ref_suppression_ = afx::SpillSuppression(ref_rgb, k_algorithm_); // Spill suppressoin of ref_rgb
+    ref_suppression_ = afx::SpillSuppression(ref_rgb, k_algorithm_, color_); // Spill suppressoin of ref_rgb
     hue_shifter_inv_ = hue_shifter_;
     hue_shifter_inv_.Invert();
 
@@ -248,9 +263,20 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 
     float L1 = powf(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2], 1.0f / 3.0f); // Lightness - cubic root of relative luminance
 
-    hue_shifter_.Rotate(rgb); //Shift hue so mean hue is 1/3 on hue scale
-    float suppression = k_amount_ * m * afx::SpillSuppression(rgb, k_algorithm_); //Calculate suppression
-    rgb[1] -= suppression;
+    hue_shifter_.Rotate(rgb); //Shift hue so mean hue is center on ideal screen hue
+    float suppression = k_amount_ * m * afx::SpillSuppression(rgb, k_algorithm_, color_); //Calculate suppression
+
+    switch (color_) {
+      case afx::kGreen: {
+        rgb[1] -= suppression;
+        break;
+      }
+      case afx::kBlue: {
+        rgb[2] -= suppression;
+        break;
+      }
+    }
+
     hue_shifter_inv_.Rotate(rgb);
 
     float L2 = powf(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2], 1.0f / 3.0f);
