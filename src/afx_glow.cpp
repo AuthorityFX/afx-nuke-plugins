@@ -191,7 +191,7 @@ void ThisClass::_validate(bool) {
 
   exposure_ = k_exposure_;
   threshold_ = k_threshold_;
-  threshold_falloff_ = fminf(fmaxf(10.0f * k_threshold_falloff_, 0.008f), 125.0f);
+  threshold_falloff_ = fminf(fmaxf(10.0f * k_threshold_falloff_, 1.0f), 125.0f);
   size_ = proxy_scale_ * k_size_;
   softness_ = proxy_scale_ * afx::AfxClamp<float>(k_softness_, 0.0, 10.0f);
   diffusion_ = afx::AfxClamp<float>(k_diffusion_, 0.0, 1.0f);
