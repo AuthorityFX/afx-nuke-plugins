@@ -93,9 +93,9 @@ set_target_properties(afx_glow PROPERTIES PREFIX "")
 target_link_libraries(afx_glow ${CUDA_LIBS} lib_afx_core lib_afx_cuda)
 
 
-install(TARGETS lib_afx_core lib_afx_cuda DESTINATION lib/)
+install(TARGETS lib_afx_core lib_afx_cuda DESTINATION lib)
 install(TARGETS afx_soft_clip afx_tone_map afx_median afx_chroma_key afx_despill afx_anti_alias afx_glow DESTINATION .)
-install(DIRECTORY icons/ DESTINATION  icons/)
+install(DIRECTORY icons DESTINATION  icons)
 install(FILES menu.py DESTINATION .)
 
 
