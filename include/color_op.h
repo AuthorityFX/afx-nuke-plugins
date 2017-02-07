@@ -157,7 +157,10 @@ float RotateColor::GetMatrix(int r, int c) {
 float Hue(const float (&rgb)[3]) {
   float a = 0.5f * (2 * rgb[0] - rgb[1] - rgb[2]);
   float b = (sqrtf(3) / 2) * (rgb[1] - rgb[2]);
-  return atan2f(b, a) / (2.0f * M_PI);
+  float hue = atan2f(b, a) / (2.0f * M_PI);
+  hue = fmod(hue, 1.0f);
+  if (hue < 0) { hue += 1.0f; }
+  return hue;
 }
 void RGBtoHSV(const float (&rgb)[3], float* hsv) {
   float a = 0.5f * (2 * rgb[0] - rgb[1] - rgb[2]);

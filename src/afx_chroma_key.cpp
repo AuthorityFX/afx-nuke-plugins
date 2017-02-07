@@ -16,7 +16,6 @@
 #include <math.h>
 
 #include <boost/geometry.hpp>
-#include <boost/geometry/geometries/point.hpp>
 
 #include "threading.h"
 #include "median.h"
@@ -27,6 +26,12 @@ static const char* CLASS = "AFXChromaKey";
 static const char* HELP = "Chroma Keyer";
 
 #define ThisClass AFXChromaKey
+
+typedef boost::geometry::model::point<float, 2, boost::geometry::cs::cartesian> Point;
+typedef boost::geometry::model::multi_point<Point> PointCloud;
+typedef boost::geometry::model::polygon<Point> Polygon;
+typedef boost::geometry::model::multi_polygon<Polygon> MultiGon;
+typedef boost::geometry::model::box<Point> BoundingBox;
 
 enum inputs
 {
@@ -46,8 +51,8 @@ private:
   bool k_specify_source_frame_;
   float k_source_frame_;
 
-  float k_chroma_clean_;
-  float k_luma_clean_;
+  float k_chroma_threshold_;
+  float k_luma_threshold_;
   float k_falloff_;
   bool k_premultiply_;
 
@@ -56,6 +61,12 @@ private:
   float mean_rgb_[3];
   float mean_lab_[3];
   float std_dev_lab_[3];
+
+  PointCloud screen_pc_;
+  Polygon screen_hull_;
+  MultiGon offset_;
+  Polygon offset_hull_;
+  BoundingBox bounding_;
 
   // members to store processed knob values
   float smoothness_;
@@ -72,7 +83,7 @@ private:
   int maximum_inputs() const { return 2; }
   int minimum_inputs() const { return 2; }
 
-  void MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, float hue);
+  void MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, float* ref_hsv, int step);
 
 public:
   ThisClass(Node* node);
@@ -102,8 +113,8 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_specify_source_frame_ = false;
   k_source_frame_ = 1.0f;
 
-  k_chroma_clean_ = 0.5f;
-  k_luma_clean_ = 0.5f;
+  k_chroma_threshold_ = 0.5f;
+  k_luma_threshold_ = 0.5f;
   k_falloff_ = 0.5f;
   k_premultiply_ = true;
 }
@@ -121,11 +132,11 @@ void ThisClass::knobs(Knob_Callback f) {
   SetRange(f, 0.0, 150.0);
   SetFlags(f, Knob::STARTLINE | Knob::HIDDEN | Knob::EARLY_STORE);
 
-  Float_knob(f, &k_chroma_clean_, "chrome_clean", "Chroma Clean");
-  Tooltip(f, "Cleanup screen");
+  Float_knob(f, &k_chroma_threshold_, "threshold", "Threshold");
+  Tooltip(f, "Threshold");
   SetRange(f, 0.0, 1.0);
 
-  Float_knob(f, &k_luma_clean_, "luma_clean", "Luma Clean");
+  Float_knob(f, &k_luma_threshold_, "luma_clean", "Luma Clean");
   Tooltip(f, "Cleanup screen");
   SetRange(f, 0.0, 1.0);
 
@@ -242,10 +253,17 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
         if (input(iScreenMatte) != nullptr) { input(iScreenMatte)->fetchPlane(matte_plane); }
       }
 
-      float ref_hue = afx::Hue(k_screen_color_);
-      threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::MetricsCPU, this, _1, boost::ref(source_plane), boost::ref(matte_plane), ref_hue));
-      threader_.Synchonize();
+      screen_pc_.clear();
+      screen_hull_.clear();
 
+      float ref_hsv[3];
+      afx::RGBtoHSV(k_screen_color_, ref_hsv);
+      MetricsCPU(format_bnds, source_plane, matte_plane, ref_hsv , 4);
+      //threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::MetricsCPU, this, _1, boost::ref(source_plane), boost::ref(matte_plane), ref_hsv , 4));
+      //threader_.Synchonize();
+
+      boost::geometry::convex_hull(screen_pc_, screen_hull_);
+      boost::geometry::envelope(screen_hull_, bounding_);
 
       first_time_engine_ = false;
     }
@@ -267,41 +285,47 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   //Must call get before initializing any pointers
   row.get(input0(), y, x, r, Mask_RGBA);
 
-  float lab[3];
-  float hsv[3];
-  float std_lab[3];
-  float s_res, v_res;
-  float rad, matte;
-
   afx::ReadOnlyPixel in(3);
   afx::Pixel out(4);
   for (int i = 0; i < 3; ++i) { in.SetPtr(row[rgba_chan[i]] + x, i); } // Set const in pointers RGB
   for (int i = 0; i < 4; ++i) { out.SetPtr(row.writable(rgba_chan[i]) + x, i); } // Set out pointers RGBA
 
   for (int x0 = x; x0 < r; ++x0) { // Loop through pixels in row
-    for (int i = 0; i < 3; ++i) { lab[i] = hsv[i] = in.GetVal(i); }
-
-
-    for (int i = 0; i < 3; ++i) {
-      if (k_premultiply_) {
-        out.SetVal(in.GetVal(i) * matte, i);
+    float rgb[3];
+    float lab[3];
+    for (int i = 0; i < 3; ++i) { rgb[i] = in.GetVal(i); }
+    afx::RGBtoLab(rgb, lab);
+    Point p = Point(lab[1], lab[2]);
+    float matte = 1.0f;
+    BoundingBox bb;
+    boost::geometry::buffer(bounding_, bb, 10);
+    if (boost::geometry::within(p, bb)) {
+      if (boost::geometry::within(p, screen_hull_)) {
+        matte = 0;
       } else {
-        out.SetVal(in.GetVal(i), i);
+        matte = smoothness_ * boost::geometry::distance(p, screen_hull_);
       }
     }
+
+    if (k_premultiply_) {
+      for (int i = 0; i < 3; ++i) { out.SetVal(in.GetVal(i) * matte, i); }
+    } else {
+      for (int i = 0; i < 3; ++i) { out.SetVal(in.GetVal(i), i); }
+    }
     out.SetVal(matte, 3);
+    for (int i = 0; i < 3; ++i) { out.SetVal(lab[i], i); }
     in++;
     out++;
   }
 }
 
-void ThisClass::MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, float ref_hue) {
+void ThisClass::MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, float* ref_hsv, int step) {
 
   afx::Bounds plane_bnds(source.bounds().x(), source.bounds().y(), source.bounds().r() - 1, source.bounds().t() - 1);
 
   float rgb[3];
 
-  typedef boost::geometry::model::point<float, 2, boost::geometry::cs::cartesian> point;
+  PointCloud pc;
 
   afx::ReadOnlyPixel in(3);
   const float one = 1.0f;
@@ -309,41 +333,39 @@ void ThisClass::MetricsCPU(const afx::Bounds& region, const ImagePlane& source, 
 
   Channel chan_rgb[3] = {Chan_Red, Chan_Green, Chan_Blue};
 
-  for (int y = region.y1(); y <= region.y2(); y+=4) {
+  for (int y = region.y1(); y <= region.y2(); y += step) {
     for  (int i = 0; i < 3; ++i) {
       in.SetPtr(&source.readable()[source.chanNo(chan_rgb[i]) * source.chanStride() + source.rowStride() * (plane_bnds.ClampY(y) - plane_bnds.y1()) +
-      plane_bnds.ClampX(region.x1()) - plane_bnds.x1()], i);
+                plane_bnds.ClampX(region.x1()) - plane_bnds.x1()], i);
     }
-    if (input(iScreenMatte) != nullptr) { m_ptr =
-                                                  &matte.readable()[matte.chanNo(Chan_Alpha) * matte.chanStride() + matte.rowStride() *
+    if (input(iScreenMatte) != nullptr) { m_ptr = &matte.readable()[matte.chanNo(Chan_Alpha) * matte.chanStride() + matte.rowStride() *
                                                   (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
                                         }
-
-    for (int x = region.x1(); x <= region.x2(); x+=4) {
-      //Convert HSV and convert pixel to HSV
+    for (int x = region.x1(); x <= region.x2(); x += step) {
       for (int i = 0; i < 3; i++) { rgb[i] = in.GetVal(i); }
-
-      if (*m_ptr > 0.5) { //Compute stats from screen
-        float hue = afx::Hue(rgb);
-        if (fabsf(hue - ref_hue) < 0.1f ) {
-
+      if (*m_ptr > 0.5) {
+        float hsv[3];
+        afx::RGBtoHSV(rgb, hsv);
+        if (fabsf(hsv[0] - ref_hsv[0]) < k_chroma_threshold_ * 100 && fabsf(hsv[2] - ref_hsv[2]) < k_luma_threshold_ * 100) {
+          Polygon hull;
+          boost::geometry::convex_hull(pc, hull);
           float lab[3];
           afx::RGBtoLab(rgb, lab);
-
-          //Add to point cloud
-
+          Point p = Point(lab[1], lab[2]);
+          if (!boost::geometry::within(p, hull)) {
+            pc.push_back(Point(lab[1], lab[2]));
+          }
         }
       }
-      for (int i = 0; i < 4; i++) { in.NextPixel(); }
+      for (int i = 0; i < step; i++) { in.NextPixel(); }
       if (input(iScreenMatte) != nullptr) {
-        for (int i = 0; i < 4; i++) { m_ptr++; }
+        for (int i = 0; i < step; i++) { m_ptr++; }
       }
     }
   }
 
-
   boost::mutex::scoped_lock lock(mutex_);
-  // Add to main geo
-
+  boost::geometry::append(screen_pc_, pc);
 
 }
+
