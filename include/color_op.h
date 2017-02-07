@@ -40,9 +40,10 @@ inline float min3(const float& a, const float& b, const float& c) {
 inline float max3(const float& a, const float& b, const float& c) {
   return fmaxf(a, fmaxf(b, c));
 }
-inline void RGBtoHSV(const float (&RGB)[3], float* HSV);
-inline void HSVtoRGB(const float (&HSV)[3], float* RGB);
-inline float SpillSuppression(const float (&RGB)[3], int algorithm, ScreenColor color);
+inline float Hue(const float (&rgb)[3]);
+inline void RGBtoHSV(const float (&rgb)[3], float* hsv);
+inline void HSVtoRGB(const float (&hsv)[3], float* rgb);
+inline float SpillSuppression(const float (&rgb)[3], int algorithm, ScreenColor color);
 
 inline float SoftClip(float value, float clip, float knee) {
   if (value <= 0.0f) { return value; }
@@ -61,8 +62,7 @@ class RotateColor {
   RotateColor(const float (&axis)[3], float deg);
   // Build transform matrix for rotation
   inline void BuildMatrix(const float (&axis)[3], float deg);
-  // Build transform matrix for rotation, TODO I don't remember why this
-  // only has rotation and no axis.
+  // Build transform matrix for rotation
   inline void BuildMatrix(float deg);
   // Apply in place color rotation
   inline void Rotate(float* color);
@@ -154,50 +154,54 @@ float RotateColor::GetMatrix(int r, int c) {
   return m_[r][c];
 }
 
-
-void RGBtoHSV(const float (&rgb)[3], float* hsv) {
-    float a = 0.5f * (2 * rgb[0] - rgb[1] - rgb[2]);
-    float b = (sqrtf(3) / 2) * (rgb[1] - rgb[2]);
-    hsv[0] = atan2f(b, a) / (2.0f * M_PI);
-    hsv[0] = fmod(hsv[0], 1.0f);
-    if (hsv[0] < 0) { hsv[0] += 1.0f; }
-    hsv[1] = sqrtf(powf(a, 2.0f) + powf(b, 2.0f));
-    hsv[2] = max3(rgb[0], rgb[1], rgb[2]);
+float Hue(const float (&rgb)[3]) {
+  float a = 0.5f * (2 * rgb[0] - rgb[1] - rgb[2]);
+  float b = (sqrtf(3) / 2) * (rgb[1] - rgb[2]);
+  return atan2f(b, a) / (2.0f * M_PI);
 }
-void HSVtoRGB(const float (&HSV)[3], float* RGB)
+void RGBtoHSV(const float (&rgb)[3], float* hsv) {
+  float a = 0.5f * (2 * rgb[0] - rgb[1] - rgb[2]);
+  float b = (sqrtf(3) / 2) * (rgb[1] - rgb[2]);
+  hsv[0] = atan2f(b, a) / (2.0f * M_PI);
+  hsv[0] = fmod(hsv[0], 1.0f);
+  if (hsv[0] < 0) { hsv[0] += 1.0f; }
+  hsv[1] = sqrtf(powf(a, 2.0f) + powf(b, 2.0f));
+  hsv[2] = max3(rgb[0], rgb[1], rgb[2]);
+}
+void HSVtoRGB(const float (&hsv)[3], float* rgb)
 {
-  float C = HSV[2] * HSV[1];
-  double Ho = 6.0f * HSV[0];
+  float C = hsv[2] * hsv[1];
+  double Ho = 6.0f * hsv[0];
   float X = C * (1.0f - fabsf((float)fmodf(Ho, 2.0) - 1.0f));
   if( Ho >= 0 && Ho < 1) {
-    RGB[0] = C;
-    RGB[1] = X;
-    RGB[2] = 0;
+    rgb[0] = C;
+    rgb[1] = X;
+    rgb[2] = 0;
   } else if( Ho >= 1 && Ho < 2) {
-    RGB[0] = X;
-    RGB[1] = C;
-    RGB[2] = 0;
+    rgb[0] = X;
+    rgb[1] = C;
+    rgb[2] = 0;
   } else if( Ho >= 2 && Ho < 3) {
-    RGB[0] = 0;
-    RGB[1] = C;
-    RGB[2] = X;
+    rgb[0] = 0;
+    rgb[1] = C;
+    rgb[2] = X;
   } else if( Ho >= 3 && Ho < 4) {
-    RGB[0] = 0;
-    RGB[1] = X;
-    RGB[2] = C;
+    rgb[0] = 0;
+    rgb[1] = X;
+    rgb[2] = C;
   } else if( Ho >= 4 && Ho < 5) {
-    RGB[0] = X;
-    RGB[1] = 0;
-    RGB[2] = C;
+    rgb[0] = X;
+    rgb[1] = 0;
+    rgb[2] = C;
   } else if( Ho >= 5) {
-    RGB[0] = C;
-    RGB[1] = 0;
-    RGB[2] = X;
+    rgb[0] = C;
+    rgb[1] = 0;
+    rgb[2] = X;
   }
-  float m = HSV[2] - C;
-  RGB[0] += m;
-  RGB[1] += m;
-  RGB[2] += m;
+  float m = hsv[2] - C;
+  rgb[0] += m;
+  rgb[1] += m;
+  rgb[2] += m;
 }
 
 float f(float t) {
@@ -229,57 +233,57 @@ void LabtoRGB(const float (&lab)[3], float (&rgb)[3]) {
   float Z = 108.883f * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f) + (1.0f / 200.0f) * lab[2]);
 }
 
-float SpillSuppression(const float (&RGB)[3], int algorithm, ScreenColor color) {
+float SpillSuppression(const float (&rgb)[3], int algorithm, ScreenColor color) {
   float temp = 0.0f;
   float suppression = 0.0f;
 
   float s, other;
   switch (color) {
     case kGreen: {
-      s = RGB[1];
-      other = RGB[2];
+      s = rgb[1];
+      other = rgb[2];
       break;
     }
     case kBlue: {
-      s = RGB[2];
-      other = RGB[1];
+      s = rgb[2];
+      other = rgb[1];
       break;
     }
   }
 
   switch (algorithm) {
     case kLight: {
-      temp = s - fmaxf(RGB[0], other);
+      temp = s - fmaxf(rgb[0], other);
       if (temp > 0) { suppression = temp; }
       break;
     }
     case kMedium: {
-      temp = 2 * s - fmaxf(RGB[0], other) - (RGB[0] + other) / 2.0f;
+      temp = 2 * s - fmaxf(rgb[0], other) - (rgb[0] + other) / 2.0f;
       if (temp > 0) { suppression = temp / 2.0f; }
       break;
     }
     case kHard: {
-      temp = s - (RGB[0] + other) / 2.0f;
+      temp = s - (rgb[0] + other) / 2.0f;
       if (temp > 0) { suppression = temp; }
       break;
     }
     case kHarder: {
-      temp = 3 * s - (RGB[0] + other) - fminf(RGB[0], other);
+      temp = 3 * s - (rgb[0] + other) - fminf(rgb[0], other);
       if (temp > 0) { suppression = temp / 3.0f; }
       break;
     }
     case kEvenHarder: {
-      temp = 2 * s - (RGB[0] + other) / 2.0f - fminf(RGB[0], other);
+      temp = 2 * s - (rgb[0] + other) / 2.0f - fminf(rgb[0], other);
       if (temp > 0) { suppression = temp / 2.0f; }
       break;
     }
     case kExtreme: {
-      temp = 3 * s - (RGB[0] + other) / 2.0f - 2 * fminf(RGB[0], other);
+      temp = 3 * s - (rgb[0] + other) / 2.0f - 2 * fminf(rgb[0], other);
       if (temp > 0) { suppression = temp / 3.0f; }
       break;
     }
     case kUber: {
-      temp = 4 * s - (RGB[0] + other) / 2.0f - 2 * fminf(RGB[0], other);
+      temp = 4 * s - (rgb[0] + other) / 2.0f - 2 * fminf(rgb[0], other);
       if (temp > 0) { suppression = temp / 4.0f; }
       break;
     }

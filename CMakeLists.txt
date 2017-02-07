@@ -9,8 +9,9 @@ configure_file (
   "${PROJECT_BINARY_DIR}/include/cmake_config.h" @ONLY
   )
 
-#Enable for redistributable build, place all redistributable library dependencies in lib folder
-set(CMAKE_SKIP_RPATH  TRUE)
+# Set CMAKE_SKIP_RPATH FALSE TRUE for redistributable build, place all
+# redistributable library dependencies in lib folder
+set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-rpath,'$ORIGIN/lib'")
 #Disable rpath stripping at install
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -72,13 +73,13 @@ add_library(afx_tone_map SHARED src/afx_tone_map.cpp)
 set_target_properties(afx_tone_map PROPERTIES PREFIX "")
 target_link_libraries(afx_tone_map)
 
+add_library(afx_chroma_key SHARED src/afx_chroma_key.cpp)
+set_target_properties(afx_chroma_key PROPERTIES PREFIX "")
+target_link_libraries(afx_chroma_key lib_afx_core)
+
 cuda_add_library(afx_median src/afx_median.cpp src/afx_median.cu SHARED)
 set_target_properties(afx_median PROPERTIES PREFIX "")
 target_link_libraries(afx_median ${CUDA_LIBS} lib_afx_core lib_afx_cuda)
-
-cuda_add_library(afx_chroma_key src/afx_chroma_key.cpp SHARED)
-set_target_properties(afx_chroma_key PROPERTIES PREFIX "")
-target_link_libraries(afx_chroma_key ${CUDA_LIBS} lib_afx_core lib_afx_cuda)
 
 cuda_add_library(afx_despill src/afx_despill.cpp SHARED)
 set_target_properties(afx_despill PROPERTIES PREFIX "")

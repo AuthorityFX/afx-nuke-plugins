@@ -13,11 +13,12 @@
 #include <DDImage/ImagePlane.h>
 #include <DDImage/Thread.h>
 
-#include <cuda_runtime.h>
 #include <math.h>
 
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point.hpp>
+
 #include "threading.h"
-#include "cuda_helper.h"
 #include "median.h"
 #include "color_op.h"
 
@@ -26,9 +27,6 @@ static const char* CLASS = "AFXChromaKey";
 static const char* HELP = "Chroma Keyer";
 
 #define ThisClass AFXChromaKey
-
-extern "C" void MetricsCuda(cudaTextureObject_t r_tex, cudaTextureObject_t g_tex, cudaTextureObject_t b_tex, cudaTextureObject_t m_tex, afx::Bounds in_bnds);
-extern "C" void CoreMatteCuda(afx::Bounds in_bnds);
 
 enum inputs
 {
@@ -63,26 +61,18 @@ private:
   float smoothness_;
 
   boost::mutex mutex_;
-  bool first_time_GPU_;
-  bool first_time_CPU_;
+  bool first_time_engine_;
   Lock lock_;
 
   afx::Bounds req_bnds_, format_bnds, format_f_bnds_;
   float proxy_scale_;
-
-  afx::CudaProcess cuda_process_;
-  afx::CudaImageArray row_imgs_;
-  afx::CudaImageArray in_imgs_;
-  afx::CudaStreamArray streams_;
 
   afx::Threader threader_;
 
   int maximum_inputs() const { return 2; }
   int minimum_inputs() const { return 2; }
 
-  void MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, float* ref_hsv, double* sum_rgb, double* sum, double* sum_sqrs, unsigned int& num);
-  void ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row);
-  void ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row);
+  void MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, float hue);
 
 public:
   ThisClass(Node* node);
@@ -104,12 +94,7 @@ public:
 };
 ThisClass::ThisClass(Node* node) : Iop(node) {
 
-  first_time_GPU_ = true;
-  first_time_CPU_ = true;
-
-  try {
-    cuda_process_.MakeReady();
-  } catch (cudaError err) {}
+  first_time_engine_ = true;
 
   //initialize knobs
   k_screen_color_[0] = k_screen_color_[2] = 0;
@@ -235,88 +220,17 @@ void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int c
   }
 }
 void ThisClass::_open() {
-  first_time_GPU_ = true;
-  first_time_CPU_ = true;
+  first_time_engine_ = true;
 }
 void ThisClass::_close() {
-  first_time_GPU_ = true;
-  first_time_CPU_ = true;
-  in_imgs_.Clear();
-  row_imgs_.Clear();
-  streams_.Clear();
+  first_time_engine_ = true;
 }
 void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   callCloseAfter(0);
-  try {
-    throw cudaErrorIllegalAddress;
-    ProcessCUDA(y, x, r, channels, row);
-  } catch (cudaError err) {
-    ProcessCPU(y, x, r, channels, row);
-  }
-}
-void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row) {
-  afx::Bounds row_bnds(x, y, r - 1, y);
 
-  if (first_time_GPU_) {
+  if (first_time_engine_) {
     Guard guard(lock_);
-    if (first_time_GPU_) {
-      cuda_process_.CheckReady();
-      in_imgs_.Clear();
-      row_imgs_.Clear();
-      streams_.Clear();
-      ImagePlane source_plane(Box(req_bnds_.x1(), req_bnds_.y1(), req_bnds_.x2() + 1, req_bnds_.y2() + 1), false, Mask_RGB); // Create plane "false" = non-packed.
-      ImagePlane screen_plane(Box(req_bnds_.x1(), req_bnds_.y1(), req_bnds_.x2() + 1, req_bnds_.y2() + 1), false, Mask_RGB); // Create plane "false" = non-packed.
-      if (k_specify_source_frame_) {
-        input(iSource)->fetchPlane(source_plane);
-        if (input(iScreenMatte) != nullptr) { input(iScreenMatteAtTime)->fetchPlane(screen_plane); }
-      } else {
-        input(iSourceAtTime)->fetchPlane(source_plane);
-        if (input(iScreenMatte) != nullptr) { input(iScreenMatteAtTime)->fetchPlane(screen_plane); }
-      }
-      afx::CudaStreamArray streams;
-      afx::CudaImage* rgb[3];
-      foreach (z, info_.channels()) { // For each channel in plane
-        if (z == Chan_Red || z == Chan_Green || z == Chan_Blue) {
-          in_imgs_.AddImage(req_bnds_); // Create cuda image for plane
-          in_imgs_.GetBackPtr()->AddAttribute("channel", z); // Add channel attribute to image
-          streams.Add(); // Add stream
-          in_imgs_.GetBackPtr()->MemCpyToDevice(&source_plane.readable()[source_plane.chanNo(z) * source_plane.chanStride()], source_plane.rowStride() * sizeof(float),
-                                                streams.GetBackPtr()->GetStream()); // Copy mem host plane to cuda on stream.
-          switch (z) {
-            case Chan_Red: {
-              rgb[0] = in_imgs_.GetBackPtr();
-            }
-            case Chan_Green: {
-              rgb[1] = in_imgs_.GetBackPtr();
-            }
-            case Chan_Blue: {
-              rgb[2] = in_imgs_.GetBackPtr();
-            }
-          }
-        }
-      }
-      afx::CudaImage* screen_matte_ptr = nullptr;
-      if (input(iScreenMatte) != nullptr) {
-        in_imgs_.AddImage(req_bnds_); // Create cuda image for plane
-        in_imgs_.GetBackPtr()->AddAttribute("matte", iScreenMatte); // Add matte input number attribute to image
-        streams.Add();
-        in_imgs_.GetBackPtr()->MemCpyToDevice(&screen_plane.readable()[screen_plane.chanNo(Chan_Alpha) * screen_plane.chanStride()],
-                                              screen_plane.rowStride() * sizeof(float), streams.GetBackPtr()->GetStream()); // Copy mem host plane to cuda on stream.
-        screen_matte_ptr = in_imgs_.GetBackPtr();
-      }
-      cuda_process_.Synchonize(); // Sync all streams
-      in_imgs_.CreateTextures(); // Create texture objects for all cuda images
-      streams.Clear(); // Delete streams
-      //MetricsCuda(rgb[0]->GetTexture(), rgb[1]->GetTexture(), rgb[2]->GetTexture(), screen_matte_ptr != nullptr ? screen_matte_ptr->GetTexture() : 0,  req_bnds_);
-      first_time_GPU_ = false;
-    }
-  } // End first time guard
-}
-void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
-
-  if (first_time_CPU_) {
-    Guard guard(lock_);
-    if (first_time_CPU_) {
+    if (first_time_engine_) {
       Box plane_req_box(info_.box());
       ImagePlane source_plane(plane_req_box, false, Mask_RGB); // Create plane "false" = non-packed.
       ImagePlane matte_plane(plane_req_box, false, Mask_Alpha); // Create plane "false" = non-packed.
@@ -328,25 +242,12 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
         if (input(iScreenMatte) != nullptr) { input(iScreenMatte)->fetchPlane(matte_plane); }
       }
 
-      float ref_hsv[3];
-      afx::RGBtoHSV(k_screen_color_, ref_hsv);
-
-      unsigned int num = 0;
-      double sum_rgb[3] = {0, 0, 0};
-      double sum[3] = {0, 0, 0};
-      double sum_sqrs[3] = {0, 0, 0};
-
-      threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::MetricsCPU, this, _1, boost::ref(source_plane), boost::ref(matte_plane), ref_hsv, sum_rgb, sum, sum_sqrs, boost::ref(num)));
+      float ref_hue = afx::Hue(k_screen_color_);
+      threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::MetricsCPU, this, _1, boost::ref(source_plane), boost::ref(matte_plane), ref_hue));
       threader_.Synchonize();
 
-      //Calculate mean and stdDev
-      num = std::max(num, (unsigned int)1);
-      for (int i = 0; i < 3; ++i) {
-        mean_rgb_[i] = (float)(sum_rgb[i] / (double)num);
-        mean_lab_[i] = (float)(sum[i] / (double)num);
-        std_dev_lab_[i] = (float)sqrt((sum_sqrs[i] - pow(sum[i], 2.0) / (double)num) / (double)num);
-      }
-      first_time_CPU_ = false;
+
+      first_time_engine_ = false;
     }
   } // End first time guard
 
@@ -379,20 +280,8 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 
   for (int x0 = x; x0 < r; ++x0) { // Loop through pixels in row
     for (int i = 0; i < 3; ++i) { lab[i] = hsv[i] = in.GetVal(i); }
-    afx::RGBtoLab(lab, lab);
-    afx::RGBtoHSV(hsv, hsv);
-    rad = powf(fabsf(lab[1] - mean_lab_[1]), 2.0f) / powf(3.0f * k_chroma_clean_ * std_dev_lab_[1], 2.0f)
-        + powf(fabsf(lab[2] - mean_lab_[2]), 2.0f) / powf(3.0f * k_chroma_clean_ * std_dev_lab_[2], 2.0f)
-        + powf(fabsf(lab[0] - mean_lab_[0]), 2.0f) / powf(3.0f * k_luma_clean_   * std_dev_lab_[0], 2.0f);
-    s_res = v_res = 0.0f;
-    rad = afx::max3(rad, s_res, v_res);
-    rad = fmaxf(rad - 1.0f, 0.0f);
-    matte = 0.0f;
-    if (rad <= smoothness_) {
-      matte = rad / smoothness_;
-    } else {
-      matte = 1.0f;
-    }
+
+
     for (int i = 0; i < 3; ++i) {
       if (k_premultiply_) {
         out.SetVal(in.GetVal(i) * matte, i);
@@ -406,53 +295,15 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   }
 }
 
-// TODO I want to completely change this algorithm
-// Currently this is what I'm doing:
-// Find mean and standard deviation.
-// Create 3D elipsoid or radius 3 * std_dev centered at mean.
-// Plug in abs(pixel - mean) for x, y ,z in elipsoid equation
-// If value is greater than 1 or less, pixel is chroma screen.
-//
-// The mean and std_dev can be skewed by the size of the mask areas. A big area will carry more weight.
-// I want to sample only the points within the mask region and create a non-convex hull boundind the sample points
-// Furthermore, I plotted the A B of LAB space. It's not a normal distribution and it doesn't look like an elipse.
-//
-// This is what I'd like to do
-//
-// http://www.geosensor.net/phpws/index.php?module=pagemaster&PAGE_user_op=view_page&PAGE_id=13
-//
-// Another non-convex hull can be constructed to represent the foreground.
-// The two hulls can be booleaned
-// To check if a pixel is part of the chroma screen
-// First check bounding region. http://geomalgorithms.com/a08-_containers.html
-// If within bounding region, check using winding number  http://geomalgorithms.com/a03-_inclusion.html
-//
-// To blend between screen and forground, if point is not within screen non-convex hull
-// find distance to nearest point non-convex hull point.
-//
-// Convex hull points should be stored in a KD Tree to allow for fast nearest neighbor search.
-//
-// http://www.geosensor.net/papers/duckham08.PR.pdf
-// non-convex hull algorithm
-
-// https://en.wikipedia.org/wiki/Delaunay_triangulation
-// Delaunay_triangulation
-
-
-void ThisClass::MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, float* ref_hsv, double* sum_rgb,
-                           double* sum, double* sum_sqrs, unsigned int& num) {
+void ThisClass::MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, float ref_hue) {
 
   afx::Bounds plane_bnds(source.bounds().x(), source.bounds().y(), source.bounds().r() - 1, source.bounds().t() - 1);
 
   float rgb[3];
-  float hsv[3];
 
-  unsigned int l_num = 0;
-  double l_sum_rgb[3] = {0, 0, 0};
-  double l_sum[3] = {0, 0, 0};
-  double l_sumSqrs[3] = {0, 0, 0};
+  typedef boost::geometry::model::point<float, 2, boost::geometry::cs::cartesian> point;
 
-  afx::ReadOnlyPixel in(4);
+  afx::ReadOnlyPixel in(3);
   const float one = 1.0f;
   const float* m_ptr = &one;
 
@@ -468,39 +319,31 @@ void ThisClass::MetricsCPU(const afx::Bounds& region, const ImagePlane& source, 
                                                   (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
                                         }
 
-    for (int x = region.x1(); x <= region.x2(); x+=4) { // TODO every 4th row for performance
+    for (int x = region.x1(); x <= region.x2(); x+=4) {
       //Convert HSV and convert pixel to HSV
       for (int i = 0; i < 3; i++) { rgb[i] = in.GetVal(i); }
-      afx::RGBtoHSV(rgb, hsv);
+
       if (*m_ptr > 0.5) { //Compute stats from screen
-        if (fabsf(hsv[0] - ref_hsv[0]) < 0.1f ) {
-          l_num++;
+        float hue = afx::Hue(rgb);
+        if (fabsf(hue - ref_hue) < 0.1f ) {
+
           float lab[3];
           afx::RGBtoLab(rgb, lab);
-          for (int i = 0; i < 3; i++) {
-            l_sum_rgb[i] += rgb[i];
-            l_sum[i] += lab[i];
-            l_sumSqrs[i] += lab[i] * lab[i];
-          }
+
+          //Add to point cloud
+
         }
       }
-      in.NextPixel();
-      in.NextPixel();
-      in.NextPixel();
-      in.NextPixel();
+      for (int i = 0; i < 4; i++) { in.NextPixel(); }
       if (input(iScreenMatte) != nullptr) {
-        m_ptr++;
-        m_ptr++;
-        m_ptr++;
-        m_ptr++;
+        for (int i = 0; i < 4; i++) { m_ptr++; }
       }
     }
   }
+
+
   boost::mutex::scoped_lock lock(mutex_);
-  num += l_num;
-  for (int i = 0; i < 3; ++i) {
-    sum_rgb[i] += l_sum_rgb[i];
-    sum[i] += l_sum[i];
-    sum_sqrs[i] += l_sumSqrs[i];
-  }
+  // Add to main geo
+
+
 }
