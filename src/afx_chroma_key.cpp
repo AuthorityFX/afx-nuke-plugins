@@ -39,7 +39,8 @@ typedef bg::model::box<Point> BoundingBox;
 enum inputs
 {
   iSource = 0,
-  iScreenMatte = 1,
+  iOutMatte = 1,
+  iInMatte = 2,
 };
 
 using namespace DD::Image;
@@ -48,14 +49,18 @@ class ThisClass : public Iop {
 private:
 
   // members to store knob values
-  float k_smoothness_;
+  float k_dilate;
   float k_falloff_;
   bool k_premultiply_;
 
-  PointCloud screen_pc_;
-  Polygon screen_hull_;
-  MultiGon screen_hull_offset_;
-  BoundingBox screen_box_;
+  PointCloud out_pc_;
+  PointCloud in_pc_;
+  Polygon out_hull_;
+  Polygon in_hull_;
+  MultiGon out_hull_buffer_;
+  MultiGon in_hull_buffer_;
+  BoundingBox main_box_;
+  BoundingBox in_box_;
 
   boost::mutex mutex_;
   bool first_time_engine_;
@@ -66,10 +71,10 @@ private:
 
   afx::Threader threader_;
 
-  int maximum_inputs() const { return 2; }
-  int minimum_inputs() const { return 2; }
+  int maximum_inputs() const { return 3; }
+  int minimum_inputs() const { return 3; }
 
-  void MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, int step);
+  void Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte, int step);
 
 public:
   ThisClass(Node* node);
@@ -91,13 +96,13 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   first_time_engine_ = true;
 
   //initialize knobs
-  k_smoothness_ = 0.5f;
+  k_dilate = 0.25f;
   k_falloff_ = 0.5f;
   k_premultiply_ = true;
 }
 void ThisClass::knobs(Knob_Callback f) {
-  Float_knob(f, &k_smoothness_, "smoothness", "Smoothness");
-  Tooltip(f, "Smoothness of matte");
+  Float_knob(f, &k_dilate, "dilate", "Dilate");
+  Tooltip(f, "Dialte out region");
   SetRange(f, 0.0, 1.0);
 
   Float_knob(f, &k_falloff_, "falloff", "Falloff");
@@ -124,8 +129,12 @@ const char* ThisClass::input_label(int input, char* buffer) const {
       return "Source";
     }
     case 1: {
-      input_longlabel(input) = "Screen Matte";
-      return "Screen Matte";
+      input_longlabel(input) = "Chroma values to key";
+      return "Out";
+    }
+    case 2: {
+      input_longlabel(input) = "Chroma values to keep";
+      return "In";
     }
     default: {
       return 0;
@@ -161,7 +170,8 @@ void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int c
   //Request source
   input(iSource)->request(channels, count);
   //Request screen matte
-  if (input(iScreenMatte) != nullptr) { input(iScreenMatte)->request(channels, count); }
+  if (input(iOutMatte) != nullptr) { input(iOutMatte)->request(Mask_Alpha, count); }
+  if (input(iInMatte) != nullptr) { input(iInMatte)->request(Mask_Alpha, count); }
 
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
@@ -178,29 +188,37 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
     Guard guard(lock_);
     if (first_time_engine_) {
       Box plane_req_box(info_.box());
+      //plane_req_box.set(format_bnds.x1(), format_bnds.y1(), format_bnds.x2() + 1, format_bnds.y2() + 1);
       ImagePlane source_plane(plane_req_box, false, Mask_RGB); // Create plane "false" = non-packed.
-      ImagePlane matte_plane(plane_req_box, false, Mask_Alpha); // Create plane "false" = non-packed.
+      ImagePlane out_matte_plane(plane_req_box, false, Mask_Alpha); // Create plane "false" = non-packed.
+      ImagePlane in_matte_plane(plane_req_box, false, Mask_Alpha); // Create plane "false" = non-packed.
 
       input(iSource)->fetchPlane(source_plane);
-      if (input(iScreenMatte) != nullptr) { input(iScreenMatte)->fetchPlane(matte_plane); }
+      if (input(iOutMatte) != nullptr) { input(iOutMatte)->fetchPlane(out_matte_plane); }
+      if (input(iInMatte) != nullptr) { input(iInMatte)->fetchPlane(in_matte_plane); }
 
-      screen_pc_.clear();
-      screen_hull_.clear();
-
-      threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::MetricsCPU, this, _1, boost::ref(source_plane), boost::ref(matte_plane), 4));
+      out_pc_.clear();
+      in_pc_.clear();
+      threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::Metrics, this, _1, boost::ref(source_plane), boost::ref(out_matte_plane), boost::ref(in_matte_plane), 1));
       threader_.Synchonize();
 
-      bg::convex_hull(screen_pc_, screen_hull_);
+      out_hull_.clear();
+      bg::convex_hull(out_pc_, out_hull_);
+      in_hull_.clear();
+      bg::convex_hull(in_pc_, in_hull_);
 
       // Declare strategies
-      bg::strategy::buffer::distance_symmetric<double> distance_strategy(100.0 * k_smoothness_);
+      bg::strategy::buffer::distance_symmetric<double> distance_strategy(100.0 * k_dilate);
       bg::strategy::buffer::join_miter join_strategy;
       bg::strategy::buffer::end_flat end_strategy;
       bg::strategy::buffer::point_square point_strategy;
       bg::strategy::buffer::side_straight side_strategy;
 
-      bg::buffer(screen_hull_, screen_hull_offset_, distance_strategy, side_strategy, join_strategy, end_strategy, point_strategy);
-      bg::envelope(screen_hull_offset_, screen_box_);
+      out_hull_buffer_.clear();
+      bg::buffer(out_hull_, out_hull_buffer_, distance_strategy, side_strategy, join_strategy, end_strategy, point_strategy);
+
+      bg::envelope(out_hull_buffer_, main_box_);
+      bg::envelope(in_hull_, in_box_);
 
       first_time_engine_ = false;
     }
@@ -234,12 +252,19 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
     afx::RGBtoLab(rgb, lab);
     Point p = Point(lab[1], lab[2]);
     float matte = 1.0f;
-    if (bg::within(p, screen_box_)) {
-      if (bg::within(p, screen_hull_offset_)) {
-        if (bg::within(p, screen_hull_)) {
+    if (bg::within(p, main_box_)) {
+      if (bg::within(p, out_hull_buffer_)) {
+        if (bg::within(p, out_hull_)) {
           matte = 0;
         } else {
-          matte = 1.0f - pow((1.0f + k_falloff_), -bg::distance(p, screen_hull_));
+          matte = 1.0f - pow((1.0f + k_falloff_), -bg::distance(p, out_hull_));
+          if (input(iInMatte) != nullptr) {
+            if (bg::within(p, in_box_)) {
+              if (bg::within(p, in_hull_)) {
+                matte = 1.0f;
+              }
+            }
+          }
         }
       }
     }
@@ -255,48 +280,63 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   }
 }
 
-void ThisClass::MetricsCPU(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& matte, int step) {
+void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte, int step) {
 
   afx::Bounds plane_bnds(source.bounds().x(), source.bounds().y(), source.bounds().r() - 1, source.bounds().t() - 1);
 
   float rgb[3];
-  PointCloud pc;
+  PointCloud out_pc;
+  PointCloud in_pc;
 
   afx::ReadOnlyPixel in(3);
   const float zero = 0.0f;
-  const float* m_ptr = &zero;
+  const float* out_m_ptr = &zero;
+  const float* in_m_ptr = &zero;
 
   Channel chan_rgb[3] = {Chan_Red, Chan_Green, Chan_Blue};
 
   for (int y = region.y1(); y <= region.y2(); y += step) {
     for  (int i = 0; i < 3; ++i) {
       in.SetPtr(&source.readable()[source.chanNo(chan_rgb[i]) * source.chanStride() + source.rowStride() * (plane_bnds.ClampY(y) - plane_bnds.y1()) +
-                plane_bnds.ClampX(region.x1()) - plane_bnds.x1()], i);
+                                   plane_bnds.ClampX(region.x1()) - plane_bnds.x1()], i);
     }
-    if (input(iScreenMatte) != nullptr) { m_ptr = &matte.readable()[matte.chanNo(Chan_Alpha) * matte.chanStride() + matte.rowStride() *
-                                                  (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
-                                        }
+    if (input(iOutMatte) != nullptr) {
+      out_m_ptr = &out_matte.readable()[out_matte.chanNo(Chan_Alpha) * out_matte.chanStride() + out_matte.rowStride() *
+                                        (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
+    }
+    if (input(iInMatte) != nullptr) {
+      in_m_ptr = &in_matte.readable()[in_matte.chanNo(Chan_Alpha) * in_matte.chanStride() + in_matte.rowStride() *
+                                      (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
+    }
+    //Polygon hull;
+    //boost::geometry::convex_hull(out_pc, hull);
     for (int x = region.x1(); x <= region.x2(); x += step) {
       for (int i = 0; i < 3; i++) { rgb[i] = in.GetVal(i); }
-      if (*m_ptr > 0.5) {
+      Point p;
+      if (*out_m_ptr > 0.5 || *in_m_ptr > 0.5) {
         float lab[3];
         afx::RGBtoLab(rgb, lab);
-        Point p = Point(lab[1], lab[2]);
-        Polygon hull;
-        boost::geometry::convex_hull(pc, hull);
-        if (!boost::geometry::within(p, hull)) {
-          pc.push_back(p);
-        }
+        p = Point(lab[1], lab[2]);
+      }
+      if (*out_m_ptr > 0.5) {
+        out_pc.push_back(p);
+      }
+      if (*in_m_ptr > 0.5) {
+        in_pc.push_back(p);
       }
       for (int i = 0; i < step; i++) { in.NextPixel(); }
-      if (input(iScreenMatte) != nullptr) {
-        for (int i = 0; i < step; i++) { m_ptr++; }
+      if (input(iOutMatte) != nullptr) {
+        for (int i = 0; i < step; i++) { out_m_ptr++; }
+      }
+      if (input(iInMatte) != nullptr) {
+        for (int i = 0; i < step; i++) { in_m_ptr++; }
       }
     }
   }
 
   boost::mutex::scoped_lock lock(mutex_);
-  bg::append(screen_pc_, pc);
+  bg::append(out_pc_, out_pc);
+  bg::append(in_pc_, in_pc);
 
 }
 
