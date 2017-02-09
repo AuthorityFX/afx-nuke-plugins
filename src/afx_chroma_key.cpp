@@ -49,15 +49,13 @@ private:
 
   // members to store knob values
   float k_smoothness_;
-  float k_point_seperation_;
   float k_falloff_;
   bool k_premultiply_;
 
   PointCloud screen_pc_;
   Polygon screen_hull_;
   MultiGon screen_hull_offset_;
-  Polygon offset_hull_;
-  BoundingBox bounding_;
+  BoundingBox screen_box_;
 
   boost::mutex mutex_;
   bool first_time_engine_;
@@ -95,7 +93,6 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   //initialize knobs
   k_smoothness_ = 0.5f;
   k_falloff_ = 0.5f;
-  k_point_seperation_ = 0.5f;
   k_premultiply_ = true;
 }
 void ThisClass::knobs(Knob_Callback f) {
@@ -106,11 +103,6 @@ void ThisClass::knobs(Knob_Callback f) {
   Float_knob(f, &k_falloff_, "falloff", "Falloff");
   Tooltip(f, "Matte Falloff");
   SetRange(f, 0.0, 1.0);
-
-  Float_knob(f, &k_point_seperation_, "point_seperation", "Point Seperation");
-  Tooltip(f, "Point Seperation");
-  SetRange(f, 0.0, 1.0);
-
 
   Bool_knob(f, &k_premultiply_, "premultiply", "Premultiply");
   SetFlags(f, Knob::STARTLINE);
@@ -208,7 +200,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
       bg::strategy::buffer::side_straight side_strategy;
 
       bg::buffer(screen_hull_, screen_hull_offset_, distance_strategy, side_strategy, join_strategy, end_strategy, point_strategy);
-      bg::envelope(screen_hull_offset_, bounding_);
+      bg::envelope(screen_hull_offset_, screen_box_);
 
       first_time_engine_ = false;
     }
@@ -242,7 +234,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
     afx::RGBtoLab(rgb, lab);
     Point p = Point(lab[1], lab[2]);
     float matte = 1.0f;
-    if (bg::within(p, bounding_)) {
+    if (bg::within(p, screen_box_)) {
       if (bg::within(p, screen_hull_offset_)) {
         if (bg::within(p, screen_hull_)) {
           matte = 0;
