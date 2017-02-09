@@ -31,19 +31,20 @@ if nuke.env['LINUX']:
 Plugin Descriptions
 ===================
 
+AFXGlow — A beautiful glow with realistic falloff.  The extremely intuitive controls yield predictable results.
+
 AFXSoftClip — Non-linearly reduce exposure.  The algorithm was originally written for use in Eyeon Fusion.  It’s much more intuitive than the Native Nuke implementation.
 
 AFXToneMap — Exposure control, soft clipping, and dark contrast.
 
 AFXMedian — Extremely fast median filter with sharpness parameter to reduce unwanted morphological changes and floating point size control.  Faster than Nuke’s native median filter by an order of magnitude.
 
-AFXChromaKey — Performs statistical analysis of chroma screen in LAB color space.  Easily generate solid core mattes and detailed edge mattes.  Invariant to lighting and grading changes due to per frame chroma analysis.
+AFXChromaKey — Generates a 2D polygon with CIELab (A, B) Cartesian coordinates to represent the chroma screen.  Alpha is 0 for pixels within polygon, otherwise, alpha is function of distance to polygon.  Matte is invariant to lighting and grading changes due to per frame chroma analysis.
 
-AFXDespill — Simply the best de-spill available.  Output a spill matte to use as a mask for replacing de-spilled areas with a blurred version of the background or a reflection pass.
+AFXDespill — Uses Rodrigues rotation to shift screen hue to either 1/3 or 2/3.  Spill suppression is is calculated using simple RGB based de-sill algorithms. Outputs a normalized spill matte.
 
 AFXAntiAlias — Morphological anti-aliasing to smooth ‘jaggies’ that are a very common problem with keying. Extremely useful for monitor comps.
 
-AFXGlow — A beautiful glow.
 
 Redistributable Libraries
 -------------------------
@@ -69,9 +70,8 @@ TODO
 * Create youtube videos for suggested usage and tips
 * Add expand border bbox option to afx_glow
 * Finish writing cufft implementation for afx_glow
-* Write afx_keyer 2.0 — notes are in afx_chrome_key.cpp
+* Update AFXChromaKey to use non-convex hull and kdtree search
 * Polish cmake
-* Write montecarlo noise removal tools
 * Improve mlaa algorithm
 * Make icons for plugins
 * Add MacOS support to CMakeLists.txt
