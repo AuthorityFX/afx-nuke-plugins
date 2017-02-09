@@ -48,14 +48,14 @@ class ThisClass : public Iop {
 private:
 
   // members to store knob values
-  float k_chroma_threshold_;
+  float k_smoothness_;
   float k_point_seperation_;
   float k_falloff_;
   bool k_premultiply_;
 
   PointCloud screen_pc_;
   Polygon screen_hull_;
-  MultiGon offset_;
+  MultiGon screen_hull_offset_;
   Polygon offset_hull_;
   BoundingBox bounding_;
 
@@ -93,23 +93,24 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   first_time_engine_ = true;
 
   //initialize knobs
-  k_chroma_threshold_ = 0.5f;
-  k_point_seperation_ = 0.5;
+  k_smoothness_ = 0.5f;
   k_falloff_ = 0.5f;
+  k_point_seperation_ = 0.5f;
   k_premultiply_ = true;
 }
 void ThisClass::knobs(Knob_Callback f) {
-  Float_knob(f, &k_chroma_threshold_, "threshold", "Threshold");
-  Tooltip(f, "Threshold");
+  Float_knob(f, &k_smoothness_, "smoothness", "Smoothness");
+  Tooltip(f, "Smoothness of matte");
+  SetRange(f, 0.0, 1.0);
+
+  Float_knob(f, &k_falloff_, "falloff", "Falloff");
+  Tooltip(f, "Matte Falloff");
   SetRange(f, 0.0, 1.0);
 
   Float_knob(f, &k_point_seperation_, "point_seperation", "Point Seperation");
   Tooltip(f, "Point Seperation");
   SetRange(f, 0.0, 1.0);
 
-  Float_knob(f, &k_falloff_, "falloff", "Falloff");
-  Tooltip(f, "Matte Falloff");
-  SetRange(f, 0.0, 1.0);
 
   Bool_knob(f, &k_premultiply_, "premultiply", "Premultiply");
   SetFlags(f, Knob::STARTLINE);
@@ -194,12 +195,20 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
       screen_pc_.clear();
       screen_hull_.clear();
 
-      MetricsCPU(format_bnds, source_plane, matte_plane, 4);
-      //threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::MetricsCPU, this, _1, boost::ref(source_plane), boost::ref(matte_plane), ref_hsv , 4));
-      //threader_.Synchonize();
+      threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::MetricsCPU, this, _1, boost::ref(source_plane), boost::ref(matte_plane), 4));
+      threader_.Synchonize();
 
       bg::convex_hull(screen_pc_, screen_hull_);
-      bg::envelope(screen_hull_, bounding_);
+
+      // Declare strategies
+      bg::strategy::buffer::distance_symmetric<double> distance_strategy(100.0 * k_smoothness_);
+      bg::strategy::buffer::join_miter join_strategy;
+      bg::strategy::buffer::end_flat end_strategy;
+      bg::strategy::buffer::point_square point_strategy;
+      bg::strategy::buffer::side_straight side_strategy;
+
+      bg::buffer(screen_hull_, screen_hull_offset_, distance_strategy, side_strategy, join_strategy, end_strategy, point_strategy);
+      bg::envelope(screen_hull_offset_, bounding_);
 
       first_time_engine_ = false;
     }
@@ -233,13 +242,13 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
     afx::RGBtoLab(rgb, lab);
     Point p = Point(lab[1], lab[2]);
     float matte = 1.0f;
-    BoundingBox bb;
-    bg::buffer(bounding_, bb, k_chroma_threshold_);
-    if (bg::within(p, bb)) {
-      if (bg::within(p, screen_hull_)) {
-        matte = 0;
-      } else {
-        matte = powf(bg::distance(p, screen_hull_) / k_chroma_threshold_, k_falloff_);
+    if (bg::within(p, bounding_)) {
+      if (bg::within(p, screen_hull_offset_)) {
+        if (bg::within(p, screen_hull_)) {
+          matte = 0;
+        } else {
+          matte = 1.0f - pow((1.0f + k_falloff_), -bg::distance(p, screen_hull_));
+        }
       }
     }
 
@@ -281,28 +290,12 @@ void ThisClass::MetricsCPU(const afx::Bounds& region, const ImagePlane& source, 
         float lab[3];
         afx::RGBtoLab(rgb, lab);
         Point p = Point(lab[1], lab[2]);
-
         Polygon hull;
         boost::geometry::convex_hull(pc, hull);
-
         if (!boost::geometry::within(p, hull)) {
           pc.push_back(p);
         }
-
-//         std::vector<Point> result;
-//         rtree.query(bgi::nearest(pc, 1), std::back_inserter(result));
-//         if (!result.empty()) {
-//             if (bg::distance(result.front(), p) > k_point_seperation_){
-//               pc.push_back(Point(lab[1], lab[2]));
-//               rtree.insert(p);
-//             }
-//         } else {
-//           pc.push_back(Point(lab[1], lab[2]));
-//           rtree.insert(p);
-//         }
-
-        }
-
+      }
       for (int i = 0; i < step; i++) { in.NextPixel(); }
       if (input(iScreenMatte) != nullptr) {
         for (int i = 0; i < step; i++) { m_ptr++; }
