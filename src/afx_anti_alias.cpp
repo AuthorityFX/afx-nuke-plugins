@@ -108,7 +108,8 @@ void ThisClass::_validate(bool) {
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   //Request source
-  input0().request(x, y, r, t, channels, count);
+  Box req_box(x + 1, y + 1, r + 1, t + 1);
+  input0().request(req_box, channels, count);
 }
 void ThisClass::_open() {
   first_time_GPU_ = true;
