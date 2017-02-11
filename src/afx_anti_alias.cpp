@@ -103,15 +103,13 @@ void ThisClass::_validate(bool) {
   copy_info(0);
 
   format_bnds = afx::BoxToBounds(input(0)->format());
-  format_f_bnds_.SetBounds(input(0)->full_size_format().x(), input(0)->full_size_format().y(), input(0)->full_size_format().r() - 1,
-                           input(0)->full_size_format().t() - 1);
+  format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
   proxy_scale_ = (float)format_bnds.GetWidth() / (float)format_f_bnds_.GetWidth();
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   //Request source
   Box req_box(x + 1, + 1, r + 1, t + 1); //expand this
   input0().request(req_box, channels, count);
-
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
 void ThisClass::_open() {

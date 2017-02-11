@@ -21,6 +21,7 @@
 
 #include "threading.h"
 #include "cuda_helper.h"
+#include "nuke_helper.h"
 #include "median.h"
 
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
@@ -103,10 +104,8 @@ void ThisClass::_validate(bool) {
   //Copy source info
   copy_info(0);
 
-//   req_bnds_.SetBounds(info_.x(), info_.y(), info_.r() - 1, info_.t() - 1);
-  format_bnds.SetBounds(input(0)->format().x(), input(0)->format().y(), input(0)->format().r() - 1, input(0)->format().t() - 1);
-  format_f_bnds_.SetBounds(input(0)->full_size_format().x(), input(0)->full_size_format().y(), input(0)->full_size_format().r() - 1,
-                           input(0)->full_size_format().t() - 1);
+  format_bnds = afx::BoxToBounds(input(0)->format());
+  format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
   proxy_scale_ = (float)format_bnds.GetWidth() / (float)format_f_bnds_.GetWidth();
 
   m_lerp_ = fmod(afx::Clamp<float>(proxy_scale_ * k_size_, 0.0f, 25.0f), (float)1.0f);
@@ -123,7 +122,6 @@ void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int c
   unsigned int pad = med_size_o_;
   Box req_box(x + pad, y + pad, r + pad, t + pad);
   input0().request(req_box, channels, count);
-
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
 void ThisClass::_open() {
@@ -155,13 +153,17 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
     Guard guard(lock_);
     if (first_time_GPU_) {
       cuda_process_.CheckReady(); // Throw error if device is not ready
+
+      afx::Bounds req_pad_bnds = req_bnds_;
+      req_pad_bnds.PadBounds(med_size_o_, med_size_o_);
+
       // Create plane of input channels for request bounds. Edge repication is handled by cuda texture
-      ImagePlane in_plane(Box(req_bnds_.x1(), req_bnds_.y1(), req_bnds_.x2() + 1, req_bnds_.y2() + 1), false, channels); // Create plane "false" = non-packed.
+      ImagePlane in_plane(Box(req_pad_bnds.x1(), req_pad_bnds.y1(), req_pad_bnds.x2() + 1, req_pad_bnds.y2() + 1), false, channels); // Create plane "false" = non-packed.
       if (aborted()) { return; } // Return if render aborted
       input0().fetchPlane(in_plane); // Fetch plane
       afx::CudaStreamArray streams;
       foreach (z, in_plane.channels()) { // For each channel in plane
-        in_imgs_.AddImage(req_bnds_);
+        in_imgs_.AddImage(req_pad_bnds);
         in_imgs_.GetBackPtr()->AddAttribute("channel", z); // Add channel attribute to image
         streams.Add(); // Add stream
         in_imgs_.GetBackPtr()->MemCpyToDevice(&in_plane.readable()[in_plane.chanNo(z) * in_plane.chanStride()], in_plane.rowStride() * sizeof(float),
@@ -173,25 +175,25 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
     }
   } // End first time guard
 
-// TODO This reuses the same memory for each row per thread. Sometimes rows are not rendered correctly. I need to investigate.
-//   int thread_id = Thread::thisIndex();
-//   std::vector<afx::Attribute> row_attributes;
-//   row_attributes.push_back(afx::Attribute("thread_id", thread_id));
-//   row_attributes.push_back(afx::Attribute("x", x));
-//   row_attributes.push_back(afx::Attribute("r", r));
-//   { Guard guard(lock_);
-//     if (!row_imgs_.HasAttributes(row_attributes)) {
-//       row_imgs_.AddImage(row_bnds);
-//       row_imgs_.GetBackPtr()->Create(row_bnds);
-//       row_imgs_.GetBackPtr()->AddAttributes(row_attributes);
-//     }
-//     if (!streams_.HasAttributes(row_attributes)) {
-//       streams_.Add();
-//       streams_.GetBackPtr()->AddAttributes(row_attributes);
-//     }
-//   } // End thread lock
-//   afx::CudaImage* cuda_row_ptr = row_imgs_.GetPtrByAttributes(row_attributes);
-//   afx::CudaStream* stream_ptr = streams_.GetPtrByAttributes(row_attributes);
+// // TODO This reuses the same memory for each row per thread. Sometimes rows are not rendered correctly. I need to investigate.
+// //   int thread_id = Thread::thisIndex();
+// //   std::vector<afx::Attribute> row_attributes;
+// //   row_attributes.push_back(afx::Attribute("thread_id", thread_id));
+// //   row_attributes.push_back(afx::Attribute("x", x));
+// //   row_attributes.push_back(afx::Attribute("r", r));
+// //   { Guard guard(lock_);
+// //     if (!row_imgs_.HasAttributes(row_attributes)) {
+// //       row_imgs_.AddImage(row_bnds);
+// //       row_imgs_.GetBackPtr()->Create(row_bnds);
+// //       row_imgs_.GetBackPtr()->AddAttributes(row_attributes);
+// //     }
+// //     if (!streams_.HasAttributes(row_attributes)) {
+// //       streams_.Add();
+// //       streams_.GetBackPtr()->AddAttributes(row_attributes);
+// //     }
+// //   } // End thread lock
+// //   afx::CudaImage* cuda_row_ptr = row_imgs_.GetPtrByAttributes(row_attributes);
+// //   afx::CudaStream* stream_ptr = streams_.GetPtrByAttributes(row_attributes);
 
 // TODO be inefficient with memory until the above is solid.
   afx::CudaImage temp_i(row_bnds);
@@ -211,7 +213,7 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
 }
 void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
-  afx::Bounds tile_bnds(row_bnds.x1() - med_size_o_, row_bnds.y1() - med_size_o_, row_bnds.x2() + med_size_o_, row_bnds.y2() + med_size_o_);
+  afx::Bounds tile_bnds = row_bnds.PadBoundsNoMod(med_size_o_, med_size_o_);
 
   //Must call get before initializing any pointers
   row.get(input0(), y, x, r, channels);
