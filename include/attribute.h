@@ -40,9 +40,9 @@ class AttributeBase {
   std::vector<Attribute> attributes_;
  public:
   void AddAttribute(const std::string& name, int value) { attributes_.push_back(Attribute(name, value)); }
-  void AddAttributes(std::vector<Attribute> list) {
-    for (std::vector<Attribute>::iterator it = list.begin(); it != list.end(); ++it) {
-      attributes_.insert(attributes_.end(), list.begin(), list.end());
+  void AddAttributes(std::vector<Attribute> attributes) {
+    for (std::vector<Attribute>::iterator it = attributes.begin(); it != attributes.end(); ++it) {
+      attributes_.insert(attributes_.end(), attributes.begin(), attributes.end());
     }
   }
   int GetAttribute(const std::string& name) const {
