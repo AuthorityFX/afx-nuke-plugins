@@ -91,7 +91,7 @@ public:
     y2_ = y2_ > other.y2_ ? other.y2_ : y2_;
   }
   __host__ __device__
-  Bounds PadBoundsNoMod(unsigned int x, unsigned int y) const {
+  Bounds GetPadBounds(unsigned int x, unsigned int y) const {
     Bounds padded = *this;
     padded.PadBounds(x, y);
     return padded;

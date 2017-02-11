@@ -213,7 +213,7 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
 }
 void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
-  afx::Bounds tile_bnds = row_bnds.PadBoundsNoMod(med_size_o_, med_size_o_);
+  afx::Bounds tile_bnds = row_bnds.GetPadBounds(med_size_o_, med_size_o_);
 
   //Must call get before initializing any pointers
   row.get(input0(), y, x, r, channels);
