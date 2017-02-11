@@ -383,7 +383,7 @@ void MorphAA::BlendPixels_(const Bounds& region, const Image& input, Image& outp
       if (info_ptr->dis_dir_h && info_ptr->length_h >= 1) {
         float blend = CalcTrapArea_(info_ptr->pos_h, info_ptr->length_h);
         *out_ptr = blend * *b_ptr + (1.0 - blend) * *out_ptr;
-      } else if(t_info_ptr->dis_dir_h == false && t_info_ptr->length_h >= 1) {
+      } else if(!t_info_ptr->dis_dir_h && t_info_ptr->length_h >= 1) {
         float blend = CalcTrapArea_(t_info_ptr->pos_h, t_info_ptr->length_h);
         *out_ptr = blend * *t_ptr + (1.0 - blend) * *out_ptr;
       }
@@ -391,7 +391,7 @@ void MorphAA::BlendPixels_(const Bounds& region, const Image& input, Image& outp
       if (info_ptr->dis_dir_v && info_ptr->length_v >= 1) {
         float blend = CalcTrapArea_(info_ptr->pos_v, info_ptr->length_v);
         *out_ptr = blend * *r_ptr + (1.0 - blend) * *out_ptr;
-      } else if(l_info_ptr->dis_dir_v == false && l_info_ptr->length_v >= 1) {
+      } else if(!l_info_ptr->dis_dir_v && l_info_ptr->length_v >= 1) {
         float blend = CalcTrapArea_(l_info_ptr->pos_v, l_info_ptr->length_v);
         *out_ptr = blend * *l_ptr + (1.0 - blend) * *out_ptr;
       }
@@ -410,6 +410,7 @@ void MorphAA::Process(const Image& input, Image& output, float threshold, afx::T
   threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::MarkDisc_, this, _1, boost::cref(input)));
   threader.Synchonize();
   threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::FindHorLines_, this, _1, boost::cref(input)));
+  threader.Synchonize();
   threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::FindVertLines_, this, _1, boost::cref(input)));
   threader.Synchonize();
   threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::BlendPixels_, this, _1, boost::cref(input), boost::ref(output)));

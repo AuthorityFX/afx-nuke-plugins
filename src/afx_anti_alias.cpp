@@ -14,6 +14,8 @@
 #include <DDImage/Thread.h>
 #include <DDImage/NukeWrapper.h>
 
+#include <stdexcept>
+
 #include <boost/bind.hpp>
 #include <cuda_runtime.h>
 #include <math.h>
@@ -39,7 +41,6 @@ private:
   float k_threshold_;
 
   // members to store processed knob values
-
   boost::mutex mutex_;
   bool first_time_GPU_;
   bool first_time_CPU_;
@@ -108,7 +109,7 @@ void ThisClass::_validate(bool) {
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   //Request source
-  Box req_box(x + 1, + 1, r + 1, t + 1); //expand this
+  Box req_box(x + 50, + 50, r + 50, t + 50); //expand this
   input0().request(req_box, channels, count);
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
@@ -124,7 +125,14 @@ void ThisClass::_close() {
 }
 void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   callCloseAfter(0);
-  ProcessCPU(y, x, r, channels, row); // TODO try catch, memset to prevent crash.
+  try {
+    ProcessCPU(y, x, r, channels, row);
+  } catch (std::exception const& e) {
+    foreach (z, channels) {
+      float* out_ptr = row.writable(z);
+      memset(row.writable(z) + x, 0, (r - x) * sizeof(float));
+    }
+  }
 }
 void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
@@ -136,11 +144,12 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
     Guard guard(lock_);
     if (first_time_CPU_) {
       afx::Bounds req_pad_bnds = req_bnds_;
-      req_pad_bnds.PadBounds(1, 1);
+      req_pad_bnds.PadBounds(50, 50);
       req_pad_bnds.Intersect(afx::Bounds(info().x(), info().y(), info().r() - 1, info().t()));
 
-      ImagePlane source_plane(Box(req_pad_bnds.x1(), req_pad_bnds.y1(), req_pad_bnds.x2() + 1, req_pad_bnds.y2() + 1), false, channels); // Create plane "false" = non-packed.
       if (aborted()) { return; } // return if aborted
+
+      ImagePlane source_plane(Box(req_pad_bnds.x1(), req_pad_bnds.y1(), req_pad_bnds.x2() + 1, req_pad_bnds.y2() + 1), false, channels); // Create plane "false" = non-packed.
       input0().fetchPlane(source_plane); // Fetch plane
       afx::Image in_img(req_pad_bnds);
       foreach (z, source_plane.channels()) { // For each channel in plane
