@@ -21,6 +21,7 @@
 #include "threading.h"
 #include "image.h"
 #include "cuda_helper.h"
+#include "nuke_helper.h"
 #include "mlaa.h"
 
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
@@ -100,16 +101,18 @@ const Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Anti Alias", build);
 
 void ThisClass::_validate(bool) {
   copy_info(0);
-  req_bnds_.SetBounds(info_.x(), info_.y(), info_.r() - 1, info_.t() - 1);
-  format_bnds.SetBounds(input(0)->format().x(), input(0)->format().y(), input(0)->format().r() - 1, input(0)->format().t() - 1);
+
+  format_bnds = afx::BoxToBounds(input(0)->format());
   format_f_bnds_.SetBounds(input(0)->full_size_format().x(), input(0)->full_size_format().y(), input(0)->full_size_format().r() - 1,
-    input(0)->full_size_format().t() - 1);
+                           input(0)->full_size_format().t() - 1);
   proxy_scale_ = (float)format_bnds.GetWidth() / (float)format_f_bnds_.GetWidth();
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   //Request source
-  Box req_box(x + 1, y + 1, r + 1, t + 1);
+  Box req_box(x + 1, + 1, r + 1, t + 1); //expand this
   input0().request(req_box, channels, count);
+
+  req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
 void ThisClass::_open() {
   first_time_GPU_ = true;
@@ -134,17 +137,21 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   if (first_time_CPU_) {
     Guard guard(lock_);
     if (first_time_CPU_) {
-      ImagePlane source_plane(Box(req_bnds_.x1(), req_bnds_.y1(), req_bnds_.x2() + 1, req_bnds_.y2() + 1), false, channels); // Create plane "false" = non-packed.
+      afx::Bounds req_pad_bnds = req_bnds_;
+      req_pad_bnds.PadBounds(1, 1);
+      req_pad_bnds.Intersect(afx::Bounds(info().x(), info().y(), info().r() - 1, info().t()));
+
+      ImagePlane source_plane(Box(req_pad_bnds.x1(), req_pad_bnds.y1(), req_pad_bnds.x2() + 1, req_pad_bnds.y2() + 1), false, channels); // Create plane "false" = non-packed.
       if (aborted()) { return; } // return if aborted
       input0().fetchPlane(source_plane); // Fetch plane
-      afx::Image temp(req_bnds_);
+      afx::Image in_img(req_pad_bnds);
       foreach (z, source_plane.channels()) { // For each channel in plane
-        temp.MemCpyIn(&source_plane.readable()[source_plane.chanNo(z) * source_plane.chanStride()], source_plane.rowStride() * sizeof(float), temp.GetBounds());
-        out_imgs_.AddImage(req_bnds_);
+        in_img.MemCpyIn(&source_plane.readable()[source_plane.chanNo(z) * source_plane.chanStride()], source_plane.rowStride() * sizeof(float), in_img.GetBounds());
+        out_imgs_.AddImage(req_pad_bnds);
         out_imgs_.GetBackPtr()->AddAttribute("channel", z);
-        out_imgs_.GetBackPtr()->MemCpyIn(temp.GetPtr(), temp.GetPitch(), temp.GetBounds());
+        out_imgs_.GetBackPtr()->MemCpyIn(in_img.GetPtr(), in_img.GetPitch(), in_img.GetBounds());
         afx::MorphAA aa;
-        aa.Process(temp, *out_imgs_.GetBackPtr(), k_threshold_, threader_);
+        aa.Process(in_img, *out_imgs_.GetBackPtr(), k_threshold_, threader_);
       }
       first_time_CPU_ = false;
     }

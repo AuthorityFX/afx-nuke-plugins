@@ -175,17 +175,17 @@ void MorphAA::FindHorLines_(const Bounds& region, const Image& input) {
           // Loop back through line and pos and length based on end orientations
           PixelInfo* l_i = info_ptr;
           if (start_orientation == true && end_orientation == false) { // Both ends blend
-            float half_length = length / 2.0f;
-            int max_pos = (int)floor((length  - 1) / 2.0f);
+            float half_length = length / 2.0f + 0.5;
+            int max_pos = (int)floor((length - 1) / 2.0f);
             int pos = max_pos;
             for ( ; pos >= 0 ; pos--) {
               l_i--;
               l_i->pos_h = pos;
               l_i->length_h = half_length;
             }
-            if (length % 2) {
+            if (length % 2) { // Is odd
               pos = 1;
-            } else {
+            } else { // Is even
               pos = 0;
             }
             for ( ; pos <= max_pos; pos++) {
@@ -316,17 +316,17 @@ void MorphAA::FindVertLines_(const Bounds& region, const Image& input) {
           // Loop back through line and pos and length based on end orientations
           PixelInfo* l_i = info_ptr;
           if (start_orientation == true && end_orientation == false) { // Both ends blend
-            float half_length = length / 2.0f;
-            int max_pos = (int)floor((length  - 1) / 2.0f);
+            float half_length = length / 2.0f + 0.5;
+            int max_pos = (int)floor((length - 1) / 2.0f);
             int pos = max_pos;
             for ( ; pos >= 0 ; pos--) {
               l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
               l_i->pos_v = pos;
               l_i->length_v = half_length;
             }
-            if (length % 2) {
+            if (length % 2) { // Is odd
               pos = 1;
-            } else {
+            } else { // Is even
               pos = 0;
             }
             for ( ; pos <= max_pos; pos++) {
