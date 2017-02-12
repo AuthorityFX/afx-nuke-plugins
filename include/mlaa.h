@@ -63,7 +63,6 @@ class MorphAA {
 
   inline float Diff_(float a, float b) {
     return (a - b) / (a + b);
-//     return a - b;
   }
   inline float CalcTrapArea_(int pos, float length) {
     length = fmaxf(length, 0.008);

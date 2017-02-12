@@ -77,6 +77,13 @@ public:
     y2_ = y2;
   }
   __host__ __device__
+  void PadBounds(unsigned int size) {
+    x1_ -= size;
+    y1_ -= size;
+    x2_ += size;
+    y2_ += size;
+  }
+  __host__ __device__
   void PadBounds(unsigned int x, unsigned int y) {
     x1_ -= x;
     y1_ -= y;
@@ -89,6 +96,12 @@ public:
     y1_ = y1_ < other.y1_ ? other.y1_ : y1_;
     x2_ = x2_ > other.x2_ ? other.x2_ : x2_;
     y2_ = y2_ > other.y2_ ? other.y2_ : y2_;
+  }
+  __host__ __device__
+  Bounds GetPadBounds(unsigned int size) const {
+    Bounds padded = *this;
+    padded.PadBounds(size);
+    return padded;
   }
   __host__ __device__
   Bounds GetPadBounds(unsigned int x, unsigned int y) const {

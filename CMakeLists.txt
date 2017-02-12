@@ -81,14 +81,13 @@ add_library(afx_anti_alias SHARED src/afx_anti_alias.cpp)
 set_target_properties(afx_anti_alias PROPERTIES PREFIX "")
 target_link_libraries(afx_anti_alias lib_afx_core lib_afx_cuda)
 
+add_library(afx_despill SHARED src/afx_despill.cpp)
+set_target_properties(afx_despill PROPERTIES PREFIX "")
+target_link_libraries(afx_despill lib_afx_core lib_afx_cuda)
+
 cuda_add_library(afx_median src/afx_median.cpp src/afx_median.cu SHARED)
 set_target_properties(afx_median PROPERTIES PREFIX "")
 target_link_libraries(afx_median ${CUDA_LIBS} lib_afx_core lib_afx_cuda)
-
-cuda_add_library(afx_despill src/afx_despill.cpp SHARED)
-set_target_properties(afx_despill PROPERTIES PREFIX "")
-target_link_libraries(afx_despill ${CUDA_LIBS} lib_afx_core lib_afx_cuda)
-
 
 cuda_add_library(afx_glow src/afx_glow.cpp SHARED)
 set_target_properties(afx_glow PROPERTIES PREFIX "")

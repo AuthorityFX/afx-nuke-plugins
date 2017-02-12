@@ -13,9 +13,7 @@
 #include <DDImage/ImagePlane.h>
 #include <DDImage/Thread.h>
 
-#include <cuda_runtime.h>
-
-#include "cuda_helper.h"
+#include "nuke_helper.h"
 #include "median.h"
 #include "color_op.h"
 
@@ -56,15 +54,8 @@ private:
 
   float k_screen_color_[3];
 
-  // members to store processed knob values
-
-  afx::Bounds req_bnds_, format_bnds, format_f_bnds_;
+  afx::Bounds info_bnds_, req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
-
-  afx::CudaProcess cuda_process_;
-  afx::CudaImageArray row_imgs_;
-  afx::CudaImageArray in_imgs_;
-  afx::CudaStreamArray streams_;
 
   afx::RotateColor hue_shifter_;
   afx::RotateColor hue_shifter_inv_;
@@ -92,13 +83,8 @@ public:
   void engine(int y, int x, int r, ChannelMask channels, Row& row);
 };
 ThisClass::ThisClass(Node* node) : Iop(node) {
-
   //Set inputs
   inputs(2);
-
-  try {
-    cuda_process_.MakeReady();
-  } catch (cudaError err) {}
 
   //initialize knobs
   k_algorithm_ = afx::kHarder;
@@ -163,11 +149,11 @@ void ThisClass::_validate(bool) {
   if (input(iSource) != default_input(iSource)) {
     //Copy source info
     copy_info(0);
-    req_bnds_.SetBounds(info_.x(), info_.y(), info_.r() - 1, info_.t() - 1);
-    format_bnds.SetBounds(input(0)->format().x(), input(0)->format().y(), input(0)->format().r() - 1, input(0)->format().t() - 1);
-    format_f_bnds_.SetBounds(input(0)->full_size_format().x(), input(0)->full_size_format().y(), input(0)->full_size_format().r() - 1,
-      input(0)->full_size_format().t() - 1);
-    proxy_scale_ = (float)format_bnds.GetWidth() / (float)format_f_bnds_.GetWidth();
+
+    info_bnds_ = afx::BoxToBounds(info_.box());
+    format_bnds_ = afx::BoxToBounds(input(0)->format());
+    format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
+    proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
 
     ChannelSet out_channels = channels();
     out_channels += Chan_Red;
@@ -177,12 +163,9 @@ void ThisClass::_validate(bool) {
     set_out_channels(out_channels);
     info_.turn_on(out_channels);
 
-    // Process knob values
-
     // 1/3 hue is green, 2/3 hue is blue.
     // center_ chosen based on max(g, b)
     // (center_ - mean) * 360 is the angular distance in degrees from ideal screen hue
-
     float hsv[3];
     float ref_rgb[3];
     for (int i = 0; i < 3; i++) { ref_rgb[i] = k_screen_color_[i]; }
@@ -219,6 +202,7 @@ void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int c
   if (input(iMatte) != nullptr) {
     input(iMatte)->request(x, y, r, t, Mask_Alpha, count);
   }
+  req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
 void ThisClass::_open() {
 }
@@ -227,8 +211,6 @@ void ThisClass::_close() {
 void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   callCloseAfter(0);
   ProcessCPU(y, x, r, channels, row);
-}
-void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row) {
 }
 void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
   Channel rgb_chan[3];

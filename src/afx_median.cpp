@@ -48,7 +48,7 @@ class ThisClass : public Iop {
   bool first_time_CPU_;
   Lock lock_;
 
-  afx::Bounds req_bnds_, format_bnds, format_f_bnds_;
+  afx::Bounds info_bnds_, req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
   afx::CudaProcess cuda_process_;
@@ -104,9 +104,10 @@ void ThisClass::_validate(bool) {
   //Copy source info
   copy_info(0);
 
-  format_bnds = afx::BoxToBounds(input(0)->format());
+  info_bnds_ = afx::BoxToBounds(info_.box());
+  format_bnds_ = afx::BoxToBounds(input(0)->format());
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
-  proxy_scale_ = (float)format_bnds.GetWidth() / (float)format_f_bnds_.GetWidth();
+  proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
 
   m_lerp_ = fmod(afx::Clamp<float>(proxy_scale_ * k_size_, 0.0f, 25.0f), (float)1.0f);
   m_i_lerp_ = (1.0f - m_lerp_);
@@ -118,11 +119,8 @@ void ThisClass::_validate(bool) {
   sharpness_ = afx::Clamp<float>(k_sharpness_, 0.0f, 3.0f);
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
-
-  unsigned int pad = med_size_o_;
-  Box req_box(x + pad, y + pad, r + pad, t + pad);
-  input0().request(req_box, channels, count);
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
+  input0().request(afx::BoundsToBox(req_bnds_.GetPadBounds(med_size_o_)), channels, count);
 }
 void ThisClass::_open() {
   first_time_GPU_ = true;
@@ -154,11 +152,11 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
     if (first_time_GPU_) {
       cuda_process_.CheckReady(); // Throw error if device is not ready
 
-      afx::Bounds req_pad_bnds = req_bnds_;
-      req_pad_bnds.PadBounds(med_size_o_, med_size_o_);
+      afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(med_size_o_);
+      req_pad_bnds.Intersect(info_bnds_);
 
       // Create plane of input channels for request bounds. Edge repication is handled by cuda texture
-      ImagePlane in_plane(Box(req_pad_bnds.x1(), req_pad_bnds.y1(), req_pad_bnds.x2() + 1, req_pad_bnds.y2() + 1), false, channels); // Create plane "false" = non-packed.
+      ImagePlane in_plane(afx::BoundsToBox(req_pad_bnds), false, channels); // Create plane "false" = non-packed.
       if (aborted()) { return; } // Return if render aborted
       input0().fetchPlane(in_plane); // Fetch plane
       afx::CudaStreamArray streams;
@@ -175,45 +173,21 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
     }
   } // End first time guard
 
-// // TODO This reuses the same memory for each row per thread. Sometimes rows are not rendered correctly. I need to investigate.
-// //   int thread_id = Thread::thisIndex();
-// //   std::vector<afx::Attribute> row_attributes;
-// //   row_attributes.push_back(afx::Attribute("thread_id", thread_id));
-// //   row_attributes.push_back(afx::Attribute("x", x));
-// //   row_attributes.push_back(afx::Attribute("r", r));
-// //   { Guard guard(lock_);
-// //     if (!row_imgs_.HasAttributes(row_attributes)) {
-// //       row_imgs_.AddImage(row_bnds);
-// //       row_imgs_.GetBackPtr()->Create(row_bnds);
-// //       row_imgs_.GetBackPtr()->AddAttributes(row_attributes);
-// //     }
-// //     if (!streams_.HasAttributes(row_attributes)) {
-// //       streams_.Add();
-// //       streams_.GetBackPtr()->AddAttributes(row_attributes);
-// //     }
-// //   } // End thread lock
-// //   afx::CudaImage* cuda_row_ptr = row_imgs_.GetPtrByAttributes(row_attributes);
-// //   afx::CudaStream* stream_ptr = streams_.GetPtrByAttributes(row_attributes);
-
-// TODO be inefficient with memory until the above is solid.
-  afx::CudaImage temp_i(row_bnds);
-  afx::CudaImage* cuda_row_ptr = &temp_i;
-  afx::CudaStream temp_s;
-  afx::CudaStream* stream_ptr = &temp_s;
-
   if (aborted()) { return; }
 
+  afx::CudaImage cuda_row_img(row_bnds);
+  afx::CudaStream cuda_row_stream;
   foreach (z, channels) {
     afx::CudaImage* in_ptr = in_imgs_.GetPtrByAttribute("channel", z);
-    MedianCuda(in_ptr->GetTexture(), cuda_row_ptr->GetPtr(), cuda_row_ptr->GetPitch(), med_size_i_, med_size_o_, med_n_i_, med_n_o_, m_lerp_,
-               m_i_lerp_, sharpness_, in_ptr->GetBounds(), row_bnds, stream_ptr->GetStream());
-    stream_ptr->Synchonize();
-    cuda_row_ptr->MemCpyFromDevice(row.writable(z) + row_bnds.x1(), cuda_row_ptr->GetWidth() * sizeof(float));
+    MedianCuda(in_ptr->GetTexture(), cuda_row_img.GetPtr(), cuda_row_img.GetPitch(), med_size_i_, med_size_o_, med_n_i_, med_n_o_, m_lerp_,
+               m_i_lerp_, sharpness_, in_ptr->GetBounds(), row_bnds, cuda_row_stream.GetStream());
+    cuda_row_stream.Synchonize();
+    cuda_row_img.MemCpyFromDevice(row.writable(z) + row_bnds.x1(), cuda_row_img.GetWidth() * sizeof(float));
   }
 }
 void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
-  afx::Bounds tile_bnds = row_bnds.GetPadBounds(med_size_o_, med_size_o_);
+  afx::Bounds tile_bnds = row_bnds.GetPadBounds(med_size_o_);
 
   //Must call get before initializing any pointers
   row.get(input0(), y, x, r, channels);
@@ -287,3 +261,4 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
     }
   }
 }
+

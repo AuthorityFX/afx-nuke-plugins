@@ -18,6 +18,7 @@
 #include <boost/geometry.hpp>
 
 #include "threading.h"
+#include "nuke_helper.h"
 #include "median.h"
 #include "color_op.h"
 
@@ -68,7 +69,7 @@ private:
   bool first_time_engine_;
   Lock lock_;
 
-  afx::Bounds req_bnds_, format_bnds, format_f_bnds_;
+  afx::Bounds info_bnds_, req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
   afx::Threader threader_;
@@ -157,11 +158,11 @@ void ThisClass::_validate(bool) {
   if (input(iSource) != default_input(iSource)) {
     //Copy source info
     copy_info(0);
-    req_bnds_.SetBounds(info_.x(), info_.y(), info_.r() - 1, info_.t() - 1);
-    format_bnds.SetBounds(input(0)->format().x(), input(0)->format().y(), input(0)->format().r() - 1, input(0)->format().t() - 1);
-    format_f_bnds_.SetBounds(input(0)->full_size_format().x(), input(0)->full_size_format().y(), input(0)->full_size_format().r() - 1,
-      input(0)->full_size_format().t() - 1);
-    proxy_scale_ = (float)format_bnds.GetWidth() / (float)format_f_bnds_.GetWidth();
+
+    info_bnds_ = afx::BoxToBounds(info_.box());
+    format_bnds_ = afx::BoxToBounds(input(0)->format());
+    format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
+    proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
 
     ChannelSet add_channels = channels();
     add_channels += Chan_Red;
@@ -179,11 +180,10 @@ void ThisClass::_validate(bool) {
   }
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
-  //Request source
-  input(iSource)->request(channels, count);
+  input(iSource)->request(x, y, r, t, channels, count);
   //Request screen matte
-  if (input(iOutMatte) != nullptr) { input(iOutMatte)->request(Mask_Alpha, count); }
-  if (input(iInMatte) != nullptr) { input(iInMatte)->request(Mask_Alpha, count); }
+  if (input(iOutMatte) != nullptr) { input(iOutMatte)->request(x, y, r, t, Mask_Alpha, count); }
+  if (input(iInMatte) != nullptr) { input(iInMatte)->request(x, y, r, t, Mask_Alpha, count); }
 
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
@@ -199,11 +199,9 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   if (first_time_engine_) {
     Guard guard(lock_);
     if (first_time_engine_) {
-      Box plane_req_box(info_.box());
-      //plane_req_box.set(format_bnds.x1(), format_bnds.y1(), format_bnds.x2() + 1, format_bnds.y2() + 1);
-      ImagePlane source_plane(plane_req_box, false, Mask_RGB); // Create plane "false" = non-packed.
-      ImagePlane out_matte_plane(plane_req_box, false, Mask_Alpha); // Create plane "false" = non-packed.
-      ImagePlane in_matte_plane(plane_req_box, false, Mask_Alpha); // Create plane "false" = non-packed.
+      ImagePlane source_plane(afx::BoundsToBox(info_bnds_), false, Mask_RGB); // Create plane "false" = non-packed.
+      ImagePlane out_matte_plane(afx::BoundsToBox(info_bnds_), false, Mask_Alpha); // Create plane "false" = non-packed.
+      ImagePlane in_matte_plane(afx::BoundsToBox(info_bnds_), false, Mask_Alpha); // Create plane "false" = non-packed.
 
       input(iSource)->fetchPlane(source_plane);
       if (input(iOutMatte) != nullptr) { input(iOutMatte)->fetchPlane(out_matte_plane); }
@@ -211,7 +209,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
 
       out_pc_.clear();
       in_pc_.clear();
-      threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::Metrics, this, _1, boost::ref(source_plane), boost::ref(out_matte_plane), boost::ref(in_matte_plane)));
+      threader_.ThreadImageChunks(format_bnds_, boost::bind(&ThisClass::Metrics, this, _1, boost::ref(source_plane), boost::ref(out_matte_plane), boost::ref(in_matte_plane)));
       threader_.Synchonize();
 
       out_hull_.clear();
@@ -301,7 +299,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
 
 void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte) {
 
-  afx::Bounds plane_bnds(source.bounds().x(), source.bounds().y(), source.bounds().r() - 1, source.bounds().t() - 1);
+  afx::Bounds plane_bnds(afx::BoxToBounds(source.bounds()));
 
   float rgb[3];
   PointCloud out_pc;
@@ -327,8 +325,7 @@ void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, con
       in_m_ptr = &in_matte.readable()[in_matte.chanNo(Chan_Alpha) * in_matte.chanStride() + in_matte.rowStride() *
                                       (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
     }
-    //Polygon hull;
-    //boost::geometry::convex_hull(out_pc, hull);
+
     for (int x = region.x1(); x <= region.x2(); ++x) {
       for (int i = 0; i < 3; i++) { rgb[i] = in.GetVal(i); }
       Point p;

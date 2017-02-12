@@ -43,7 +43,7 @@ private:
   bool first_time_CPU_;
   Lock lock_;
 
-  afx::Bounds req_bnds_, format_bnds, format_f_bnds_;
+  afx::Bounds info_bnds, req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
   afx::ImageArray out_imgs_;
@@ -72,7 +72,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   first_time_CPU_ = true;
 
   //initialize knobs
-  k_threshold_ = 0.05f;
+  k_threshold_ = 0.25f;
 }
 void ThisClass::knobs(Knob_Callback f) {
 
@@ -89,9 +89,11 @@ const Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Anti Alias", build);
 void ThisClass::_validate(bool) {
   copy_info(0);
 
-  format_bnds = afx::BoxToBounds(input(0)->format());
+  format_bnds_ = afx::BoxToBounds(input(0)->format());
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
-  proxy_scale_ = (float)format_bnds.GetWidth() / (float)format_f_bnds_.GetWidth();
+  proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
+
+  info_bnds = afx::BoxToBounds(info_.box());
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   //Request source
@@ -122,9 +124,8 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   if (first_time_CPU_) {
     Guard guard(lock_);
     if (first_time_CPU_) {
-      afx::Bounds req_pad_bnds = req_bnds_;
-      req_pad_bnds.PadBounds(50, 50);
-      req_pad_bnds.Intersect(afx::Bounds(info().x(), info().y(), info().r() - 1, info().t()));
+      afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(50);
+      req_pad_bnds.Intersect(info_bnds);
 
       ImagePlane source_plane(afx::BoundsToBox(req_pad_bnds), false, channels); // Create plane "false" = non-packed.
       input0().fetchPlane(source_plane); // Fetch plane

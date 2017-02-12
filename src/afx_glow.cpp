@@ -21,6 +21,7 @@
 #include "threading.h"
 #include "image.h"
 #include "cuda_helper.h"
+#include "nuke_helper.h"
 #include "glow.h"
 #include "color_op.h"
 
@@ -54,10 +55,11 @@ private:
   float k_quality_;
   bool k_replicate_;
   int k_replicate_depth_;
+  bool k_expand_box_;
 
   // members to store processed knob values
   float exposure_, threshold_, threshold_falloff_, size_, softness_, diffusion_, quality_;
-  bool replicate_;
+  bool replicate_, expand_box_;
   int replicate_depth_;
 
   afx::Glow glow_;
@@ -67,7 +69,7 @@ private:
   bool first_time_CPU_;
   Lock lock_;
 
-  afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
+  afx::Bounds info_bnds_, req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
   afx::CudaProcess cuda_process_;
@@ -118,6 +120,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_quality_ = 0.5f;
   k_replicate_ = false;
   k_replicate_depth_ = 5;
+  k_expand_box_ = false;
 }
 void ThisClass::knobs(Knob_Callback f) {
 
@@ -157,6 +160,10 @@ void ThisClass::knobs(Knob_Callback f) {
   Tooltip(f, "Replicate depth");
   SetRange(f, 0, 25);
 
+  Bool_knob(f, &k_expand_box_, "expand_box", "Expand Box");
+  Tooltip(f, "Expand box");
+  SetFlags(f, Knob::STARTLINE);
+
 }
 const char* ThisClass::Class() const { return CLASS; }
 const char* ThisClass::node_help() const { return HELP; }
@@ -184,9 +191,9 @@ const char* ThisClass::input_label(int input, char* buffer) const {
 void ThisClass::_validate(bool) {
   copy_info(0);
 
-  format_bnds_.SetBounds(input(0)->format().x(), input(0)->format().y(), input(0)->format().r() - 1, input(0)->format().t() - 1);
-  format_f_bnds_.SetBounds(input(0)->full_size_format().x(), input(0)->full_size_format().y(), input(0)->full_size_format().r() - 1,
-    input(0)->full_size_format().t() - 1);
+  info_bnds_ = afx::BoxToBounds(info_.box());
+  format_bnds_ = afx::BoxToBounds(input(0)->format());
+  format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
   proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
 
   exposure_ = k_exposure_;
@@ -198,10 +205,11 @@ void ThisClass::_validate(bool) {
   quality_ = afx::AfxClamp<float>(k_quality_, 0.0f, 1.0f);
   replicate_ = k_replicate_;
   replicate_depth_ = (int)(proxy_scale_ * std::max(k_replicate_depth_, 0));
+  expand_box_ = k_expand_box_;
 
   glow_.ComputeGaussSize(size_, softness_, diffusion_, quality_);
 
-  //info_.pad(glow_.GetKernelPadding(), glow_.GetKernelPadding());
+  if (k_expand_box_) { info_.pad(glow_.GetKernelPadding()); }
 
   info_.black_outside();
 
@@ -210,10 +218,9 @@ void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int c
   unsigned int pad = glow_.GetKernelPadding();
   Box req_box(x + pad, y + pad, r + pad, t + pad);
   input0().request(req_box, channels, count);
-  if (input(iMatte) != nullptr) { input(iMatte)->request(Mask_Alpha, count); } // TODO was not working correctly when passing req_box
+  if (input(iMatte) != nullptr) { input(iMatte)->request(req_box, Mask_Alpha, count); }
 
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
-  req_bnds_.Intersect(afx::Bounds(info_.x(), info_.y(), info_.r() - 1, info_.t() - 1));
 }
 void ThisClass::_open() {
   first_time_GPU_ = true;
@@ -243,13 +250,12 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 
       glow_.InitKernel(exposure_, threader_);
 
-      afx::Bounds req_pad_bnds = req_bnds_;
-      req_pad_bnds.PadBounds(glow_.GetKernelPadding(), glow_.GetKernelPadding());
+      afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetKernelPadding());
+      afx::Bounds plane_bnds = glow_bnds;
+      plane_bnds.Intersect(info_bnds_);
 
-      Box req_pad_box(req_pad_bnds.x1(), req_pad_bnds.y1(), req_pad_bnds.x2() + 1, req_pad_bnds.y2() + 1);
-      req_pad_box.intersect(info_.box());
-      ImagePlane in_plane(req_pad_box, false, channels); // Create plane "false" = non-packed.
-      ImagePlane matte_plane(req_pad_box, false, Mask_Alpha); // Create plane "false" = non-packed.
+      ImagePlane in_plane(afx::BoundsToBox(plane_bnds), false, channels); // Create plane "false" = non-packed.
+      ImagePlane matte_plane(afx::BoundsToBox(plane_bnds), false, Mask_Alpha); // Create plane "false" = non-packed.
       if (aborted()) {
         threader_.Synchonize();
         return;
@@ -269,10 +275,10 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
           if (has_all_rgb) {
             for (int i = 0; i < 3; ++i) {
               done += rgb_chan[i]; // Add channel to done channel set
-              in_imgs_.AddImage(req_pad_bnds);
+              in_imgs_.AddImage(glow_bnds);
               in_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
             }
-            threader_.ThreadImageChunks(req_pad_bnds, boost::bind(&ThisClass::GetInputRGB, this, _1, boost::cref(in_plane), boost::cref(matte_plane), boost::cref(rgb_chan)));
+            threader_.ThreadImageChunks(glow_bnds, boost::bind(&ThisClass::GetInputRGB, this, _1, boost::cref(in_plane), boost::cref(matte_plane), boost::cref(rgb_chan)));
             for (int i = 0; i < 3; ++i) {
               out_imgs_.AddImage(req_bnds_);
               out_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
@@ -281,9 +287,9 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
         }
         if (!(done & z)) { // Handle non color channel
           done += z;
-          in_imgs_.AddImage(req_pad_bnds);
+          in_imgs_.AddImage(glow_bnds);
           in_imgs_.GetBackPtr()->AddAttribute("channel", z);
-          threader_.ThreadImageChunks(req_pad_bnds, boost::bind(&ThisClass::GetInput, this, _1, boost::cref(in_plane), boost::cref(matte_plane), z));
+          threader_.ThreadImageChunks(glow_bnds, boost::bind(&ThisClass::GetInput, this, _1, boost::cref(in_plane), boost::cref(matte_plane), z));
           out_imgs_.AddImage(req_bnds_);
           out_imgs_.GetBackPtr()->AddAttribute("channel", z);
         }
@@ -314,7 +320,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 }
 
 void ThisClass::GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, const Channel (&rgb_chan)[3]) {
-  afx::Bounds plane_bnds(in_plane.bounds().x(), in_plane.bounds().y(), in_plane.bounds().r() - 1, in_plane.bounds().t() - 1);
+  afx::Bounds plane_bnds = afx::BoxToBounds(in_plane.bounds());
   afx::ReadOnlyPixel in(3);
   afx::Pixel out(3);
   const float one = 1.0f;
@@ -356,7 +362,7 @@ void ThisClass::GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plan
 }
 
 void ThisClass::GetInput(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, Channel z) {
-  afx::Bounds plane_bnds(in_plane.bounds().x(), in_plane.bounds().y(), in_plane.bounds().r() - 1, in_plane.bounds().t() - 1);
+  afx::Bounds plane_bnds = afx::BoxToBounds(in_plane.bounds());
   const float one = 1.0f;
   const float* m_ptr = &one;
   for (int y = region.y1(); y <= region.y2(); ++y) {

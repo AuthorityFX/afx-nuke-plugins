@@ -178,7 +178,7 @@ void MorphAA::FindHorLines_(const Bounds& region, const Image& input) {
             float half_length = length / 2.0f + 0.5;
             int max_pos = (int)floor((length - 1) / 2.0f);
             int pos = max_pos;
-            for ( ; pos >= 0 ; pos--) {
+            for ( ; pos >= 0 ; --pos) {
               l_i--;
               l_i->pos_h = pos;
               l_i->length_h = half_length;
@@ -188,19 +188,19 @@ void MorphAA::FindHorLines_(const Bounds& region, const Image& input) {
             } else { // Is even
               pos = 0;
             }
-            for ( ; pos <= max_pos; pos++) {
+            for ( ; pos <= max_pos; ++pos) {
               l_i--;
               l_i->pos_h = pos;
               l_i->length_h = half_length;
             }
           } else if (start_orientation == true && end_orientation == true) { // Start blends, end does NOT blend
-            for (int pos = 0; pos <= length - 1; pos++) {
+            for (int pos = 0; pos <= length - 1; ++pos) {
               l_i--;
               l_i->pos_h = pos;
               l_i->length_h = length;
             }
           } else if (start_orientation == false && end_orientation == false) { // Start does NOT blend, end does blend
-            for (int pos = length - 1; pos >= 0; pos--) {
+            for (int pos = length - 1; pos >= 0; --pos) {
               l_i--;
               l_i->pos_h = pos;
               l_i->length_h = length;
@@ -319,7 +319,7 @@ void MorphAA::FindVertLines_(const Bounds& region, const Image& input) {
             float half_length = length / 2.0f + 0.5;
             int max_pos = (int)floor((length - 1) / 2.0f);
             int pos = max_pos;
-            for ( ; pos >= 0 ; pos--) {
+            for ( ; pos >= 0 ; --pos) {
               l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
               l_i->pos_v = pos;
               l_i->length_v = half_length;
@@ -329,19 +329,19 @@ void MorphAA::FindVertLines_(const Bounds& region, const Image& input) {
             } else { // Is even
               pos = 0;
             }
-            for ( ; pos <= max_pos; pos++) {
+            for ( ; pos <= max_pos; ++pos) {
               l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
               l_i->pos_v = pos;
               l_i->length_v = half_length;
             }
           } else if (start_orientation == true && end_orientation == true) { // Start blends, end does NOT blend
-            for (int pos = 0; pos <= length - 1; pos++) {
+            for (int pos = 0; pos <= length - 1; ++pos) {
               l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
               l_i->pos_v = pos;
               l_i->length_v = length;
             }
           } else if (start_orientation == false && end_orientation == false) { // Start does NOT blend, end does blend
-            for (int pos = length - 1; pos >= 0; pos--) {
+            for (int pos = length - 1; pos >= 0; --pos) {
               l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
               l_i->pos_v = pos;
               l_i->length_v = length;
@@ -382,18 +382,18 @@ void MorphAA::BlendPixels_(const Bounds& region, const Image& input, Image& outp
 
       if (info_ptr->dis_dir_h && info_ptr->length_h >= 1) {
         float blend = CalcTrapArea_(info_ptr->pos_h, info_ptr->length_h);
-        *out_ptr = blend * *b_ptr + (1.0 - blend) * *out_ptr;
+        *out_ptr = blend * *b_ptr + (1.0f - blend) * *out_ptr;
       } else if(!t_info_ptr->dis_dir_h && t_info_ptr->length_h >= 1) {
         float blend = CalcTrapArea_(t_info_ptr->pos_h, t_info_ptr->length_h);
-        *out_ptr = blend * *t_ptr + (1.0 - blend) * *out_ptr;
+        *out_ptr = blend * *t_ptr + (1.0f - blend) * *out_ptr;
       }
 
       if (info_ptr->dis_dir_v && info_ptr->length_v >= 1) {
         float blend = CalcTrapArea_(info_ptr->pos_v, info_ptr->length_v);
-        *out_ptr = blend * *r_ptr + (1.0 - blend) * *out_ptr;
+        *out_ptr = blend * *r_ptr + (1.0f - blend) * *out_ptr;
       } else if(!l_info_ptr->dis_dir_v && l_info_ptr->length_v >= 1) {
         float blend = CalcTrapArea_(l_info_ptr->pos_v, l_info_ptr->length_v);
-        *out_ptr = blend * *l_ptr + (1.0 - blend) * *out_ptr;
+        *out_ptr = blend * *l_ptr + (1.0f - blend) * *out_ptr;
       }
 
       in_ptr++;
