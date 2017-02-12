@@ -40,8 +40,9 @@ typedef bg::model::box<Point> BoundingBox;
 enum inputs
 {
   iSource = 0,
-  iOutMatte = 1,
-  iInMatte = 2,
+  iScreen = 1,
+  iOutMatte = 2,
+  iInMatte = 3,
 };
 
 using namespace DD::Image;
@@ -50,11 +51,16 @@ class ThisClass : public Iop {
 private:
 
   // members to store knob values
-  float k_dilate;
-  float k_in_dilate;
-  float k_falloff_;
+  float k_out_dilate_;
+  float k_in_dilate_;
+  float k_out_falloff_;
   float k_in_falloff_;
   bool k_premultiply_;
+
+  float out_falloff_;
+  float in_falloff_;
+  float out_dilate_;
+  float in_dilate_;
 
   PointCloud out_pc_;
   PointCloud in_pc_;
@@ -74,8 +80,8 @@ private:
 
   afx::Threader threader_;
 
-  int maximum_inputs() const { return 3; }
-  int minimum_inputs() const { return 3; }
+  int maximum_inputs() const { return 4; }
+  int minimum_inputs() const { return 4; }
 
   void Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte);
 
@@ -99,28 +105,32 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   first_time_engine_ = true;
 
   //initialize knobs
-  k_dilate = 0.25f;
-  k_in_dilate = 0.25f;
-  k_falloff_ = 0.5f;
+  k_out_dilate_ = 0.25f;
+  k_out_falloff_ = 0.5f;
+  k_in_dilate_ = 0.25f;
   k_in_falloff_ = 0.5f;
   k_premultiply_ = true;
 }
 void ThisClass::knobs(Knob_Callback f) {
-  Float_knob(f, &k_dilate, "dilate", "Dilate");
+  Float_knob(f, &k_out_dilate_, "out_dilate", "Out Dilate");
   Tooltip(f, "Dialte out region");
   SetRange(f, 0.0, 1.0);
 
-  Float_knob(f, &k_falloff_, "falloff", "Falloff");
-  Tooltip(f, "Matte Falloff");
+  Float_knob(f, &k_out_falloff_, "out_falloff", "Out Falloff");
+  Tooltip(f, "Out Matte Falloff");
   SetRange(f, 0.0, 1.0);
 
-  Float_knob(f, &k_in_dilate, "in_dilate", "In Dilate");
-  Tooltip(f, "Dialte out region");
+  Divider(f, "");
+
+  Float_knob(f, &k_in_dilate_, "in_dilate", "In Dilate");
+  Tooltip(f, "Dialte in region");
   SetRange(f, 0.0, 1.0);
 
   Float_knob(f, &k_in_falloff_, "in_falloff", "In Falloff");
   Tooltip(f, "In Matte Falloff");
   SetRange(f, 0.0, 1.0);
+
+  Divider(f, "");
 
   Bool_knob(f, &k_premultiply_, "premultiply", "Premultiply");
   SetFlags(f, Knob::STARTLINE);
@@ -142,10 +152,14 @@ const char* ThisClass::input_label(int input, char* buffer) const {
       return "Source";
     }
     case 1: {
+      input_longlabel(input) = "Screen Image";
+      return "Screen";
+    }
+    case 2: {
       input_longlabel(input) = "Chroma values to key";
       return "Out";
     }
-    case 2: {
+    case 3: {
       input_longlabel(input) = "Chroma values to keep";
       return "In";
     }
@@ -156,13 +170,17 @@ const char* ThisClass::input_label(int input, char* buffer) const {
 }
 void ThisClass::_validate(bool) {
   if (input(iSource) != default_input(iSource)) {
-    //Copy source info
     copy_info(0);
 
     info_bnds_ = afx::BoxToBounds(info_.box());
     format_bnds_ = afx::BoxToBounds(input(0)->format());
     format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
     proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
+
+    out_falloff_ = fmaxf(1.0f + (1.0f - afx::Clamp(k_out_falloff_, 0.0f, 1.0f)), 0.008);
+    in_falloff_ = afx::Clamp(1.0f + k_in_falloff_, 0.008f, 125.0f);
+    out_dilate_ = 50.0f * afx::Clamp(k_out_dilate_, 0.0f, 1.0f);
+    in_dilate_ = 50.0f * afx::Clamp(k_in_dilate_, 0.0f, 1.0f);
 
     ChannelSet add_channels = channels();
     add_channels += Chan_Red;
@@ -180,8 +198,8 @@ void ThisClass::_validate(bool) {
   }
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
-  input(iSource)->request(x, y, r, t, channels, count);
-  //Request screen matte
+  input(iSource)->request(x, y, r, t, channels, Mask_RGB);
+  if (input(iScreen) != nullptr) { input(iScreen)->request(x, y, r, t, Mask_RGB, count); }
   if (input(iOutMatte) != nullptr) { input(iOutMatte)->request(x, y, r, t, Mask_Alpha, count); }
   if (input(iInMatte) != nullptr) { input(iInMatte)->request(x, y, r, t, Mask_Alpha, count); }
 
@@ -199,17 +217,30 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   if (first_time_engine_) {
     Guard guard(lock_);
     if (first_time_engine_) {
-      ImagePlane source_plane(afx::BoundsToBox(info_bnds_), false, Mask_RGB); // Create plane "false" = non-packed.
-      ImagePlane out_matte_plane(afx::BoundsToBox(info_bnds_), false, Mask_Alpha); // Create plane "false" = non-packed.
-      ImagePlane in_matte_plane(afx::BoundsToBox(info_bnds_), false, Mask_Alpha); // Create plane "false" = non-packed.
 
-      input(iSource)->fetchPlane(source_plane);
+      bool use_screen_input = false;
+      afx::Bounds screen_bnds = info_bnds_;
+      if (input(iScreen)) {
+        if (info_bnds_.Intersects(afx::BoxToBounds(input(iScreen)->info().box() ))) {
+          screen_bnds.Intersect(afx::BoxToBounds(input(iScreen)->info().box() ));
+          use_screen_input = true;
+        }
+      }
+      ImagePlane source_plane(afx::BoundsToBox(screen_bnds), false, Mask_RGB); // Create plane "false" = non-packed.
+      ImagePlane out_matte_plane(afx::BoundsToBox(screen_bnds), false, Mask_Alpha); // Create plane "false" = non-packed.
+      ImagePlane in_matte_plane(afx::BoundsToBox(screen_bnds), false, Mask_Alpha); // Create plane "false" = non-packed.
+
+      if (use_screen_input) {
+        input(iScreen)->fetchPlane(source_plane);
+      } else {
+        input(iSource)->fetchPlane(source_plane);
+      }
       if (input(iOutMatte) != nullptr) { input(iOutMatte)->fetchPlane(out_matte_plane); }
       if (input(iInMatte) != nullptr) { input(iInMatte)->fetchPlane(in_matte_plane); }
 
       out_pc_.clear();
       in_pc_.clear();
-      threader_.ThreadImageChunks(format_bnds_, boost::bind(&ThisClass::Metrics, this, _1, boost::ref(source_plane), boost::ref(out_matte_plane), boost::ref(in_matte_plane)));
+      threader_.ThreadImageChunks(screen_bnds, boost::bind(&ThisClass::Metrics, this, _1, boost::ref(source_plane), boost::ref(out_matte_plane), boost::ref(in_matte_plane)));
       threader_.Synchonize();
 
       out_hull_.clear();
@@ -218,8 +249,8 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
       bg::convex_hull(in_pc_, in_hull_);
 
       // Declare strategies
-      bg::strategy::buffer::distance_symmetric<double> out_distance_strategy(100.0 * k_dilate);
-      bg::strategy::buffer::distance_symmetric<double> in_distance_strategy(50.0 * k_in_dilate);
+      bg::strategy::buffer::distance_symmetric<double> out_distance_strategy(out_dilate_);
+      bg::strategy::buffer::distance_symmetric<double> in_distance_strategy(in_dilate_);
       bg::strategy::buffer::join_miter join_strategy;
       bg::strategy::buffer::end_flat end_strategy;
       bg::strategy::buffer::point_square point_strategy;
@@ -270,14 +301,14 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
         if (bg::within(p, out_hull_)) {
           matte = 0;
         } else {
-          matte = 1.0f - pow((1.0f + k_falloff_), -bg::distance(p, out_hull_));
+          matte = 1.0f - pow(out_falloff_, -bg::distance(p, out_hull_));
           if (input(iInMatte) != nullptr) {
             if (bg::within(p, in_box_)) {
               if (bg::within(p, in_hull_buffer_)) {
                 if (bg::within(p, in_hull_)) {
                   matte = 1.0f;
                 } else {
-                  matte = fmaxf(matte, pow((1.0f + k_in_falloff_), -bg::distance(p, in_hull_)));
+                  matte = fmaxf(matte, pow(in_falloff_, -bg::distance(p, in_hull_)));
                 }
               }
             }
