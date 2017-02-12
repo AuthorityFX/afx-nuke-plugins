@@ -98,6 +98,14 @@ public:
     y2_ = y2_ > other.y2_ ? other.y2_ : y2_;
   }
   __host__ __device__
+  bool Intersects(const Bounds& other) {
+    if (other.x2_ < x1_) { return false; }
+    if (other.y2_ < y1_) { return false; }
+    if (other.x1_ > x2_) { return false; }
+    if (other.y1_ > y2_) { return false; }
+    return true;
+  }
+  __host__ __device__
   Bounds GetPadBounds(unsigned int size) const {
     Bounds padded = *this;
     padded.PadBounds(size);
