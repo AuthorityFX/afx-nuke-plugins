@@ -20,6 +20,7 @@ for path in nuke.pluginPath():
         nuke.menu('Nodes').addCommand('Authority FX/AFXToneMap', lambda: nuke.createNode('AFXToneMap'), icon='afx.png')
         nuke.load('afx_tone_map.so')
     if os.path.isfile(path + '/afx_median.so') == True:
+        nuke.knobDefault('AFXMedian.channels', 'alpha')
         nuke.menu('Nodes').addCommand('Authority FX/AFXMedian', lambda: nuke.createNode('AFXMedian'), icon='afx.png')
         nuke.load('afx_median.so')
     if os.path.isfile(path + '/afx_chroma_key.so') == True:
@@ -31,6 +32,7 @@ for path in nuke.pluginPath():
     if os.path.isfile(path + '/afx_anti_alias.so') == True:
         nuke.menu('Nodes').addCommand('Authority FX/AFXAntiAlias', lambda: nuke.createNode('AFXAntiAlias'), icon='afx.png')
         nuke.load('afx_anti_alias.so')
+        nuke.knobDefault('AFXAntiAlias.channels', 'alpha')
     if os.path.isfile(path + '/afx_glow.so') == True:
         nuke.menu('Nodes').addCommand('Authority FX/AFXGlow', lambda: nuke.createNode('AFXGlow'), icon='afx.png')
         nuke.load('afx_glow.so')
