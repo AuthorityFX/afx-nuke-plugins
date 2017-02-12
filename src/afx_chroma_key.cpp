@@ -50,7 +50,9 @@ private:
 
   // members to store knob values
   float k_dilate;
+  float k_in_dilate;
   float k_falloff_;
+  float k_in_falloff_;
   bool k_premultiply_;
 
   PointCloud out_pc_;
@@ -59,7 +61,7 @@ private:
   Polygon in_hull_;
   MultiGon out_hull_buffer_;
   MultiGon in_hull_buffer_;
-  BoundingBox main_box_;
+  BoundingBox out_box_;
   BoundingBox in_box_;
 
   boost::mutex mutex_;
@@ -74,7 +76,7 @@ private:
   int maximum_inputs() const { return 3; }
   int minimum_inputs() const { return 3; }
 
-  void Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte, int step);
+  void Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte);
 
 public:
   ThisClass(Node* node);
@@ -97,7 +99,9 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
 
   //initialize knobs
   k_dilate = 0.25f;
+  k_in_dilate = 0.25f;
   k_falloff_ = 0.5f;
+  k_in_falloff_ = 0.5f;
   k_premultiply_ = true;
 }
 void ThisClass::knobs(Knob_Callback f) {
@@ -107,6 +111,14 @@ void ThisClass::knobs(Knob_Callback f) {
 
   Float_knob(f, &k_falloff_, "falloff", "Falloff");
   Tooltip(f, "Matte Falloff");
+  SetRange(f, 0.0, 1.0);
+
+  Float_knob(f, &k_in_dilate, "in_dilate", "In Dilate");
+  Tooltip(f, "Dialte out region");
+  SetRange(f, 0.0, 1.0);
+
+  Float_knob(f, &k_in_falloff_, "in_falloff", "In Falloff");
+  Tooltip(f, "In Matte Falloff");
   SetRange(f, 0.0, 1.0);
 
   Bool_knob(f, &k_premultiply_, "premultiply", "Premultiply");
@@ -199,7 +211,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
 
       out_pc_.clear();
       in_pc_.clear();
-      threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::Metrics, this, _1, boost::ref(source_plane), boost::ref(out_matte_plane), boost::ref(in_matte_plane), 1));
+      threader_.ThreadImageChunks(format_bnds, boost::bind(&ThisClass::Metrics, this, _1, boost::ref(source_plane), boost::ref(out_matte_plane), boost::ref(in_matte_plane)));
       threader_.Synchonize();
 
       out_hull_.clear();
@@ -208,17 +220,20 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
       bg::convex_hull(in_pc_, in_hull_);
 
       // Declare strategies
-      bg::strategy::buffer::distance_symmetric<double> distance_strategy(100.0 * k_dilate);
+      bg::strategy::buffer::distance_symmetric<double> out_distance_strategy(100.0 * k_dilate);
+      bg::strategy::buffer::distance_symmetric<double> in_distance_strategy(50.0 * k_in_dilate);
       bg::strategy::buffer::join_miter join_strategy;
       bg::strategy::buffer::end_flat end_strategy;
       bg::strategy::buffer::point_square point_strategy;
       bg::strategy::buffer::side_straight side_strategy;
 
       out_hull_buffer_.clear();
-      bg::buffer(out_hull_, out_hull_buffer_, distance_strategy, side_strategy, join_strategy, end_strategy, point_strategy);
+      bg::buffer(out_hull_, out_hull_buffer_, out_distance_strategy, side_strategy, join_strategy, end_strategy, point_strategy);
+      in_hull_buffer_.clear();
+      bg::buffer(in_hull_, in_hull_buffer_, in_distance_strategy, side_strategy, join_strategy, end_strategy, point_strategy);
 
-      bg::envelope(out_hull_buffer_, main_box_);
-      bg::envelope(in_hull_, in_box_);
+      bg::envelope(out_hull_buffer_, out_box_);
+      bg::envelope(in_hull_buffer_, in_box_);
 
       first_time_engine_ = false;
     }
@@ -252,7 +267,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
     afx::RGBtoLab(rgb, lab);
     Point p = Point(lab[1], lab[2]);
     float matte = 1.0f;
-    if (bg::within(p, main_box_)) {
+    if (bg::within(p, out_box_)) {
       if (bg::within(p, out_hull_buffer_)) {
         if (bg::within(p, out_hull_)) {
           matte = 0;
@@ -260,8 +275,12 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
           matte = 1.0f - pow((1.0f + k_falloff_), -bg::distance(p, out_hull_));
           if (input(iInMatte) != nullptr) {
             if (bg::within(p, in_box_)) {
-              if (bg::within(p, in_hull_)) {
-                matte = 1.0f;
+              if (bg::within(p, in_hull_buffer_)) {
+                if (bg::within(p, in_hull_)) {
+                  matte = 1.0f;
+                } else {
+                  matte = fmaxf(matte, pow((1.0f + k_in_falloff_), -bg::distance(p, in_hull_)));
+                }
               }
             }
           }
@@ -280,7 +299,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   }
 }
 
-void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte, int step) {
+void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte) {
 
   afx::Bounds plane_bnds(source.bounds().x(), source.bounds().y(), source.bounds().r() - 1, source.bounds().t() - 1);
 
@@ -295,7 +314,7 @@ void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, con
 
   Channel chan_rgb[3] = {Chan_Red, Chan_Green, Chan_Blue};
 
-  for (int y = region.y1(); y <= region.y2(); y += step) {
+  for (int y = region.y1(); y <= region.y2(); ++y) {
     for  (int i = 0; i < 3; ++i) {
       in.SetPtr(&source.readable()[source.chanNo(chan_rgb[i]) * source.chanStride() + source.rowStride() * (plane_bnds.ClampY(y) - plane_bnds.y1()) +
                                    plane_bnds.ClampX(region.x1()) - plane_bnds.x1()], i);
@@ -310,7 +329,7 @@ void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, con
     }
     //Polygon hull;
     //boost::geometry::convex_hull(out_pc, hull);
-    for (int x = region.x1(); x <= region.x2(); x += step) {
+    for (int x = region.x1(); x <= region.x2(); ++x) {
       for (int i = 0; i < 3; i++) { rgb[i] = in.GetVal(i); }
       Point p;
       if (*out_m_ptr > 0.5 || *in_m_ptr > 0.5) {
@@ -324,13 +343,9 @@ void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, con
       if (*in_m_ptr > 0.5) {
         in_pc.push_back(p);
       }
-      for (int i = 0; i < step; i++) { in.NextPixel(); }
-      if (input(iOutMatte) != nullptr) {
-        for (int i = 0; i < step; i++) { out_m_ptr++; }
-      }
-      if (input(iInMatte) != nullptr) {
-        for (int i = 0; i < step; i++) { in_m_ptr++; }
-      }
+      in.NextPixel();
+      if (input(iOutMatte) != nullptr) { out_m_ptr++; }
+      if (input(iInMatte) != nullptr) { in_m_ptr++; }
     }
   }
 
