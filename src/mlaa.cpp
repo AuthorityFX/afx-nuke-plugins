@@ -90,12 +90,12 @@ void MorphAA::FindHorLines_(const Bounds& region, const Image& input) {
           direction = info_ptr->dis_dir_h;
         }
       } else { // looking for end of line
-        if(info_ptr->dis_h == true && x < info_.GetBounds().x2() && direction == info_ptr->dis_dir_h) { // TODO Do we need bounds check here?
+        if(info_ptr->dis_h == true && x < info_.GetBounds().x2() && direction == info_ptr->dis_dir_h) {
           length++;
         } else { // End of line, loop back through and set info for all pixels in line
 
-          bool do_blend_start, do_blend_end, start_orientation, end_orientation;
-
+          bool start_orientation, end_orientation;
+          // TODO start and replicate borders??
           // 'end_orientation = true' means the end of the line is no blend, ie. CalcBlendingWeights returns 0 for pos = length - 1
           // [] is a pixel in the line
           // {} is the current pixel x, y
@@ -235,7 +235,7 @@ void MorphAA::FindVertLines_(const Bounds& region, const Image& input) {
           length++;
         } else { // End of line
 
-          bool do_blend_start, do_blend_end, start_orientation, end_orientation;
+          bool start_orientation, end_orientation;
 
           // 'end_orientation = true' means the end of the line is no blend, ie. CalcBlendingWeights returns 0 for pos = length - 1
           // [] is a pixel in the line

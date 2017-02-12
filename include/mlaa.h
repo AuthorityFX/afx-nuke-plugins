@@ -18,10 +18,10 @@
 namespace afx {
 
 enum Direction {
-  kUp = false,
-  kDown = true,
-  kRight = false,
-  kLeft = true
+  kBlendUp = true,
+  kBlendDown = false,
+  kBlendLeft = true,
+  kBlendRight = false
 };
 
 struct PixelInfo {
@@ -62,8 +62,8 @@ class MorphAA {
   float threshold_;
 
   inline float Diff_(float a, float b) {
-//     return (a - b) / (a + b);
-    return a - b;
+    return (a - b) / (a + b);
+//     return a - b;
   }
   inline float CalcTrapArea_(int pos, float length) {
     length = fmaxf(length, 0.008);
