@@ -361,17 +361,16 @@ void MorphAA::BlendPixels_(const Bounds& region, const Image& input, Image& outp
   const float* in_ptr = nullptr;
   float* out_ptr = nullptr;
   PixelInfo* info_ptr = nullptr;
+  PixelInfo zero_pixel;
+  const PixelInfo* t_info_ptr = &zero_pixel;
+  const PixelInfo* l_info_ptr = &zero_pixel;
   for (int y = region.y1(); y <= region.y2(); ++y) {
     in_ptr = input.GetPtr(region.x1(), y);
     out_ptr = output.GetPtr(region.x1(), y);
     info_ptr = info_.GetPtr(region.x1(), y);
     for (int x = region.x1(); x <= region.x2(); ++x) {
-      PixelInfo zero_pixel;
-      const PixelInfo* t_info_ptr = &zero_pixel;
-      const PixelInfo* l_info_ptr = &zero_pixel;
       if (y < info_.GetBounds().y2()) { t_info_ptr = (PixelInfo*)((char*)info_ptr + info_.GetPitch()); }
       if (x > info_.GetBounds().x1()) { l_info_ptr = (info_ptr - 1); }
-
       const float* l_ptr = input.GetPtr(input.GetBounds().ClampX(x - 1), y);
       const float* r_ptr = input.GetPtr(input.GetBounds().ClampX(x + 1), y);
       const float* b_ptr = input.GetPtr(x, input.GetBounds().ClampY(y - 1));
