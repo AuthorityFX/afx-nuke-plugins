@@ -11,6 +11,7 @@
 #define NUKE_HELPER_H_
 
 #include <DDImage/Box.h>
+#include <DDImage/Iop.h>
 
 #include "types.h"
 
@@ -18,11 +19,15 @@ using namespace DD::Image;
 
 namespace afx {
 
-  afx::Bounds BoxToBounds(Box box) {
+  inline afx::Bounds BoxToBounds(Box box) {
     return afx::Bounds(box.x(), box.y(), box.r() - 1, box.t() - 1);
   }
-  Box BoundsToBox(afx::Bounds bnds) {
+  inline Box BoundsToBox(afx::Bounds bnds) {
     return Box(bnds.x1(), bnds.y1(), bnds.x2() + 1, bnds.y2() + 1);
+  }
+
+  inline afx::Bounds InputBounds(Iop* input) {
+    return afx::BoxToBounds(input->info().box());
   }
 
 }

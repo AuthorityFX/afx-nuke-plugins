@@ -43,7 +43,7 @@ private:
   bool first_time_CPU_;
   Lock lock_;
 
-  afx::Bounds info_bnds, req_bnds_, format_bnds_, format_f_bnds_;
+  afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
   afx::ImageArray out_imgs_;
@@ -124,7 +124,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
     Guard guard(lock_);
     if (first_time_CPU_) {
       afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(50);
-      req_pad_bnds.Intersect(afx::BoxToBounds(input(0)->info().box()));
+      req_pad_bnds.Intersect(afx::InputBounds(input(0)));
 
       ImagePlane source_plane(afx::BoundsToBox(req_pad_bnds), false, channels); // Create plane "false" = non-packed.
       input0().fetchPlane(source_plane); // Fetch plane

@@ -54,7 +54,7 @@ private:
 
   float k_screen_color_[3];
 
-  afx::Bounds info_bnds_, req_bnds_, format_bnds_, format_f_bnds_;
+  afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
   afx::RotateColor hue_shifter_;
@@ -150,7 +150,6 @@ void ThisClass::_validate(bool) {
     //Copy source info
     copy_info(0);
 
-    info_bnds_ = afx::BoxToBounds(info_.box());
     format_bnds_ = afx::BoxToBounds(input(0)->format());
     format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
     proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();

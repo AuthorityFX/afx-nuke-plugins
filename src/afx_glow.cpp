@@ -69,7 +69,7 @@ private:
   bool first_time_CPU_;
   Lock lock_;
 
-  afx::Bounds info_bnds_, req_bnds_, format_bnds_, format_f_bnds_;
+  afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
   afx::CudaProcess cuda_process_;
@@ -191,7 +191,6 @@ const char* ThisClass::input_label(int input, char* buffer) const {
 void ThisClass::_validate(bool) {
   copy_info(0);
 
-  info_bnds_ = afx::BoxToBounds(info_.box());
   format_bnds_ = afx::BoxToBounds(input(0)->format());
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
   proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
@@ -252,7 +251,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 
       afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetKernelPadding());
       afx::Bounds plane_bnds = glow_bnds;
-      plane_bnds.Intersect(info_bnds_);
+      plane_bnds.Intersect(afx::InputBounds(input(0)));
 
       ImagePlane in_plane(afx::BoundsToBox(plane_bnds), false, channels); // Create plane "false" = non-packed.
       ImagePlane matte_plane(afx::BoundsToBox(plane_bnds), false, Mask_Alpha); // Create plane "false" = non-packed.

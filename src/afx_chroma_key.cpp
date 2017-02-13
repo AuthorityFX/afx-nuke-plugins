@@ -75,7 +75,7 @@ private:
   bool first_time_engine_;
   Lock lock_;
 
-  afx::Bounds info_bnds_, req_bnds_, format_bnds_, format_f_bnds_;
+  afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
   afx::Threader threader_;
@@ -172,7 +172,6 @@ void ThisClass::_validate(bool) {
   if (input(iSource) != default_input(iSource)) {
     copy_info(0);
 
-    info_bnds_ = afx::BoxToBounds(info_.box());
     format_bnds_ = afx::BoxToBounds(input(0)->format());
     format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
     proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
@@ -222,11 +221,11 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
       afx::Bounds screen_bnds;
       if (input(iScreen)) {
         if (input(iSource)->info().box().intersects(input(iScreen)->info().box())) {
-          screen_bnds = afx::BoxToBounds(input(iScreen)->info().box());
+          screen_bnds = afx::InputBounds(input(iScreen));
           use_screen_input = true;
         }
       } else {
-        screen_bnds = afx::BoxToBounds(input(iSource)->info().box());
+        screen_bnds = afx::InputBounds(input(iSource));
       }
 
       ImagePlane source_plane(afx::BoundsToBox(screen_bnds), false, Mask_RGB); // Create plane "false" = non-packed.

@@ -48,7 +48,7 @@ class ThisClass : public Iop {
   bool first_time_CPU_;
   Lock lock_;
 
-  afx::Bounds info_bnds_, req_bnds_, format_bnds_, format_f_bnds_;
+  afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
   afx::CudaProcess cuda_process_;
@@ -104,7 +104,6 @@ void ThisClass::_validate(bool) {
   //Copy source info
   copy_info(0);
 
-  info_bnds_ = afx::BoxToBounds(info_.box());
   format_bnds_ = afx::BoxToBounds(input(0)->format());
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
   proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
@@ -153,7 +152,7 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
       cuda_process_.CheckReady(); // Throw error if device is not ready
 
       afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(med_size_o_);
-      req_pad_bnds.Intersect(info_bnds_);
+      req_pad_bnds.Intersect(afx::InputBounds(input(0)));
 
       // Create plane of input channels for request bounds. Edge repication is handled by cuda texture
       ImagePlane in_plane(afx::BoundsToBox(req_pad_bnds), false, channels); // Create plane "false" = non-packed.
