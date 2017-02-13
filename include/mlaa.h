@@ -25,16 +25,16 @@ enum Direction {
 };
 
 struct PixelInfo {
-  bool dis_h, dis_v, dis_dir_h, dis_dir_v;
+  bool dis_x, dis_y, dis_dir_x, dis_dir_y;
   unsigned int pos_h, pos_v;
-  float length_h, length_v;
-  PixelInfo() : dis_h(false), dis_v(false), dis_dir_h(false), dis_dir_v(false),
-                pos_h(0), pos_v(0), length_h(0.0f), length_v(0.0f) {}
+  float length_x, length_y;
+  PixelInfo() : dis_x(false), dis_y(false), dis_dir_x(false), dis_dir_y(false),
+                pos_h(0), pos_v(0), length_x(0.0f), length_y(0.0f) {}
 };
 
 struct BlendWeight {
   float top, bottom, left, right;
-   BlendWeight() : top(0), bottom(0), left(0), right(0) {}
+   BlendWeight() : top(0.0f), bottom(0.0f), left(0.0f), right(0.0f) {}
 };
 
 class ImageInfo {
@@ -51,6 +51,7 @@ class ImageInfo {
   void Dispose();
   PixelInfo& GetPixel(unsigned int x, unsigned int y) const;
   PixelInfo* GetPtr(unsigned int x, unsigned int y) const;
+  PixelInfo* GetPtrBnds(unsigned int x, unsigned int y) const;
   size_t GetPitch() const;
   Bounds GetBounds() const;
 };

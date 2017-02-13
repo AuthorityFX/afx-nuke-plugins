@@ -27,6 +27,7 @@ void ImageInfo::Create(const Bounds& region) {
   region_ = region;
   pitch_ = sizeof(PixelInfo) * region_.GetWidth();
   ptr_ = (PixelInfo*)malloc(region_.GetWidth() * region_.GetHeight() * sizeof(PixelInfo));
+  // Would like to replace malloc with byte aligned malloc
 }
 void ImageInfo::Dispose() {
   if (ptr_ != nullptr) {
@@ -38,6 +39,9 @@ PixelInfo& ImageInfo::GetPixel(unsigned int x, unsigned int y) const {
   return *(PixelInfo*)((char*)ptr_ + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(PixelInfo));
 }
 PixelInfo* ImageInfo::GetPtr(unsigned int x, unsigned int y) const {
+  return (PixelInfo*)((char*)ptr_ + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(PixelInfo));
+}
+PixelInfo* ImageInfo::GetPtrBnds(unsigned int x, unsigned int y) const {
   return (PixelInfo*)((char*)ptr_ + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(PixelInfo));
 }
 size_t ImageInfo::GetPitch() const { return pitch_; }
@@ -58,21 +62,21 @@ void MorphAA::MarkDisc_(const Bounds& region, const Image& input) {
     for (int x = region.x1(); x <= region.x2(); ++x) {
       float dif = Diff_(*in_ptr, *in_bot_ptr); // Compare current pixel to bottom neighbour
       if (fabsf(dif) >= threshold_) {
-        info_ptr->dis_h = true;
+        info_ptr->dis_x = true;
         if (dif >= 0) {
-          info_ptr->dis_dir_h = true;
+          info_ptr->dis_dir_x = true;
         } else {
-          info_ptr->dis_dir_h = false;
+          info_ptr->dis_dir_x = false;
         }
       }
       if (x < input.GetBounds().x2()) {
         float dif = Diff_(*in_ptr, *(in_ptr + 1)); // Compare current pixel to right neighbour
         if (fabsf(dif) >= threshold_) {
-          info_ptr->dis_v = true;
+          info_ptr->dis_y = true;
           if (dif >= 0) {
-            info_ptr->dis_dir_v = true;
+            info_ptr->dis_dir_y = true;
           } else {
-            info_ptr->dis_dir_v = false;
+            info_ptr->dis_dir_y = false;
           }
         }
       }
@@ -92,14 +96,14 @@ void MorphAA::FindXLines_(const Bounds& region, const Image& input) {
     for (int x = region.x1(); x <= region.x2(); ++x) {
       switch (length) { // if new line found
         case 0: {
-          if(info_ptr->dis_h == true) { // if new line found
+          if(info_ptr->dis_x == true) { // if new line found
             length++;
-            direction = info_ptr->dis_dir_h;
+            direction = info_ptr->dis_dir_x;
           }
           break;
         }
         default: { // looking for end of line
-          if(info_ptr->dis_h == true && x < info_.GetBounds().x2() && direction == info_ptr->dis_dir_h) {
+          if(info_ptr->dis_x == true && x < info_.GetBounds().x2() && direction == info_ptr->dis_dir_x) {
             length++;
           } else { // End of line, loop back through and set info for all pixels in line
             SetXLine_(info_ptr, input, length, x, y);
@@ -125,14 +129,14 @@ void MorphAA::FindYLines_(const Bounds& region, const Image& input) {
     for (int y = region.y1(); y <= region.y2(); ++y) {
       switch (length) { // if new line found
         case 0: {
-          if(info_ptr->dis_v == true) { // if new line found
+          if(info_ptr->dis_y == true) { // if new line found
             length++;
-            direction = info_ptr->dis_dir_v;
+            direction = info_ptr->dis_dir_y;
           }
           break;
         }
         default: { // Looking for end of line
-          if(info_ptr->dis_v == true && y < info_.GetBounds().y2() && direction == info_ptr->dis_dir_v) { // Line continues
+          if(info_ptr->dis_y == true && y < info_.GetBounds().y2() && direction == info_ptr->dis_dir_y) { // Line continues
             length++;
           } else { // End of line
             SetYLine_(info_ptr, input, length, x, y);
@@ -158,7 +162,7 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, const Image& input, int length, int
   //      |[][][][][]|{}
   //      ¯¯¯¯¯¯¯¯¯¯¯¯
   //          0.0f
-  if ((info_ptr - 1)->dis_dir_h == true) { // last pixel in line is greater than bottom pixel
+  if ((info_ptr - 1)->dis_dir_x == true) { // last pixel in line is greater than bottom pixel
     if (fabs(Diff_(input.GetValBnds(x - 1, y - 1), input.GetValBnds(x, y - 1))) > threshold_) {
       // if Diff(a, b) > 0.5
       // _____
@@ -196,7 +200,7 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, const Image& input, int length, int
   //      |[][][][][]|{}
   //      ¯¯¯¯¯¯¯¯¯¯¯¯
   //          0.0f
-  if ((info_ptr - 1)->dis_dir_h == true) { // last pixel in line is greater than bottom pixel
+  if ((info_ptr - 1)->dis_dir_x == true) { // last pixel in line is greater than bottom pixel
     if (fabs(Diff_(input.GetValBnds(x - length - 1, y), input.GetVal(x - length, y))) > threshold_) {
       // if Diff(a, b) > 0.5
       // _____            ______
@@ -236,7 +240,7 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, const Image& input, int length, int
     for ( ; pos >= 0 ; --pos) {
       l_i--;
       l_i->pos_h = pos;
-      l_i->length_h = half_length;
+      l_i->length_x = half_length;
     }
     if (length % 2) { // Is odd
       pos = 1;
@@ -246,19 +250,19 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, const Image& input, int length, int
     for ( ; pos <= max_pos; ++pos) {
       l_i--;
       l_i->pos_h = pos;
-      l_i->length_h = half_length;
+      l_i->length_x = half_length;
     }
   } else if (start_orientation == true && end_orientation == true) { // Start blends, end does NOT blend
     for (int pos = 0; pos <= length - 1; ++pos) {
       l_i--;
       l_i->pos_h = pos;
-      l_i->length_h = length;
+      l_i->length_x = length;
     }
   } else if (start_orientation == false && end_orientation == false) { // Start does NOT blend, end does blend
     for (int pos = length - 1; pos >= 0; --pos) {
       l_i--;
       l_i->pos_h = pos;
-      l_i->length_h = length;
+      l_i->length_x = length;
     }
   }
 }
@@ -272,7 +276,7 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, const Image& input, int length, int
   //      |[][][][][]|{}
   //      ¯¯¯¯¯¯¯¯¯¯¯¯
   //          0.0f
-  if (((PixelInfo*)((char*)info_ptr - info_.GetPitch()))->dis_dir_v == true) { // last pixel in line is greater than right pixel
+  if (((PixelInfo*)((char*)info_ptr - info_.GetPitch()))->dis_dir_y == true) { // last pixel in line is greater than right pixel
     if (fabs(Diff_(input.GetValBnds(x + 1, y - 1), input.GetValBnds(x + 1, y))) > threshold_) {
       // if Diff(a, b) > 0.5
       // _____
@@ -310,7 +314,7 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, const Image& input, int length, int
   //      |[][][][][]|{}
   //      ¯¯¯¯¯¯¯¯¯¯¯¯
   //          0.0f
-  if (((PixelInfo*)((char*)info_ptr - info_.GetPitch()))->dis_dir_v == true) { // last pixel in line is greater than bottom pixel
+  if (((PixelInfo*)((char*)info_ptr - info_.GetPitch()))->dis_dir_y == true) { // last pixel in line is greater than bottom pixel
     if (fabs(Diff_(input.GetValBnds(x, y - length - 1), input.GetVal(x, y - length))) > threshold_) {
       // if Diff(a, b) > 0.5
       // _____            ______
@@ -350,7 +354,7 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, const Image& input, int length, int
     for ( ; pos >= 0 ; --pos) {
       l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
       l_i->pos_v = pos;
-      l_i->length_v = half_length;
+      l_i->length_y = half_length;
     }
     if (length % 2) { // Is odd
       pos = 1;
@@ -360,19 +364,19 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, const Image& input, int length, int
     for ( ; pos <= max_pos; ++pos) {
       l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
       l_i->pos_v = pos;
-      l_i->length_v = half_length;
+      l_i->length_y = half_length;
     }
   } else if (start_orientation == true && end_orientation == true) { // Start blends, end does NOT blend
     for (int pos = 0; pos <= length - 1; ++pos) {
       l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
       l_i->pos_v = pos;
-      l_i->length_v = length;
+      l_i->length_y = length;
     }
   } else if (start_orientation == false && end_orientation == false) { // Start does NOT blend, end does blend
     for (int pos = length - 1; pos >= 0; --pos) {
       l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
       l_i->pos_v = pos;
-      l_i->length_v = length;
+      l_i->length_y = length;
     }
   }
 }
@@ -398,19 +402,19 @@ void MorphAA::BlendPixels_(const Bounds& region, const Image& input, Image& outp
 
       *out_ptr = *in_ptr;
 
-      if (info_ptr->dis_dir_h && info_ptr->length_h >= 1) {
-        float blend = CalcTrapArea_(info_ptr->pos_h, info_ptr->length_h);
+      if (info_ptr->dis_dir_x && info_ptr->length_x >= 1) {
+        float blend = CalcTrapArea_(info_ptr->pos_h, info_ptr->length_x);
         *out_ptr = blend * *b_ptr + (1.0f - blend) * *out_ptr;
-      } else if(!t_info_ptr->dis_dir_h && t_info_ptr->length_h >= 1) {
-        float blend = CalcTrapArea_(t_info_ptr->pos_h, t_info_ptr->length_h);
+      } else if(!t_info_ptr->dis_dir_x && t_info_ptr->length_x >= 1) {
+        float blend = CalcTrapArea_(t_info_ptr->pos_h, t_info_ptr->length_x);
         *out_ptr = blend * *t_ptr + (1.0f - blend) * *out_ptr;
       }
 
-      if (info_ptr->dis_dir_v && info_ptr->length_v >= 1) {
-        float blend = CalcTrapArea_(info_ptr->pos_v, info_ptr->length_v);
+      if (info_ptr->dis_dir_y && info_ptr->length_y >= 1) {
+        float blend = CalcTrapArea_(info_ptr->pos_v, info_ptr->length_y);
         *out_ptr = blend * *r_ptr + (1.0f - blend) * *out_ptr;
-      } else if(!l_info_ptr->dis_dir_v && l_info_ptr->length_v >= 1) {
-        float blend = CalcTrapArea_(l_info_ptr->pos_v, l_info_ptr->length_v);
+      } else if(!l_info_ptr->dis_dir_y && l_info_ptr->length_y >= 1) {
+        float blend = CalcTrapArea_(l_info_ptr->pos_v, l_info_ptr->length_y);
         *out_ptr = blend * *l_ptr + (1.0f - blend) * *out_ptr;
       }
 
