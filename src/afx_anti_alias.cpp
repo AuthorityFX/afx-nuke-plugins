@@ -134,7 +134,6 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
         in_img.MemCpyIn(&source_plane.readable()[source_plane.chanNo(z) * source_plane.chanStride()], source_plane.rowStride() * sizeof(float), in_img.GetBounds());
         out_imgs_.AddImage(req_pad_bnds);
         out_imgs_.GetBackPtr()->AddAttribute("channel", z);
-        out_imgs_.GetBackPtr()->MemCpyIn(in_img.GetPtr(), in_img.GetPitch(), in_img.GetBounds());
         afx::MorphAA aa;
         aa.Process(in_img, *out_imgs_.GetBackPtr(), k_threshold_, threader_);
       }
