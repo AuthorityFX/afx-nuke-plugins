@@ -57,21 +57,16 @@ class ImageInfo {
 
 class MorphAA {
  private:
-
   ImageInfo info_;
   float threshold_;
 
-  float Diff_(float a, float b) {
-    return (a - b) / (a + b);
-  }
-  float CalcTrapArea_(int pos, float length) {
-    length = fmaxf(length, 0.008);
-    return (float)pos / length + (0.5f / length);
-  }
-
+  float Diff_(float a, float b);
+  float CalcTrapArea_(int pos, float length);
   void MarkDisc_(const Bounds& region, const Image& input);
-  void FindHorLines_(const Bounds& region, const Image& input);
-  void FindVertLines_(const Bounds& region, const Image& input);
+  void FindXLines_(const Bounds& region, const Image& input);
+  void FindYLines_(const Bounds& region, const Image& input);
+  void SetXLine_(PixelInfo* info_ptr, const Image& input, int length, int x, int y);
+  void SetYLine_(PixelInfo* info_ptr, const Image& input, int length, int x, int y);
   void BlendPixels_(const Bounds& region, const Image& input, Image& output);
 
  public:

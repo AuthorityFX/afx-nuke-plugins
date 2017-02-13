@@ -43,7 +43,13 @@ PixelInfo* ImageInfo::GetPtr(unsigned int x, unsigned int y) const {
 size_t ImageInfo::GetPitch() const { return pitch_; }
 Bounds ImageInfo::GetBounds() const { return region_; }
 
-
+float MorphAA::CalcTrapArea_(int pos, float length) {
+  length = fmaxf(length, 0.008);
+  return (float)pos / length + (0.5f / length);
+}
+float MorphAA::Diff_(float a, float b) {
+  return (a - b) / (a + b);
+}
 void MorphAA::MarkDisc_(const Bounds& region, const Image& input) {
   for (int y = region.y1(); y <= region.y2(); ++y) {
     const float* in_ptr = input.GetPtr(region.x1(), y);
@@ -76,283 +82,297 @@ void MorphAA::MarkDisc_(const Bounds& region, const Image& input) {
     }
   }
 }
-// Find horizontal lines
-void MorphAA::FindHorLines_(const Bounds& region, const Image& input) {
+// Find X lines
+void MorphAA::FindXLines_(const Bounds& region, const Image& input) {
   PixelInfo* info_ptr = nullptr;
   for (int y = region.y1(); y <= region.y2(); ++y) {
     info_ptr = info_.GetPtr(region.x1(), y);
     int length = 0;  // Length of line, also used to determine if looking for new line or end of line.
     bool direction;  // Direction of discontinuity
     for (int x = region.x1(); x <= region.x2(); ++x) {
-      if (length == 0) { // if new line found
-        if(info_ptr->dis_h == true) { // if new line found
-          length++;
-          direction = info_ptr->dis_dir_h;
+      switch (length) { // if new line found
+        case 0: {
+          if(info_ptr->dis_h == true) { // if new line found
+            length++;
+            direction = info_ptr->dis_dir_h;
+          }
+          break;
         }
-      } else { // looking for end of line
-        if(info_ptr->dis_h == true && x < info_.GetBounds().x2() && direction == info_ptr->dis_dir_h) {
-          length++;
-        } else { // End of line, loop back through and set info for all pixels in line
-
-          bool start_orientation, end_orientation;
-          // 'end_orientation = true' means the end of the line is no blend, ie. CalcBlendingWeights returns 0 for pos = length - 1
-          // [] is a pixel in the line
-          // {} is the current pixel x, y
-          // _____    1.0f    ______
-          //      |[][][][][]|{}
-          //      ¯¯¯¯¯¯¯¯¯¯¯¯
-          //          0.0f
-          if ((info_ptr - 1)->dis_dir_h == true) { // last pixel in line is greater than bottom pixel
-            if (fabs(Diff_(input.GetValBnds(x - 1, y - 1), input.GetValBnds(x, y - 1))) > threshold_) {
-              // if Diff(a, b) > 0.5
-              // _____
-              //      |[][][][][]|{}
-              //      ¯¯¯¯¯¯¯¯¯¯a|_b_____
-              end_orientation = true;
-            } else { // Since we know the pixel above "b" has no dis_h, end is by default orientation false
-              // _____           ______
-              //      |[][][][][]|{}
-              //      ¯¯¯¯¯¯¯¯¯¯¯¯
-              end_orientation = false;
-            }
-          //          0.0f
-          //       [][][][][]{}
-          // _____|¯¯¯¯¯¯¯¯¯¯|______
-          //          1.0f
-          } else { // last pixel in line is less than bottom pixel
-            if (fabs(Diff_(input.GetVal(x - 1, y), input.GetVal(x, y))) > threshold_) {
-              // if Diff(a, b) > 0.5
-              //                  _______
-              //       [][][][][a]|{b}
-              // _____|¯¯¯¯¯¯¯¯¯¯¯
-              end_orientation = true;
-            } else {
-              //       [][][][][]{}
-              // _____|¯¯¯¯¯¯¯¯¯¯|_____
-              end_orientation = false;
-            }
+        default: { // looking for end of line
+          if(info_ptr->dis_h == true && x < info_.GetBounds().x2() && direction == info_ptr->dis_dir_h) {
+            length++;
+          } else { // End of line, loop back through and set info for all pixels in line
+            SetXLine_(info_ptr, input, length, x, y);
+            // Search for new line form this pixel. Decrement all counters.
+            x--;
+            info_ptr--;
+            length = 0;
           }
-
-          // 'start_orientation = true' means the start of the line is full blend, ie. CalcBlendingWeights returns 1 for pos = 0;
-          // [] is a pixel in the line
-          // {} is the current pixel x, y
-          // _____    1.0f    ______
-          //      |[][][][][]|{}
-          //      ¯¯¯¯¯¯¯¯¯¯¯¯
-          //          0.0f
-          if ((info_ptr - 1)->dis_dir_h == true) { // last pixel in line is greater than bottom pixel
-            if (fabs(Diff_(input.GetValBnds(x - length - 1, y), input.GetVal(x - length, y))) > threshold_) {
-              // if Diff(a, b) > 0.5
-              // _____            ______
-              //     a|[b][][][][]|{}
-              //      ¯¯¯¯¯¯¯¯¯¯¯¯
-              start_orientation = true;
-            } else { // Since we know "a" has no dis_h, start is by default orientation false
-              //                 ______
-              //       [][][][][]|{}
-              // _____|¯¯¯¯¯¯¯¯¯¯
-              start_orientation = false;
-            }
-            //          0.0f
-            //       [][][][][]{}
-            // _____|¯¯¯¯¯¯¯¯¯¯|______
-            //          1.0f
-          } else { // last pixel in line is less than bottom pixel
-            if (fabs(Diff_(input.GetValBnds(x - length - 1, y - 1), input.GetValBnds(x - length, y - 1))) > threshold_) {
-              // if Diff(a, b) > 0.5
-              //
-              //       [][][][][]{}
-              // ____a|b¯¯¯¯¯¯¯¯¯|_____
-              start_orientation = true;
-            } else {
-              // _____
-              //      |[][][][][]{}
-              //       ¯¯¯¯¯¯¯¯¯¯|_____
-              start_orientation = false;
-            }
-          }
-          // Loop back through line and pos and length based on end orientations
-          PixelInfo* l_i = info_ptr;
-          if (start_orientation == true && end_orientation == false) { // Both ends blend
-            float half_length = length / 2.0f + 0.5;
-            int max_pos = (int)floor((length - 1) / 2.0f);
-            int pos = max_pos;
-            for ( ; pos >= 0 ; --pos) {
-              l_i--;
-              l_i->pos_h = pos;
-              l_i->length_h = half_length;
-            }
-            if (length % 2) { // Is odd
-              pos = 1;
-            } else { // Is even
-              pos = 0;
-            }
-            for ( ; pos <= max_pos; ++pos) {
-              l_i--;
-              l_i->pos_h = pos;
-              l_i->length_h = half_length;
-            }
-          } else if (start_orientation == true && end_orientation == true) { // Start blends, end does NOT blend
-            for (int pos = 0; pos <= length - 1; ++pos) {
-              l_i--;
-              l_i->pos_h = pos;
-              l_i->length_h = length;
-            }
-          } else if (start_orientation == false && end_orientation == false) { // Start does NOT blend, end does blend
-            for (int pos = length - 1; pos >= 0; --pos) {
-              l_i--;
-              l_i->pos_h = pos;
-              l_i->length_h = length;
-            }
-          }
-          // Search for new line form this pixel. Decrement all counters.
-          x--;
-          info_ptr--;
-          length = 0;
+          break;
         }
       }
       info_ptr++;
     }
   }
 }
-// Find vertical lines
-void MorphAA::FindVertLines_(const Bounds& region, const Image& input) {
+// Find Y lines
+void MorphAA::FindYLines_(const Bounds& region, const Image& input) {
   PixelInfo* info_ptr = nullptr;
   for (int x = region.x1(); x <= region.x2(); ++x) {
     info_ptr = info_.GetPtr(x, region.y1());
     int length = 0; // Length of line, also used to determine if looking for new line or end of line.
     bool direction; // Directoin of discontinuity
     for (int y = region.y1(); y <= region.y2(); ++y) {
-      if (length == 0) { // if loooking for new line
-        if(info_ptr->dis_v == true) { // if new line found
-          length++;
-          direction = info_ptr->dis_dir_v;
+      switch (length) { // if new line found
+        case 0: {
+          if(info_ptr->dis_v == true) { // if new line found
+            length++;
+            direction = info_ptr->dis_dir_v;
+          }
+          break;
         }
-      }
-      else { // Looking for end of line
-        if(info_ptr->dis_v == true && y < info_.GetBounds().y2() && direction == info_ptr->dis_dir_v) { // Line continues
-          length++;
-        } else { // End of line
-
-          bool start_orientation, end_orientation;
-
-          // 'end_orientation = true' means the end of the line is no blend, ie. CalcBlendingWeights returns 0 for pos = length - 1
-          // [] is a pixel in the line
-          // {} is the current pixel x, y
-          // _____    1.0f    ______
-          //      |[][][][][]|{}
-          //      ¯¯¯¯¯¯¯¯¯¯¯¯
-          //          0.0f
-          if (((PixelInfo*)((char*)info_ptr - info_.GetPitch()))->dis_dir_v == true) { // last pixel in line is greater than right pixel
-            if (fabs(Diff_(input.GetValBnds(x + 1, y - 1), input.GetValBnds(x + 1, y))) > threshold_) {
-              // if Diff(a, b) > 0.5
-              // _____
-              //      |[][][][][]|{}
-              //      ¯¯¯¯¯¯¯¯¯¯a|_b_____
-              end_orientation = true;
-            } else { // Since we know the pixel above "b" has no dis_h, end is by default orientation false
-              // _____           ______
-              //      |[][][][][]|{}
-              //      ¯¯¯¯¯¯¯¯¯¯¯¯
-              end_orientation = false;
-            }
-            //          0.0f
-            //       [][][][][]{}
-            // _____|¯¯¯¯¯¯¯¯¯¯|______
-            //          1.0f
-          } else { // last pixel in line is less than bottom pixel
-            if (fabs(Diff_(input.GetVal(x, y - 1), input.GetVal(x, y))) > threshold_) {
-              // if Diff(a, b) > 0.5
-              //                  _______
-              //       [][][][][a]|{b}
-              // _____|¯¯¯¯¯¯¯¯¯¯¯
-              end_orientation = true;
-            } else {
-              //       [][][][][]{}
-              // _____|¯¯¯¯¯¯¯¯¯¯|_____
-              end_orientation = false;
-            }
+        default: { // Looking for end of line
+          if(info_ptr->dis_v == true && y < info_.GetBounds().y2() && direction == info_ptr->dis_dir_v) { // Line continues
+            length++;
+          } else { // End of line
+            SetYLine_(info_ptr, input, length, x, y);
+            // Search for new line form this pixel. Decrement all counters.
+            y--;
+            info_ptr = (PixelInfo*)((char*)info_ptr - info_.GetPitch());
+            length = 0;
           }
-
-          // 'start_orientation = true' means the start of the line is full blend, ie. CalcBlendingWeights returns 1 for pos = 0;
-          // [] is a pixel in the line
-          // {} is the current pixel x, y
-          // _____    1.0f    ______
-          //      |[][][][][]|{}
-          //      ¯¯¯¯¯¯¯¯¯¯¯¯
-          //          0.0f
-          if (((PixelInfo*)((char*)info_ptr - info_.GetPitch()))->dis_dir_v == true) { // last pixel in line is greater than bottom pixel
-            if (fabs(Diff_(input.GetValBnds(x, y - length - 1), input.GetVal(x, y - length))) > threshold_) {
-              // if Diff(a, b) > 0.5
-              // _____            ______
-              //     a|[b][][][][]|{}
-              //      ¯¯¯¯¯¯¯¯¯¯¯¯
-              start_orientation = true;
-            } else { // Since we know "a" has no dis_h, start is by default orientation false
-              //                 ______
-              //       [][][][][]|{}
-              // _____|¯¯¯¯¯¯¯¯¯¯
-              start_orientation = false;
-            }
-            //          0.0f
-            //       [][][][][]{}
-            // _____|¯¯¯¯¯¯¯¯¯¯|______
-            //          1.0f
-          } else { // last pixel in line is less than bottom pixel
-            if (fabs(Diff_(input.GetValBnds(x + 1, y - length - 1), input.GetValBnds(x + 1, y - length))) > threshold_) {
-              // if Diff(a, b) > 0.5
-              //
-              //       [][][][][]{}
-              // ____a|b¯¯¯¯¯¯¯¯¯|_____
-              start_orientation = true;
-            } else {
-              // _____
-              //      |[][][][][]{}
-              //       ¯¯¯¯¯¯¯¯¯¯|_____
-              start_orientation = false;
-            }
-          }
-          // Loop back through line and pos and length based on end orientations
-          PixelInfo* l_i = info_ptr;
-          if (start_orientation == true && end_orientation == false) { // Both ends blend
-            float half_length = length / 2.0f + 0.5;
-            int max_pos = (int)floor((length - 1) / 2.0f);
-            int pos = max_pos;
-            for ( ; pos >= 0 ; --pos) {
-              l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
-              l_i->pos_v = pos;
-              l_i->length_v = half_length;
-            }
-            if (length % 2) { // Is odd
-              pos = 1;
-            } else { // Is even
-              pos = 0;
-            }
-            for ( ; pos <= max_pos; ++pos) {
-              l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
-              l_i->pos_v = pos;
-              l_i->length_v = half_length;
-            }
-          } else if (start_orientation == true && end_orientation == true) { // Start blends, end does NOT blend
-            for (int pos = 0; pos <= length - 1; ++pos) {
-              l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
-              l_i->pos_v = pos;
-              l_i->length_v = length;
-            }
-          } else if (start_orientation == false && end_orientation == false) { // Start does NOT blend, end does blend
-            for (int pos = length - 1; pos >= 0; --pos) {
-              l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
-              l_i->pos_v = pos;
-              l_i->length_v = length;
-            }
-          }
-          // Search for new line form this pixel. Decrement all counters.
-          y--;
-          info_ptr = (PixelInfo*)((char*)info_ptr - info_.GetPitch());
-          length = 0;
+          break;
         }
       }
       info_ptr = (PixelInfo*)((char*)info_ptr + info_.GetPitch());
+    }
+  }
+}
+// Set X Line
+void MorphAA::SetXLine_(PixelInfo* info_ptr, const Image& input, int length, int x, int y) {
+  bool start_orientation, end_orientation;
+  // 'end_orientation = true' means the end of the line is no blend, ie. CalcBlendingWeights returns 0 for pos = length - 1
+  // [] is a pixel in the line
+  // {} is the current pixel x, y
+  // _____    1.0f    ______
+  //      |[][][][][]|{}
+  //      ¯¯¯¯¯¯¯¯¯¯¯¯
+  //          0.0f
+  if ((info_ptr - 1)->dis_dir_h == true) { // last pixel in line is greater than bottom pixel
+    if (fabs(Diff_(input.GetValBnds(x - 1, y - 1), input.GetValBnds(x, y - 1))) > threshold_) {
+      // if Diff(a, b) > 0.5
+      // _____
+      //      |[][][][][]|{}
+      //      ¯¯¯¯¯¯¯¯¯¯a|_b_____
+      end_orientation = true;
+    } else { // Since we know the pixel above "b" has no dis_h, end is by default orientation false
+      // _____           ______
+      //      |[][][][][]|{}
+      //      ¯¯¯¯¯¯¯¯¯¯¯¯
+      end_orientation = false;
+    }
+    //          0.0f
+    //       [][][][][]{}
+    // _____|¯¯¯¯¯¯¯¯¯¯|______
+    //          1.0f
+  } else { // last pixel in line is less than bottom pixel
+    if (fabs(Diff_(input.GetVal(x - 1, y), input.GetVal(x, y))) > threshold_) {
+      // if Diff(a, b) > 0.5
+      //                  _______
+      //       [][][][][a]|{b}
+      // _____|¯¯¯¯¯¯¯¯¯¯¯
+      end_orientation = true;
+    } else {
+      //       [][][][][]{}
+      // _____|¯¯¯¯¯¯¯¯¯¯|_____
+      end_orientation = false;
+    }
+  }
+
+  // 'start_orientation = true' means the start of the line is full blend, ie. CalcBlendingWeights returns 1 for pos = 0;
+  // [] is a pixel in the line
+  // {} is the current pixel x, y
+  // _____    1.0f    ______
+  //      |[][][][][]|{}
+  //      ¯¯¯¯¯¯¯¯¯¯¯¯
+  //          0.0f
+  if ((info_ptr - 1)->dis_dir_h == true) { // last pixel in line is greater than bottom pixel
+    if (fabs(Diff_(input.GetValBnds(x - length - 1, y), input.GetVal(x - length, y))) > threshold_) {
+      // if Diff(a, b) > 0.5
+      // _____            ______
+      //     a|[b][][][][]|{}
+      //      ¯¯¯¯¯¯¯¯¯¯¯¯
+      start_orientation = true;
+    } else { // Since we know "a" has no dis_h, start is by default orientation false
+      //                 ______
+      //       [][][][][]|{}
+      // _____|¯¯¯¯¯¯¯¯¯¯
+      start_orientation = false;
+    }
+    //          0.0f
+    //       [][][][][]{}
+    // _____|¯¯¯¯¯¯¯¯¯¯|______
+    //          1.0f
+  } else { // last pixel in line is less than bottom pixel
+    if (fabs(Diff_(input.GetValBnds(x - length - 1, y - 1), input.GetValBnds(x - length, y - 1))) > threshold_) {
+      // if Diff(a, b) > 0.5
+      //
+      //       [][][][][]{}
+      // ____a|b¯¯¯¯¯¯¯¯¯|_____
+      start_orientation = true;
+    } else {
+      // _____
+      //      |[][][][][]{}
+      //       ¯¯¯¯¯¯¯¯¯¯|_____
+      start_orientation = false;
+    }
+  }
+  // Loop back through line and pos and length based on end orientations
+  PixelInfo* l_i = info_ptr;
+  if (start_orientation == true && end_orientation == false) { // Both ends blend
+    float half_length = length / 2.0f + 0.5;
+    int max_pos = (int)floor((length - 1) / 2.0f);
+    int pos = max_pos;
+    for ( ; pos >= 0 ; --pos) {
+      l_i--;
+      l_i->pos_h = pos;
+      l_i->length_h = half_length;
+    }
+    if (length % 2) { // Is odd
+      pos = 1;
+    } else { // Is even
+      pos = 0;
+    }
+    for ( ; pos <= max_pos; ++pos) {
+      l_i--;
+      l_i->pos_h = pos;
+      l_i->length_h = half_length;
+    }
+  } else if (start_orientation == true && end_orientation == true) { // Start blends, end does NOT blend
+    for (int pos = 0; pos <= length - 1; ++pos) {
+      l_i--;
+      l_i->pos_h = pos;
+      l_i->length_h = length;
+    }
+  } else if (start_orientation == false && end_orientation == false) { // Start does NOT blend, end does blend
+    for (int pos = length - 1; pos >= 0; --pos) {
+      l_i--;
+      l_i->pos_h = pos;
+      l_i->length_h = length;
+    }
+  }
+}
+// Set Y Line
+void MorphAA::SetYLine_(PixelInfo* info_ptr, const Image& input, int length, int x, int y) {
+  bool start_orientation, end_orientation;
+  // 'end_orientation = true' means the end of the line is no blend, ie. CalcBlendingWeights returns 0 for pos = length - 1
+  // [] is a pixel in the line
+  // {} is the current pixel x, y
+  // _____    1.0f    ______
+  //      |[][][][][]|{}
+  //      ¯¯¯¯¯¯¯¯¯¯¯¯
+  //          0.0f
+  if (((PixelInfo*)((char*)info_ptr - info_.GetPitch()))->dis_dir_v == true) { // last pixel in line is greater than right pixel
+    if (fabs(Diff_(input.GetValBnds(x + 1, y - 1), input.GetValBnds(x + 1, y))) > threshold_) {
+      // if Diff(a, b) > 0.5
+      // _____
+      //      |[][][][][]|{}
+      //      ¯¯¯¯¯¯¯¯¯¯a|_b_____
+      end_orientation = true;
+    } else { // Since we know the pixel above "b" has no dis_h, end is by default orientation false
+      // _____           ______
+      //      |[][][][][]|{}
+      //      ¯¯¯¯¯¯¯¯¯¯¯¯
+      end_orientation = false;
+    }
+    //          0.0f
+    //       [][][][][]{}
+    // _____|¯¯¯¯¯¯¯¯¯¯|______
+    //          1.0f
+  } else { // last pixel in line is less than bottom pixel
+    if (fabs(Diff_(input.GetVal(x, y - 1), input.GetVal(x, y))) > threshold_) {
+      // if Diff(a, b) > 0.5
+      //                  _______
+      //       [][][][][a]|{b}
+      // _____|¯¯¯¯¯¯¯¯¯¯¯
+      end_orientation = true;
+    } else {
+      //       [][][][][]{}
+      // _____|¯¯¯¯¯¯¯¯¯¯|_____
+      end_orientation = false;
+    }
+  }
+
+  // 'start_orientation = true' means the start of the line is full blend, ie. CalcBlendingWeights returns 1 for pos = 0;
+  // [] is a pixel in the line
+  // {} is the current pixel x, y
+  // _____    1.0f    ______
+  //      |[][][][][]|{}
+  //      ¯¯¯¯¯¯¯¯¯¯¯¯
+  //          0.0f
+  if (((PixelInfo*)((char*)info_ptr - info_.GetPitch()))->dis_dir_v == true) { // last pixel in line is greater than bottom pixel
+    if (fabs(Diff_(input.GetValBnds(x, y - length - 1), input.GetVal(x, y - length))) > threshold_) {
+      // if Diff(a, b) > 0.5
+      // _____            ______
+      //     a|[b][][][][]|{}
+      //      ¯¯¯¯¯¯¯¯¯¯¯¯
+      start_orientation = true;
+    } else { // Since we know "a" has no dis_h, start is by default orientation false
+      //                 ______
+      //       [][][][][]|{}
+      // _____|¯¯¯¯¯¯¯¯¯¯
+      start_orientation = false;
+    }
+    //          0.0f
+    //       [][][][][]{}
+    // _____|¯¯¯¯¯¯¯¯¯¯|______
+    //          1.0f
+  } else { // last pixel in line is less than bottom pixel
+    if (fabs(Diff_(input.GetValBnds(x + 1, y - length - 1), input.GetValBnds(x + 1, y - length))) > threshold_) {
+      // if Diff(a, b) > 0.5
+      //
+      //       [][][][][]{}
+      // ____a|b¯¯¯¯¯¯¯¯¯|_____
+      start_orientation = true;
+    } else {
+      // _____
+      //      |[][][][][]{}
+      //       ¯¯¯¯¯¯¯¯¯¯|_____
+      start_orientation = false;
+    }
+  }
+  // Loop back through line and pos and length based on end orientations
+  PixelInfo* l_i = info_ptr;
+  if (start_orientation == true && end_orientation == false) { // Both ends blend
+    float half_length = length / 2.0f + 0.5;
+    int max_pos = (int)floor((length - 1) / 2.0f);
+    int pos = max_pos;
+    for ( ; pos >= 0 ; --pos) {
+      l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
+      l_i->pos_v = pos;
+      l_i->length_v = half_length;
+    }
+    if (length % 2) { // Is odd
+      pos = 1;
+    } else { // Is even
+      pos = 0;
+    }
+    for ( ; pos <= max_pos; ++pos) {
+      l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
+      l_i->pos_v = pos;
+      l_i->length_v = half_length;
+    }
+  } else if (start_orientation == true && end_orientation == true) { // Start blends, end does NOT blend
+    for (int pos = 0; pos <= length - 1; ++pos) {
+      l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
+      l_i->pos_v = pos;
+      l_i->length_v = length;
+    }
+  } else if (start_orientation == false && end_orientation == false) { // Start does NOT blend, end does blend
+    for (int pos = length - 1; pos >= 0; --pos) {
+      l_i = (PixelInfo*)((char*)l_i - info_.GetPitch());
+      l_i->pos_v = pos;
+      l_i->length_v = length;
     }
   }
 }
@@ -407,9 +427,9 @@ void MorphAA::Process(const Image& input, Image& output, float threshold, afx::T
 
   threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::MarkDisc_, this, _1, boost::cref(input)));
   threader.Synchonize();
-  threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::FindHorLines_, this, _1, boost::cref(input)));
+  threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::FindXLines_, this, _1, boost::cref(input)));
   threader.Synchonize();
-  threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::FindVertLines_, this, _1, boost::cref(input)));
+  threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::FindYLines_, this, _1, boost::cref(input)));
   threader.Synchonize();
   threader.ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::BlendPixels_, this, _1, boost::cref(input), boost::ref(output)));
   threader.Synchonize();
@@ -420,10 +440,9 @@ void MorphAA::Process(const Image& input, Image& output, float threshold) {
   info_.Create(input.GetBounds());
 
   MarkDisc_(info_.GetBounds(), input);
-  FindHorLines_(info_.GetBounds(), input);
-  FindVertLines_(info_.GetBounds(), input);
+  FindXLines_(info_.GetBounds(), input);
+  FindYLines_(info_.GetBounds(), input);
   BlendPixels_(info_.GetBounds(), input, output);
 }
-
 
 } // namespace afx
