@@ -95,7 +95,6 @@ void MorphAA::FindHorLines_(const Bounds& region, const Image& input) {
         } else { // End of line, loop back through and set info for all pixels in line
 
           bool start_orientation, end_orientation;
-          // TODO start and replicate borders??
           // 'end_orientation = true' means the end of the line is no blend, ie. CalcBlendingWeights returns 0 for pos = length - 1
           // [] is a pixel in the line
           // {} is the current pixel x, y
@@ -104,7 +103,7 @@ void MorphAA::FindHorLines_(const Bounds& region, const Image& input) {
           //      ¯¯¯¯¯¯¯¯¯¯¯¯
           //          0.0f
           if ((info_ptr - 1)->dis_dir_h == true) { // last pixel in line is greater than bottom pixel
-            if (fabs(Diff_(input.GetVal(x - 1, y - 1), input.GetVal(x, y - 1))) > threshold_) {
+            if (fabs(Diff_(input.GetValBnds(x - 1, y - 1), input.GetValBnds(x, y - 1))) > threshold_) {
               // if Diff(a, b) > 0.5
               // _____
               //      |[][][][][]|{}
@@ -142,7 +141,7 @@ void MorphAA::FindHorLines_(const Bounds& region, const Image& input) {
           //      ¯¯¯¯¯¯¯¯¯¯¯¯
           //          0.0f
           if ((info_ptr - 1)->dis_dir_h == true) { // last pixel in line is greater than bottom pixel
-            if (fabs(Diff_(input.GetVal(x - length - 1, y), input.GetVal(x - length, y))) > threshold_) {
+            if (fabs(Diff_(input.GetValBnds(x - length - 1, y), input.GetVal(x - length, y))) > threshold_) {
               // if Diff(a, b) > 0.5
               // _____            ______
               //     a|[b][][][][]|{}
@@ -159,7 +158,7 @@ void MorphAA::FindHorLines_(const Bounds& region, const Image& input) {
             // _____|¯¯¯¯¯¯¯¯¯¯|______
             //          1.0f
           } else { // last pixel in line is less than bottom pixel
-            if (fabs(Diff_(input.GetVal(x - length - 1, y - 1), input.GetVal(x - length, y - 1))) > threshold_) {
+            if (fabs(Diff_(input.GetValBnds(x - length - 1, y - 1), input.GetValBnds(x - length, y - 1))) > threshold_) {
               // if Diff(a, b) > 0.5
               //
               //       [][][][][]{}
@@ -262,7 +261,7 @@ void MorphAA::FindVertLines_(const Bounds& region, const Image& input) {
             // _____|¯¯¯¯¯¯¯¯¯¯|______
             //          1.0f
           } else { // last pixel in line is less than bottom pixel
-            if (fabs(Diff_(input.GetValBnds(x, y - 1), input.GetValBnds(x, y))) > threshold_) {
+            if (fabs(Diff_(input.GetVal(x, y - 1), input.GetVal(x, y))) > threshold_) {
               // if Diff(a, b) > 0.5
               //                  _______
               //       [][][][][a]|{b}
@@ -283,7 +282,7 @@ void MorphAA::FindVertLines_(const Bounds& region, const Image& input) {
           //      ¯¯¯¯¯¯¯¯¯¯¯¯
           //          0.0f
           if (((PixelInfo*)((char*)info_ptr - info_.GetPitch()))->dis_dir_v == true) { // last pixel in line is greater than bottom pixel
-            if (fabs(Diff_(input.GetValBnds(x, y - length - 1), input.GetValBnds(x, y - length))) > threshold_) {
+            if (fabs(Diff_(input.GetValBnds(x, y - length - 1), input.GetVal(x, y - length))) > threshold_) {
               // if Diff(a, b) > 0.5
               // _____            ______
               //     a|[b][][][][]|{}
