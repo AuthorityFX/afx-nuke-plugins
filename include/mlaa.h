@@ -61,10 +61,10 @@ class MorphAA {
   ImageInfo info_;
   float threshold_;
 
-  inline float Diff_(float a, float b) {
+  float Diff_(float a, float b) {
     return (a - b) / (a + b);
   }
-  inline float CalcTrapArea_(int pos, float length) {
+  float CalcTrapArea_(int pos, float length) {
     length = fmaxf(length, 0.008);
     return (float)pos / length + (0.5f / length);
   }

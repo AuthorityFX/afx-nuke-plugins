@@ -30,7 +30,7 @@
 namespace afx {
 
 // Cuda error handling functions
-inline void IppSafeCall(IppStatus status) {
+void IppSafeCall(IppStatus status) {
   if (status != ippStsNoErr) { throw status; }
 }
 

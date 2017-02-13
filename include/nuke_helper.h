@@ -19,14 +19,14 @@ using namespace DD::Image;
 
 namespace afx {
 
-  inline afx::Bounds BoxToBounds(Box box) {
+  afx::Bounds BoxToBounds(Box box) {
     return afx::Bounds(box.x(), box.y(), box.r() - 1, box.t() - 1);
   }
-  inline Box BoundsToBox(afx::Bounds bnds) {
+  Box BoundsToBox(afx::Bounds bnds) {
     return Box(bnds.x1(), bnds.y1(), bnds.x2() + 1, bnds.y2() + 1);
   }
 
-  inline afx::Bounds InputBounds(Iop* input) {
+  afx::Bounds InputBounds(Iop* input) {
     return afx::BoxToBounds(input->info().box());
   }
 

@@ -22,10 +22,10 @@
 namespace afx {
 
 // Cuda error handling functions
-inline void CudaSafeCall(cudaError err) {
+void CudaSafeCall(cudaError err) {
   if (err != cudaSuccess) { throw err; }
 }
-inline void CudaCheckError() {
+void CudaCheckError() {
   cudaError err = cudaGetLastError();
   CudaSafeCall(err);
 }

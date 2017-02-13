@@ -18,7 +18,7 @@ namespace afx {
 
 template<typename T>
 __host__ __device__
-inline T Clamp(T value, T min_v, T max_v) {
+T Clamp(T value, T min_v, T max_v) {
   return value >= min_v ? value <= max_v ? value : max_v : min_v;
 }
 
@@ -191,7 +191,7 @@ public:
   }
   ~ReadOnlyPixel() { Dispose(); }
 
-  inline void NextPixel() {
+  void NextPixel() {
     for (unsigned int i = 0; i < size_; ++i) {
       if (pixel_ != nullptr) { pixel_[i]++; }
     }

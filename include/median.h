@@ -13,19 +13,19 @@
 namespace afx {
 
 __host__ __device__
-inline void Swap(float& a, float& b) {
+void Swap(float& a, float& b) {
   float temp = a;
   a = b;
   b = temp;
 }
 
 __host__ __device__
-inline void Sort(float& a, float& b) {
+void Sort(float& a, float& b) {
   if (a > b) { Swap(a, b); }
 }
 
 __host__ __device__
-inline float MedQuick9(float* p)
+float MedQuick9(float* p)
 {
   Sort(p[1], p[2]); Sort(p[4], p[5]); Sort(p[7], p[8]);
   Sort(p[0], p[1]); Sort(p[3], p[4]); Sort(p[6], p[7]);
@@ -38,7 +38,7 @@ inline float MedQuick9(float* p)
 }
 
 __host__ __device__
-inline float MedQuick25(float* p)
+float MedQuick25(float* p)
 {
   Sort(p[0],  p[1]);  Sort(p[3],  p[4]);  Sort(p[2],  p[4]);
   Sort(p[2],  p[3]);  Sort(p[6],  p[7]);  Sort(p[5],  p[7]);
@@ -81,7 +81,7 @@ inline float MedQuick25(float* p)
 // Cambridge University Press, 1992, Section 8.5, ISBN 0-521-43108-5
 // This code by Nicolas Devillard - 1998. Public domain.
 __host__ __device__
-inline float MedianQuickSelect(float* list, int n) {
+float MedianQuickSelect(float* list, int n) {
 
   switch (n) {
     case 9: { return MedQuick9(list); }

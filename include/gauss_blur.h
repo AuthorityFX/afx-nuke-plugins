@@ -17,14 +17,14 @@ namespace {
 
 class GaussianBlur : private Threader {
  private:
-  inline void HorizontalGaussianBlur(Bounds region, AfxImageBase* in, AfxImageBase* out, float* kernel, int kernel_size);
-  inline void VerticalGaussianBlur(Bounds region, AfxImageBase* in, AfxImageBase* out, float* kernel, int kernel_size);
+  void HorizontalGaussianBlur(Bounds region, AfxImageBase* in, AfxImageBase* out, float* kernel, int kernel_size);
+  void VerticalGaussianBlur(Bounds region, AfxImageBase* in, AfxImageBase* out, float* kernel, int kernel_size);
 
  public:
   GaussianBlur(Bounds region) : Threader(region) {}
 
   void Process(AfxImageBase* in, float blurRadius) { Process(in, in, blurRadius); }
-  inline void Process(AfxImageBase* in, AfxImageBase* out, float blurRadius);
+  void Process(AfxImageBase* in, AfxImageBase* out, float blurRadius);
 };
 
 } // namespace afx

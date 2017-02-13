@@ -17,7 +17,6 @@
 
 namespace afx {
 
-  
 void CudaProcess::DevCount_() {
   CudaSafeCall(cudaGetDeviceCount(&dev_count_));
   if (dev_count_ < 1) { throw cudaErrorNoDevice; }

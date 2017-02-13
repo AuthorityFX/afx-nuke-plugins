@@ -31,21 +31,21 @@ enum ScreenColor {
 };
 
 template <typename T>
-inline T AfxClamp(T value, T min, T max) {
+T AfxClamp(T value, T min, T max) {
   return std::max(std::min(value, max), min);
 }
-inline float min3(const float& a, const float& b, const float& c) {
+float min3(const float& a, const float& b, const float& c) {
   return fminf(a, fminf(b, c));
 }
-inline float max3(const float& a, const float& b, const float& c) {
+float max3(const float& a, const float& b, const float& c) {
   return fmaxf(a, fmaxf(b, c));
 }
-inline float Hue(const float (&rgb)[3]);
-inline void RGBtoHSV(const float (&rgb)[3], float* hsv);
-inline void HSVtoRGB(const float (&hsv)[3], float* rgb);
-inline float SpillSuppression(const float (&rgb)[3], int algorithm, ScreenColor color);
+float Hue(const float (&rgb)[3]);
+void RGBtoHSV(const float (&rgb)[3], float* hsv);
+void HSVtoRGB(const float (&hsv)[3], float* rgb);
+float SpillSuppression(const float (&rgb)[3], int algorithm, ScreenColor color);
 
-inline float SoftClip(float value, float clip, float knee) {
+float SoftClip(float value, float clip, float knee) {
   if (value <= 0.0f) { return value; }
   knee = AfxClamp(knee, 0.008f, 125.0f);
   return clip * powf(tanhf(powf(value / clip, knee)), 1.0f / knee);
@@ -61,14 +61,14 @@ class RotateColor {
   // Create transform object. Use Apply to perform an inplace rotation.
   RotateColor(const float (&axis)[3], float deg);
   // Build transform matrix for rotation
-  inline void BuildMatrix(const float (&axis)[3], float deg);
+  void BuildMatrix(const float (&axis)[3], float deg);
   // Build transform matrix for rotation
-  inline void BuildMatrix(float deg);
+  void BuildMatrix(float deg);
   // Apply in place color rotation
-  inline void Rotate(float* color);
-  inline void Invert();
+  void Rotate(float* color);
+  void Invert();
   // Get transform matrix
-  inline float GetMatrix(int r, int c);
+  float GetMatrix(int r, int c);
 };
 
 RotateColor::RotateColor() {
