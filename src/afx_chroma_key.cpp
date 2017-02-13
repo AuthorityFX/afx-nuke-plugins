@@ -198,10 +198,10 @@ void ThisClass::_validate(bool) {
   }
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
-  input(iSource)->request(x, y, r, t, channels, Mask_RGB);
-  if (input(iScreen) != nullptr) { input(iScreen)->request(x, y, r, t, Mask_RGB, count); }
-  if (input(iOutMatte) != nullptr) { input(iOutMatte)->request(x, y, r, t, Mask_Alpha, count); }
-  if (input(iInMatte) != nullptr) { input(iInMatte)->request(x, y, r, t, Mask_Alpha, count); }
+  input(iSource)->request(input(iSource)->info().box(), channels, Mask_RGB);
+  if (input(iScreen) != nullptr) { input(iScreen)->request(input(iScreen)->info().box(), Mask_RGB, count); }
+  if (input(iOutMatte) != nullptr) { input(iOutMatte)->request(Mask_Alpha, count); }
+  if (input(iInMatte) != nullptr) { input(iInMatte)->request(Mask_Alpha, count); }
 
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
@@ -219,13 +219,16 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
     if (first_time_engine_) {
 
       bool use_screen_input = false;
-      afx::Bounds screen_bnds = info_bnds_;
+      afx::Bounds screen_bnds;
       if (input(iScreen)) {
-        if (info_bnds_.Intersects(afx::BoxToBounds(input(iScreen)->info().box() ))) {
-          screen_bnds.Intersect(afx::BoxToBounds(input(iScreen)->info().box() ));
+        if (input(iSource)->info().box().intersects(input(iScreen)->info().box())) {
+          screen_bnds = afx::BoxToBounds(input(iScreen)->info().box());
           use_screen_input = true;
         }
+      } else {
+        screen_bnds = afx::BoxToBounds(input(iSource)->info().box());
       }
+
       ImagePlane source_plane(afx::BoundsToBox(screen_bnds), false, Mask_RGB); // Create plane "false" = non-packed.
       ImagePlane out_matte_plane(afx::BoundsToBox(screen_bnds), false, Mask_Alpha); // Create plane "false" = non-packed.
       ImagePlane in_matte_plane(afx::BoundsToBox(screen_bnds), false, Mask_Alpha); // Create plane "false" = non-packed.

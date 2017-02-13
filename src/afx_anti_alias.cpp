@@ -147,10 +147,10 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 
   foreach (z, channels) {
     afx::Image* plane_ptr = out_imgs_.GetPtrByAttribute("channel", z);
-//     plane_ptr->MemCpyOut(row.writable(z) + row_bnds.x1(), row_bnds.GetWidth() * sizeof(float), row_bnds);
-    float* out_ptr = row.writable(z) + row_bnds.x1();
-    for (int x = row_bnds.x1(); x <= row_bnds.x2(); ++x) {
-      *out_ptr++ = plane_ptr->GetVal(x, y);
-    }
+    plane_ptr->MemCpyOut(row.writable(z) + row_bnds.x1(), row_bnds.GetWidth() * sizeof(float), row_bnds);
+//     float* out_ptr = row.writable(z) + row_bnds.x1();
+//     for (int x = row_bnds.x1(); x <= row_bnds.x2(); ++x) {
+//       *out_ptr++ = plane_ptr->GetVal(x, y);
+//     }
   }
 }
