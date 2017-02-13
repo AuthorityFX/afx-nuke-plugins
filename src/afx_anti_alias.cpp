@@ -93,7 +93,6 @@ void ThisClass::_validate(bool) {
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
   proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
 
-  info_bnds = afx::BoxToBounds(info_.box());
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   //Request source
@@ -125,7 +124,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
     Guard guard(lock_);
     if (first_time_CPU_) {
       afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(50);
-      req_pad_bnds.Intersect(info_bnds);
+      req_pad_bnds.Intersect(afx::BoxToBounds(input(0)->info().box()));
 
       ImagePlane source_plane(afx::BoundsToBox(req_pad_bnds), false, channels); // Create plane "false" = non-packed.
       input0().fetchPlane(source_plane); // Fetch plane
@@ -148,9 +147,5 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   foreach (z, channels) {
     afx::Image* plane_ptr = out_imgs_.GetPtrByAttribute("channel", z);
     plane_ptr->MemCpyOut(row.writable(z) + row_bnds.x1(), row_bnds.GetWidth() * sizeof(float), row_bnds);
-//     float* out_ptr = row.writable(z) + row_bnds.x1();
-//     for (int x = row_bnds.x1(); x <= row_bnds.x2(); ++x) {
-//       *out_ptr++ = plane_ptr->GetVal(x, y);
-//     }
   }
 }
