@@ -9,7 +9,7 @@ configure_file (
   "${PROJECT_BINARY_DIR}/include/cmake_config.h" @ONLY
   )
 
-# Set CMAKE_SKIP_RPATH FALSE TRUE for redistributable build, place all
+# Set CMAKE_SKIP_RPATH TRUE for redistributable build, place all
 # redistributable library dependencies in lib folder
 set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-rpath,'$ORIGIN/lib'")
