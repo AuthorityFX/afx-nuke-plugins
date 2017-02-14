@@ -43,7 +43,7 @@ PixelInfo* ImageInfo::GetPtr(unsigned int x, unsigned int y) const {
   return (PixelInfo*)((char*)ptr_ + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(PixelInfo));
 }
 PixelInfo* ImageInfo::GetPtrBnds(unsigned int x, unsigned int y) const {
-  return (PixelInfo*)((char*)ptr_ + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(PixelInfo));
+  return (PixelInfo*)((char*)ptr_ + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(PixelInfo));
 }
 size_t ImageInfo::GetPitch() const { return pitch_; }
 Bounds ImageInfo::GetBounds() const { return region_; }

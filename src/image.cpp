@@ -22,11 +22,11 @@ Image::Image(unsigned int width, unsigned int height) : ptr_(nullptr) { Create(B
 Image::Image(const Bounds& region) : ptr_(nullptr) { Create(region); }
 Image::Image(const Image& other) {
   Create(other.region_);
-  IppSafeCall(ippiCopy_32f_C1R(ptr_, pitch_, other.GetPtr(), other.GetPitch(), image_size_));
+  IppSafeCall(ippiCopy_32f_C1R(other.GetPtr(), other.GetPitch(), ptr_, pitch_, image_size_));
 }
 Image& Image::operator=(const Image& other) {
   Create(other.region_);
-  IppSafeCall(ippiCopy_32f_C1R(ptr_, pitch_, other.GetPtr(), other.GetPitch(), image_size_));
+  IppSafeCall(ippiCopy_32f_C1R(other.GetPtr(), other.GetPitch(), ptr_, pitch_, image_size_));
   return *this;
 }
 Image::~Image() {
