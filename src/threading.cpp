@@ -21,6 +21,14 @@ namespace afx {
 Threader::Threader() : running_(false) { InitializeThreads(0); }
 Threader::Threader(unsigned int req_num_threads) : running_(false) { InitializeThreads(req_num_threads); }
 Threader::~Threader() { StopAndJoin(); }
+bool Threader::InteruptionPoint() {
+  try {
+    boost::this_thread::interruption_point();
+    return true;
+  } catch (boost::thread_interrupted&) {
+    return false;
+  }
+}
 void Threader::AddThreads(unsigned int num_threads) {
   for (unsigned int t = 0; t < num_threads; ++t) {
     thread_pool_.create_thread(boost::bind(&Threader::Worker_, this));

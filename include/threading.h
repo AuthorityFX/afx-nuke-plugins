@@ -40,10 +40,9 @@ public:
   Threader();
   Threader(unsigned int req_num_threads);
   ~Threader();
-  // Calls boost::this_thread::interruption_point()
-  // Call this from within function sent to Threader via AddWork.
   // This is an exit point for Interupt()
-  void InteruptionPoint() { boost::this_thread::interruption_point(); }
+  // Call this from function sent to Threader via AddWork.
+  bool InteruptionPoint();
   // Launch additional threads.
   void AddThreads(unsigned int num_threads);
   // Start asio service. Launch req num of threads. 0 will launch hardware concurency
