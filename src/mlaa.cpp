@@ -11,6 +11,7 @@
 
 #include <boost/bind.hpp>
 #include <math.h>
+#include <jemalloc/jemalloc.h>
 
 #include "settings.h"
 #include "image.h"
@@ -27,7 +28,7 @@ void ImageInfo::Create(const Bounds& region) {
   region_ = region;
   pitch_ = sizeof(PixelInfo) * region_.GetWidth();
   ptr_ = (PixelInfo*)malloc(region_.GetWidth() * region_.GetHeight() * sizeof(PixelInfo));
-  // Would like to replace malloc with byte aligned malloc
+  // Need to replace malloc with byte aligned jemalloc
 }
 void ImageInfo::Dispose() {
   if (ptr_ != nullptr) {

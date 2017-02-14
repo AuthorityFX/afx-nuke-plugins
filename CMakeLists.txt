@@ -24,12 +24,12 @@ if(APPLE)
 endif()
 
 # afx include files
-include_directories(${PROJECT_SOURCE_DIR}/include/)
+include_directories(${PROJECT_SOURCE_DIR}/include)
 
 # NUKE NDK INCLUDES AND LIBRARIES
-set(NUKE_ROOT /usr/local/Nuke10.5v1/)
-include_directories(${NUKE_ROOT}/include/)
-set(NUKE_LIB_PATH ${NUKE_ROOT}/)
+set(NUKE_ROOT /usr/local/Nuke10.5v1)
+include_directories(${NUKE_ROOT}/include)
+set(NUKE_LIB_PATH ${NUKE_ROOT})
 
 # IPP INCLUDES AND LIBRARIES
 set(IPP_ROOT /opt/intel/compilers_and_libraries/linux/ipp)
@@ -50,16 +50,20 @@ set(CUDA_ROOT /usr/local/cuda)
 include_directories(${CUDA_ROOT}/include)
 set(CUDA_LIB_PATH ${CUDA_ROOT}/lib64)
 set(CUDA_LIBS ${CUDA_LIB_PATH}/libcudart.so)
-#set(NPP_LIBS ${CUDA_LIB_PATH}/libnppi.so)
-#set(NPP_LIBS ${CUDA_LIB_PATH}/libcufft.so)
-set(CUDA_VERBOSE_BUILD ON)
+set(NPP_LIBS ${CUDA_LIB_PATH}/libnppi.so)
+set(NPP_LIBS ${CUDA_LIB_PATH}/libcufft.so)
+set(CUDA_VERBOSE_BUILD OFF)
 
-
+# JEMALLOC INCLUDES AND LIBRARIES
+set(JEMALLOC_ROOT /usr/local/jemalloc/)
+include_directories(${JEMALLOC_ROOT}/include)
+set(JEMALLOC_LIB_PATH ${JEMALLOC_ROOT}/lib)
+set(JEMALLOC_LIBS ${JEMALLOC_LIB_PATH}/libjemalloc.so)
 
 # AFX CORE LIBRARY
 add_library(lib_afx_core SHARED src/image.cpp src/threading.cpp src/mlaa.cpp)
 set_target_properties(lib_afx_core PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY "./lib")
-target_link_libraries(lib_afx_core ${BOOST_LIBS} ${IPP_LIBS})
+target_link_libraries(lib_afx_core ${BOOST_LIBS} ${IPP_LIBS} ${JEMALLOC_LIBS})
 
 # Cuda Helper Library
 add_library(lib_afx_cuda SHARED src/cuda_helper.cpp)
@@ -80,11 +84,11 @@ target_link_libraries(afx_chroma_key lib_afx_core)
 
 add_library(afx_anti_alias SHARED src/afx_anti_alias.cpp)
 set_target_properties(afx_anti_alias PROPERTIES PREFIX "")
-target_link_libraries(afx_anti_alias lib_afx_core lib_afx_cuda)
+target_link_libraries(afx_anti_alias lib_afx_core)
 
 add_library(afx_despill SHARED src/afx_despill.cpp)
 set_target_properties(afx_despill PROPERTIES PREFIX "")
-target_link_libraries(afx_despill lib_afx_core lib_afx_cuda)
+target_link_libraries(afx_despill lib_afx_core)
 
 cuda_add_library(afx_median src/afx_median.cpp src/afx_median.cu SHARED)
 set_target_properties(afx_median PROPERTIES PREFIX "")
