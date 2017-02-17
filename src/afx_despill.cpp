@@ -146,61 +146,47 @@ const char* ThisClass::input_label(int input, char* buffer) const {
   }
 }
 void ThisClass::_validate(bool) {
-  if (input(iSource) != default_input(iSource)) {
-    //Copy source info
-    copy_info(0);
+  copy_info(0);
 
-    format_bnds_ = afx::BoxToBounds(input(0)->format());
-    format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
-    proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
+  format_bnds_ = afx::BoxToBounds(input(0)->format());
+  format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
+  proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
 
-    ChannelSet out_channels = channels();
-    out_channels += Chan_Red;
-    out_channels += Chan_Green;
-    out_channels += Chan_Blue;
-    out_channels += k_spill_matte_channel_;
-    set_out_channels(out_channels);
-    info_.turn_on(out_channels);
+  ChannelSet out_channels = channels();
+  out_channels += k_spill_matte_channel_;
+  set_out_channels(out_channels);
+  info_.turn_on(out_channels);
 
-    // 1/3 hue is green, 2/3 hue is blue.
-    // center_ chosen based on max(g, b)
-    // (center_ - mean) * 360 is the angular distance in degrees from ideal screen hue
-    float hsv[3];
-    float ref_rgb[3];
-    for (int i = 0; i < 3; i++) { ref_rgb[i] = k_screen_color_[i]; }
-    afx::RGBtoHSV(ref_rgb, hsv);
+  // 1/3 hue is green, 2/3 hue is blue.
+  // center_ chosen based on max(g, b)
+  // (center_ - mean) * 360 is the angular distance in degrees from ideal screen hue
+  float hsv[3];
+  float ref_rgb[3];
+  for (int i = 0; i < 3; i++) { ref_rgb[i] = k_screen_color_[i]; }
+  afx::RGBtoHSV(ref_rgb, hsv);
 
-    float center;
-    if (ref_rgb[1] > ref_rgb[2]) {
-      center = 1.0f/3.0f;
-      color_ = afx::kGreen;
-    }
-    else if (ref_rgb[2] > ref_rgb[1]) {
-      center = 2.0f/3.0f;
-      color_ = afx::kBlue;
-    }
-
-    float hue_rotation = 360.0f * (center - hsv[0]);
-    hue_shifter_.BuildMatrix(hue_rotation); //Initialize hue shifter object
-    hue_shifter_.Rotate(ref_rgb); // Rotate hue of ref RGB so that the mean hue is pure green
-    ref_suppression_ = afx::SpillSuppression(ref_rgb, k_algorithm_, color_); // Spill suppressoin of ref_rgb
-    hue_shifter_inv_ = hue_shifter_;
-    hue_shifter_inv_.Invert();
-
-  } else {
-    set_out_channels(Mask_None);
-    copy_info();
+  float center;
+  if (ref_rgb[1] > ref_rgb[2]) {
+    center = 1.0f/3.0f;
+    color_ = afx::kGreen;
   }
+  else if (ref_rgb[2] > ref_rgb[1]) {
+    center = 2.0f/3.0f;
+    color_ = afx::kBlue;
+  }
+
+  float hue_rotation = 360.0f * (center - hsv[0]);
+  hue_shifter_.BuildMatrix(hue_rotation); //Initialize hue shifter object
+  hue_shifter_.Rotate(ref_rgb); // Rotate hue of ref RGB so that the mean hue is pure green
+  ref_suppression_ = afx::SpillSuppression(ref_rgb, k_algorithm_, color_); // Spill suppressoin of ref_rgb
+  hue_shifter_inv_ = hue_shifter_;
+  hue_shifter_inv_.Invert();
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
-  //Request source
-  if (input(iSource) != default_input(iSource)) {
-    input(iSource)->request(x, y, r, t, channels, count);
-  }
-  //Request ignore matte
-  if (input(iMatte) != nullptr) {
-    input(iMatte)->request(x, y, r, t, Mask_Alpha, count);
-  }
+  ChannelSet req_channels = channels;
+  req_channels += Mask_RGB;
+  input(iSource)->request(x, y, r, t, req_channels, count); // Only request RGB
+  if (input(iMatte) != nullptr) { input(iMatte)->request(x, y, r, t, Mask_Alpha, count); }
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
 void ThisClass::_open() {
@@ -212,14 +198,11 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   ProcessCPU(y, x, r, channels, row);
 }
 void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
-  Channel rgb_chan[3];
-  rgb_chan[0] = Chan_Red;
-  rgb_chan[1] = Chan_Green;
-  rgb_chan[2] = Chan_Blue;
 
-  // Must call get before initializing any pointers
-  row.get(input0(), y, x, r, channels);
-  // Copy all other channels through unchanged
+  ChannelSet req_channels = channels;
+  req_channels += Mask_RGB;
+  row.get(input0(), y, x, r, req_channels); // Only get Mask_RGB
+  // Copy channels that will not be changed
   ChannelSet copy_mask = channels - Mask_RGB - k_spill_matte_channel_;
   row.pre_copy(row, copy_mask);
   row.copy(row, copy_mask, x, r);
@@ -231,8 +214,8 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   afx::ReadOnlyPixel in_px(3);
   afx::Pixel out_px(3);
   for (int i = 0; i < 3; i++) {
-    in_px.SetPtr(row[rgb_chan[i]] + x, i);// Set const in pointers RGB
-    out_px.SetPtr(row.writable(rgb_chan[i]) + x, i); // Set out pointers RGB
+    in_px.SetPtr(row[static_cast<Channel>(i + 1)] + x, i);// Set const in pointers RGB. (i + 1) Chan_Red = 1
+    out_px.SetPtr(row.writable(static_cast<Channel>(i + 1)) + x, i); // Set out pointers RGB
   }
   const float* m_ptr = nullptr;
   if (input(iMatte) != nullptr) { m_ptr = m_row[Chan_Alpha] + x; }
