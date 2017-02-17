@@ -21,12 +21,10 @@ Image::Image() : ptr_(nullptr), pitch_(0), image_size_((IppiSize){0, 0}), region
 Image::Image(unsigned int width, unsigned int height) : ptr_(nullptr) { Create(Bounds(0, 0, width - 1, height - 1)); }
 Image::Image(const Bounds& region) : ptr_(nullptr) { Create(region); }
 Image::Image(const Image& other) {
-  Create(other.region_);
-  IppSafeCall(ippiCopy_32f_C1R(other.GetPtr(), other.GetPitch(), ptr_, pitch_, image_size_));
+  Copy(other);
 }
 Image& Image::operator=(const Image& other) {
-  Create(other.region_);
-  IppSafeCall(ippiCopy_32f_C1R(other.GetPtr(), other.GetPitch(), ptr_, pitch_, image_size_));
+  Copy(other);
   return *this;
 }
 Image::~Image() {
@@ -44,6 +42,10 @@ void Image::Create(const Bounds& region) {
   image_size_.width = region_.x2() - region_.x1() + 1;
   image_size_.height = region_.y2() - region_.y1() + 1;
   ptr_ = ippiMalloc_32f_C1(image_size_.width, image_size_.height, &pitch_);
+}
+void Image::Copy(const Image& other) {
+  Create(other.region_);
+  IppSafeCall(ippiCopy_32f_C1R(other.GetPtr(), other.GetPitch(), ptr_, pitch_, image_size_));
 }
 void Image::Dispose() {
   if (ptr_ != nullptr) {

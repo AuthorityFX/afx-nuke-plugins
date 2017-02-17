@@ -34,42 +34,8 @@ inline void IppSafeCall(IppStatus status) {
   if (status != ippStsNoErr) { throw status; }
 }
 
-class ImageComplex {
- private:
-  Ipp32fc* ptr_;
-  int pitch_;
-  IppiSize image_size_;
-  Bounds region_;
- public:
-  ImageComplex() : ptr_(nullptr), pitch_(0), region_(Bounds()) {}
-  ImageComplex(const Bounds& region) : ptr_(nullptr) { Create(region); }
-  ~ImageComplex() { Dispose(); }
-  void Create(const Bounds& region) {
-    Dispose();
-    region_ = region;
-    image_size_.width = region.GetWidth();
-    image_size_.height = region.GetHeight();
-    ptr_ = ippiMalloc_32fc_C1(region.GetWidth(), region.GetHeight(), &pitch_);
-  }
-  void Dispose() {
-    if (ptr_ != nullptr) {
-      ippiFree(ptr_);
-      ptr_ = nullptr;
-    }
-  }
-  Ipp32fc* GetPtr() const { return ptr_; }
-  Ipp32fc* GetPtr(int x, int y) const {
-    return (Ipp32fc*)((char*)(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(Ipp32fc));
-  }
-  size_t GetPitch() const { return pitch_; }
-  IppiSize GetSize() const { return image_size_; }
-  Bounds GetBounds() const { return region_; }
-
-
-};
-
 class Image : public AttributeBase {
- private:
+ protected:
   Ipp32f* ptr_;
   int pitch_;
   IppiSize image_size_;
@@ -82,12 +48,13 @@ class Image : public AttributeBase {
   Image& operator=(const Image& other);
   ~Image();
   void Create(unsigned int width, unsigned int height);
-  void Create(const Bounds& region);
+  virtual void Create(const Bounds& region);
+  virtual void Copy(const Image& other);
   void Dispose();
-  void MemSet(float value);
-  void MemSet(float value, const Bounds& region);
-  void MemCpyIn(const float* src_ptr, size_t src_pitch, const Bounds& region);
-  void MemCpyOut(float* dst_ptr, size_t dst_pitch, const Bounds& region);
+  virtual void MemSet(float value);
+  virtual void MemSet(float value, const Bounds& region);
+  virtual void MemCpyIn(const float* src_ptr, size_t src_pitch, const Bounds& region);
+  virtual void MemCpyOut(float* dst_ptr, size_t dst_pitch, const Bounds& region);
   Ipp32f* GetPtr() const;
   Ipp32f* GetPtr(int x, int y) const;
   Ipp32f GetVal(int x, int y) const;
@@ -97,11 +64,27 @@ class Image : public AttributeBase {
   Bounds GetBounds() const;
 };
 
+class ImageComplex : public Image {
+ protected:
+  Ipp32fc* ptr_;
+  virtual void Create(const Bounds& region) {
+    Dispose();
+    region_ = region;
+    image_size_.width = region_.x2() - region_.x1() + 1;
+    image_size_.height = region_.y2() - region_.y1() + 1;
+    ptr_ = ippiMalloc_32fc_C1(image_size_.width, image_size_.height, &pitch_);
+  }
+  virtual void Copy(const Image& other); // TODO
+  virtual void MemSet(float value); // TODO
+  virtual void MemSet(float value, const Bounds& region); // TODO
+  virtual void MemCpyIn(const float* src_ptr, size_t src_pitch, const Bounds& region); // TODO
+  virtual void MemCpyOut(float* dst_ptr, size_t dst_pitch, const Bounds& region); // TODO
+};
+
 class ImageArray : public Array<Image> {
  public:
   void AddImage(const Bounds& region);
 };
-
 
 class Resize {
  private:
@@ -146,18 +129,13 @@ class Resize {
 
     // Spec and ippBBuf sizes TODO tile sizes not full image size
     ippiResizeGetSize_32f(in->GetSize(), out->GetSize(), ippLanczos, 1, &spec_size_, &init_size_);
-    if (init_buf_ptr_ == nullptr) {
-      init_buf_ptr_ = (Ipp32f*)ippsMalloc_32f(init_size_);
-    }
-    if (spec_ptr_ == nullptr) {
-      spec_ptr_ = (IppiResizeSpec_32f*)ippsMalloc_32f(spec_size_);
-    }
+    init_buf_ptr_ = (Ipp32f*)ippsMalloc_32f(init_size_);
+    spec_ptr_ = (IppiResizeSpec_32f*)ippsMalloc_32f(spec_size_);
+
     // Filter initialization TODO tile sizes not full image size
     ippiResizeLanczosInit_32f(in->GetSize(), out->GetSize(), 2, spec_ptr_, buffer_ptr_);
     ippiResizeGetBufferSize_32f(spec_ptr_, out->GetSize(), 1, &buf_size_);
-    if (buffer_ptr_ == nullptr) {
-      buffer_ptr_ = (Ipp8u*)ippsMalloc_8u(buf_size_);
-    }
+    buffer_ptr_ = (Ipp8u*)ippsMalloc_8u(buf_size_);
 
     *border_value_ = 0.0f;
 
