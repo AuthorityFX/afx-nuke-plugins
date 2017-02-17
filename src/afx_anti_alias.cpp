@@ -92,7 +92,6 @@ void ThisClass::_validate(bool) {
   format_bnds_ = afx::BoxToBounds(input(0)->format());
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
   proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
-
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   //Request source
@@ -120,7 +119,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
 void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
 
-  if (first_time_CPU_) {
+  {
     Guard guard(lock_);
     if (first_time_CPU_) {
       afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(50);
