@@ -26,7 +26,7 @@ ImageInfo::~ImageInfo() { Dispose(); }
 void ImageInfo::Create(const Bounds& region) {
   Dispose();
   region_ = region;
-  afx::ImageMalloc<PixelInfo>((void**)(&ptr_), &pitch_, region_);
+  ptr_ = afx::ImageMalloc<PixelInfo>(region_.GetWidth(), region.GetHeight(), &pitch_);
 }
 void ImageInfo::Dispose() {
   if (ptr_ != nullptr) {
@@ -47,7 +47,7 @@ size_t ImageInfo::GetPitch() const { return pitch_; }
 Bounds ImageInfo::GetBounds() const { return region_; }
 
 float MorphAA::CalcTrapArea_(int pos, float length) {
-  length = fmaxf(length, 0.008);
+  //Will never be called when length is 0
   return (float)pos / length + (0.5f / length);
 }
 float MorphAA::Diff_(float a, float b) {
