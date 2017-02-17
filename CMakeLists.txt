@@ -1,14 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 project(afx-nuke-plugins)
 
-set(afx_nuke_plugins_VERSION_MAJOR 0)
-set(afx_nuke_plugins_VERSION_MINOR 0)
-
-configure_file (
-  "${PROJECT_SOURCE_DIR}/include/cmake_config.h.in"
-  "${PROJECT_BINARY_DIR}/include/cmake_config.h" @ONLY
-  )
-
 # Set CMAKE_SKIP_RPATH TRUE for redistributable build, place all
 # redistributable library dependencies in lib folder
 set(CMAKE_SKIP_RPATH FALSE)

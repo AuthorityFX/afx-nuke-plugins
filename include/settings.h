@@ -20,10 +20,4 @@
 #define BOOST_ALL_DYN_LINK
 #define BOOST_DYN_LINK
 
-// Import config settings from cmake
-// VERSION VARIABLES:
-// afx_nuke_plugins_VERSION_MAJOR
-// afx_nuke_plugins_VERSION_MINOR
-//#include "cmake_config.h"
-
 #endif  // AFX_SETTINGS_H_
