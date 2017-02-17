@@ -11,11 +11,11 @@
 
 #include <boost/bind.hpp>
 #include <math.h>
-#include <jemalloc/jemalloc.h>
 
 #include "settings.h"
 #include "image.h"
 #include "threading.h"
+#include "memory.h"
 
 namespace afx {
 
@@ -26,13 +26,11 @@ ImageInfo::~ImageInfo() { Dispose(); }
 void ImageInfo::Create(const Bounds& region) {
   Dispose();
   region_ = region;
-  pitch_ = sizeof(PixelInfo) * region_.GetWidth();
-  ptr_ = (PixelInfo*)malloc(region_.GetWidth() * region_.GetHeight() * sizeof(PixelInfo));
-  // Need to replace malloc with byte aligned jemalloc
+  afx::ImageMalloc<PixelInfo>((void**)(&ptr_), &pitch_, region_);
 }
 void ImageInfo::Dispose() {
   if (ptr_ != nullptr) {
-    free(ptr_);
+    afx::ImageFree(ptr_);
     ptr_ = nullptr;
   }
 }
