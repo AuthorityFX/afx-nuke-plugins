@@ -17,9 +17,9 @@
 namespace afx {
 
 template <typename T>
-T* ImageMalloc(T* ptr, size_t* pitch, const afx::Bounds& region) {
-  *pitch = (((region.GetWidth() * sizeof(T) + 63) / 64 * 64));
-  je_posix_memalign(reinterpret_cast<void**>(&ptr), 64, *pitch * region.GetHeight());
+void ImageMalloc(void** ptr, size_t* pitch, const afx::Bounds& region) {
+  *pitch = (((region.GetWidth() * sizeof(T) + 63) / 64) * 64);
+  je_posix_memalign(ptr, 64, *pitch * region.GetHeight());
 }
 
 void ImageFree(void* ptr) {
