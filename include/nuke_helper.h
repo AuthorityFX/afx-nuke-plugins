@@ -30,6 +30,6 @@ namespace afx {
     return afx::BoxToBounds(input->info().box());
   }
 
-}
+} // namespace afx
 
 #endif  // NUKE_HELPER_H_
