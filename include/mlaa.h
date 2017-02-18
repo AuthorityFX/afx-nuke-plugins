@@ -19,11 +19,11 @@
 
 namespace afx {
 
-enum Flags {
-  kDisPosX      = 0x01, // pixel - bottom pixel is less than 0
-  kDisNegX      = 0x02, // pixel - bottom pixel is greater than 0
-  kDisPosY      = 0x04, // pixel - right pixel less than 0
-  kDisNegY      = 0x08, // pixel - right pixel greater than 0
+enum DisFlags {
+  kDisPosDown      = 0x01, // pixel - bottom pixel is less than 0
+  kDisNegDown      = 0x02, // pixel - bottom pixel is greater than 0
+  kDisPosRight      = 0x04, // pixel - right pixel less than 0
+  kDisNegRight      = 0x08, // pixel - right pixel greater than 0
 };
 
 struct PixelInfo {
@@ -77,3 +77,6 @@ class MorphAA {
 } // namespace afx
 
 #endif  // MLAA_H_
+
+
+
