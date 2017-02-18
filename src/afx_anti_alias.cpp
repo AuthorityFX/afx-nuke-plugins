@@ -136,7 +136,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   if (aborted()) { return; }
 
   foreach (z, channels) {
-    afx::Image* plane_ptr = out_imgs_.GetPtrByAttribute("channel", z);
-    plane_ptr->MemCpyOut(row.writable(z) + row_bnds.x1(), row_bnds.GetWidth() * sizeof(float), row_bnds);
+    afx::Image* chan_ptr = out_imgs_.GetPtrByAttribute("channel", z);
+    chan_ptr->MemCpyOut(row.writable(z) + row_bnds.x1(), row_bnds.GetWidth() * sizeof(float), row_bnds);
   }
 }

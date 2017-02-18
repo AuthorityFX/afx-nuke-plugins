@@ -98,5 +98,15 @@ void Threader::ThreadImageChunks(const Bounds& region, boost::function<void(Boun
     io_service_.post(boost::bind(function, thread_region));
   }
 }
+void Threader::ThreadImageChunksY(const Bounds& region, boost::function<void(Bounds)> function) {
+  unsigned int num_chunks = num_threads_;
+  num_chunks = std::min(num_chunks, region.GetWidth());
+  Bounds thread_region = region;
+  for (int i = 0; i < num_chunks; ++i) {
+    thread_region.SetX1((int)ceil((double)region.GetWidth() * (double) i      / (double)num_chunks)      + region.x1());
+    thread_region.SetX2((int)ceil((double)region.GetWidth() * (double)(i + 1) / (double)num_chunks) - 1  + region.x1());
+    io_service_.post(boost::bind(function, thread_region));
+  }
+}
 
 } // namespace afx
