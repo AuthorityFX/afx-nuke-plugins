@@ -10,6 +10,8 @@
 #ifndef MLAA_H_
 #define MLAA_H_
 
+#include <OpenEXR/half.h>
+
 #include "settings.h"
 #include "types.h"
 #include "image.h"
@@ -17,24 +19,18 @@
 
 namespace afx {
 
-enum Direction {
-  kBlendUp = true,
-  kBlendDown = false,
-  kBlendLeft = true,
-  kBlendRight = false
+enum Flags {
+  kDisPosX      = 0x01, // pixel - bottom pixel is less than 0
+  kDisNegX      = 0x02, // pixel - bottom pixel is greater than 0
+  kDisPosY      = 0x04, // pixel - right pixel less than 0
+  kDisNegY      = 0x08, // pixel - right pixel greater than 0
 };
 
 struct PixelInfo {
-  bool dis_x, dis_y, dis_dir_x, dis_dir_y;
-  unsigned int pos_h, pos_v;
-  float length_x, length_y;
-  PixelInfo() : dis_x(false), dis_y(false), dis_dir_x(false), dis_dir_y(false),
-                pos_h(0), pos_v(0), length_x(0.0f), length_y(0.0f) {}
-};
-
-struct BlendWeight {
-  float top, bottom, left, right;
-   BlendWeight() : top(0.0f), bottom(0.0f), left(0.0f), right(0.0f) {}
+  half blend_x;
+  half blend_y;
+  unsigned char flags;
+  PixelInfo() : blend_x(0.0f), blend_y(0.0f), flags(0) {}
 };
 
 class ImageInfo {
@@ -49,9 +45,12 @@ class ImageInfo {
   ~ImageInfo();
   void Create(const Bounds& region);
   void Dispose();
-  PixelInfo& GetPixel(unsigned int x, unsigned int y) const;
+  PixelInfo& GetVal(unsigned int x, unsigned int y) const;
+  PixelInfo& GetValBnds(unsigned int x, unsigned int y) const;
   PixelInfo* GetPtr(unsigned int x, unsigned int y) const;
   PixelInfo* GetPtrBnds(unsigned int x, unsigned int y) const;
+  PixelInfo* NextRow(PixelInfo* ptr);
+  PixelInfo* PreviousRow(PixelInfo* ptr);
   size_t GetPitch() const;
   Bounds GetBounds() const;
 };
@@ -66,8 +65,8 @@ class MorphAA {
   void MarkDisc_(const Bounds& region, const Image& input);
   void FindXLines_(const Bounds& region, const Image& input);
   void FindYLines_(const Bounds& region, const Image& input);
-  void SetXLine_(PixelInfo* info_ptr, const Image& input, int length, int x, int y);
-  void SetYLine_(PixelInfo* info_ptr, const Image& input, int length, int x, int y);
+  void SetXLine_(PixelInfo* info_ptr, int length, int x, int y);
+  void SetYLine_(PixelInfo* info_ptr, int length, int x, int y);
   void BlendPixels_(const Bounds& region, const Image& input, Image& output);
 
  public:

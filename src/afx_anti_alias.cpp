@@ -14,8 +14,6 @@
 #include <DDImage/Thread.h>
 #include <DDImage/NukeWrapper.h>
 
-#include <stdexcept>
-
 #include <boost/bind.hpp>
 #include <math.h>
 
@@ -95,7 +93,7 @@ void ThisClass::_validate(bool) {
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   //Request source
-  Box req_box(x + 50, + 50, r + 50, t + 50); //expand this
+  Box req_box(x + 50, y + 50, r + 50, t + 50); //TODO add knob to control this
   input0().request(req_box, channels, count);
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
@@ -108,13 +106,7 @@ void ThisClass::_close() {
 }
 void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   callCloseAfter(0);
-  try {
-    ProcessCPU(y, x, r, channels, row);
-  } catch (std::exception const& e) {
-    foreach (z, channels) {
-      memset(row.writable(z) + x, 0, (r - x) * sizeof(float));
-    }
-  }
+  ProcessCPU(y, x, r, channels, row);
 }
 void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
@@ -130,6 +122,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
       out_imgs_.Clear();
       afx::Image in_img(req_pad_bnds);
       foreach (z, source_plane.channels()) { // For each channel in plane
+        //TODO don't need to copy this image, just need to setup pointer, pitch, bounds
         in_img.MemCpyIn(&source_plane.readable()[source_plane.chanNo(z) * source_plane.chanStride()], source_plane.rowStride() * sizeof(float), in_img.GetBounds());
         out_imgs_.AddImage(req_pad_bnds);
         out_imgs_.GetBackPtr()->AddAttribute("channel", z);

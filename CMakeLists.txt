@@ -46,6 +46,18 @@ set(NPP_LIBS ${CUDA_LIB_PATH}/libnppi.so)
 set(NPP_LIBS ${CUDA_LIB_PATH}/libcufft.so)
 set(CUDA_VERBOSE_BUILD OFF)
 
+# IlmBase
+set(ILMBASE_ROOT /usr/local/IlmBase/)
+include_directories(${ILMBASE_ROOT}/include)
+set(ILMBASE_LIB_PATH ${ILMBASE_ROOT}/lib)
+set(ILMBASE_LIBS ${ILMBASE_LIB_PATH}/libHalf.so)
+
+# OpenEXR
+#set(OPENEXR_ROOT /usr/local/IlmBase/)
+#include_directories(${OPENEXR_ROOT}/include)
+#set(OPENEXR_LIB_PATH ${OPENEXR_ROOT}/lib)
+#set(OPENEXR_LIBS ${OPENEXR_LIB_PATH}/)
+
 # JEMALLOC INCLUDES AND LIBRARIES
 set(JEMALLOC_ROOT /usr/local/jemalloc/)
 include_directories(${JEMALLOC_ROOT}/include)

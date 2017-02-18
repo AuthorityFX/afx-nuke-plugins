@@ -151,11 +151,11 @@ public:
   float GetCenterY() const { return (float)(y2_ - y1_) / 2.0f + y1_; }
   __host__ __device__
   int ClampX(int x) const {
-    return x >= x1_ ? (x <= x2_ ? x : x2_) : x1_;
+    return x > x1_ ? (x < x2_ ? x : x2_) : x1_;
   }
   __host__ __device__
   int ClampY(int y) const {
-    return y >= y1_ ? (y <= y2_ ? y : y2_) : y1_;
+    return y > y1_ ? (y < y2_ ? y : y2_) : y1_;
   }
 };
 

@@ -78,6 +78,9 @@ Ipp32f* Image::GetPtr() const { return ptr_; }
 Ipp32f* Image::GetPtr(int x, int y) const {
   return (Ipp32f*)((char*)(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(Ipp32f));
 }
+Ipp32f* Image::GetPtrBnds(int x, int y) const {
+  return (Ipp32f*)((char*)(ptr_) + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(Ipp32f));
+}
 Ipp32f Image::GetVal(int x, int y) const {
   return *(Ipp32f*)((char*)(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(Ipp32f));
 }

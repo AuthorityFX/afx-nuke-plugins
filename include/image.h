@@ -57,6 +57,7 @@ class Image : public AttributeBase {
   virtual void MemCpyOut(float* dst_ptr, size_t dst_pitch, const Bounds& region);
   Ipp32f* GetPtr() const;
   Ipp32f* GetPtr(int x, int y) const;
+  Ipp32f* GetPtrBnds(int x, int y) const;
   Ipp32f GetVal(int x, int y) const;
   Ipp32f GetValBnds(int x, int y) const;
   size_t GetPitch() const;
