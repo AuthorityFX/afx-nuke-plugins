@@ -1,3 +1,13 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# Copyright (C) 2017, Ryan P. Wilson
+#
+#      Authority FX, Inc.
+#      www.authorityfx.com
+
+
 cmake_minimum_required(VERSION 2.6)
 project(afx-nuke-plugins)
 
@@ -5,62 +15,39 @@ project(afx-nuke-plugins)
 # redistributable library dependencies in lib folder
 set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-rpath,'$ORIGIN/lib'")
-#Disable rpath stripping at install
+# Disable rpath stripping at install
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O3 -DNDEBUG")
-set(CMAKE_BUILD_TYPE Release)
-
-if(APPLE)
-  set(CMAKE_MACOSX_RPATH 1)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O3 -DNDEBUG")
 endif()
+
+# Append project Modules directory
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # afx include files
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-# NUKE NDK INCLUDES AND LIBRARIES
-set(NUKE_ROOT /usr/local/Nuke10.5v1)
-include_directories(${NUKE_ROOT}/include)
-set(NUKE_LIB_PATH ${NUKE_ROOT})
-
-# IPP INCLUDES AND LIBRARIES
-set(IPP_ROOT /opt/intel/compilers_and_libraries/linux/ipp)
-include_directories(${IPP_ROOT}/include)
-set(IPP_LIB_PATH ${IPP_ROOT}/lib/intel64)
-set(IPP_COMP_PATH ${IPP_ROOT}/../compiler/lib/intel64)
-set(IPP_LIBS ${IPP_LIB_PATH}/libippi.so ${IPP_LIB_PATH}/libippcore.so)
-
-# BOOST INCLUDES AND LIBRARIES
-set(BOOST_ROOT /usr/local/boost)
-include_directories(${BOOST_ROOT}/include)
-set(BOOST_LIB_PATH ${BOOST_ROOT}/lib)
-set(BOOST_LIBS ${BOOST_LIB_PATH}/libboost_system.so ${BOOST_LIB_PATH}/libboost_thread.so)
-
-# CUDA INCLUDES AND link_libraries
+find_package(Nuke REQUIRED)
+find_package(Ipp REQUIRED COMPONENTS ippcore ippi)
+find_package(Boost REQUIRED COMPONENTS system thread)
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+endif()
 find_package(CUDA REQUIRED)
-set(CUDA_ROOT /usr/local/cuda)
-include_directories(${CUDA_ROOT}/include)
-set(CUDA_LIB_PATH ${CUDA_ROOT}/lib64)
-set(CUDA_LIBS ${CUDA_LIB_PATH}/libcudart.so)
-set(NPP_LIBS ${CUDA_LIB_PATH}/libnppi.so)
-set(NPP_LIBS ${CUDA_LIB_PATH}/libcufft.so)
-set(CUDA_VERBOSE_BUILD OFF)
-
-# JEMALLOC INCLUDES AND LIBRARIES
-set(JEMALLOC_ROOT /usr/local/jemalloc/)
-include_directories(${JEMALLOC_ROOT}/include)
-set(JEMALLOC_LIB_PATH ${JEMALLOC_ROOT}/lib)
-set(JEMALLOC_LIBS ${JEMALLOC_LIB_PATH}/libjemalloc.so)
+find_package(IlmBase REQUIRED COMPONENTS Half)
+find_package(Jemalloc REQUIRED)
 
 # AFX CORE LIBRARY
 add_library(lib_afx_core SHARED src/image.cpp src/threading.cpp src/mlaa.cpp)
 set_target_properties(lib_afx_core PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY "./lib")
-target_link_libraries(lib_afx_core ${BOOST_LIBS} ${IPP_LIBS} ${JEMALLOC_LIBS})
+target_link_libraries(lib_afx_core ${Ipp_LIBRARIES} ${Boost_LIBRARIES} ${IlmBase_LIBRARIES} ${Jemalloc_LIBRARIES})
 
 # Cuda Helper Library
 add_library(lib_afx_cuda SHARED src/cuda_helper.cpp)
 set_target_properties(lib_afx_cuda PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY "./lib")
-target_link_libraries(lib_afx_cuda ${BOOST_LIBS} ${CUDA_LIBS} lib_afx_core)
+target_link_libraries(lib_afx_cuda lib_afx_core)
 
 add_library(afx_soft_clip SHARED src/afx_soft_clip.cpp)
 set_target_properties(afx_soft_clip PROPERTIES PREFIX "")
@@ -84,11 +71,11 @@ target_link_libraries(afx_despill lib_afx_core)
 
 cuda_add_library(afx_median src/afx_median.cpp src/afx_median.cu SHARED)
 set_target_properties(afx_median PROPERTIES PREFIX "")
-target_link_libraries(afx_median ${CUDA_LIBS} lib_afx_core lib_afx_cuda)
+target_link_libraries(afx_median lib_afx_core lib_afx_cuda)
 
 cuda_add_library(afx_glow src/afx_glow.cpp SHARED)
 set_target_properties(afx_glow PROPERTIES PREFIX "")
-target_link_libraries(afx_glow ${CUDA_LIBS} lib_afx_core lib_afx_cuda)
+target_link_libraries(afx_glow lib_afx_core lib_afx_cuda)
 
 
 install(TARGETS lib_afx_core lib_afx_cuda DESTINATION lib)
