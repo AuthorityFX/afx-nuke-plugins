@@ -264,7 +264,7 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, int length, int x, int y) {
   //          0.0f
   if (info_.PreviousRow(info_ptr)->flags & afx::kDisPosRight) { // last pixel in line is greater than right pixel
     if (info_.GetPtrBnds(x + 1, y)->flags & afx::kDisPosDown or not info_ptr->flags & (afx::kDisPosDown | afx::kDisNegDown)) {
-      // if Diff(a, b) > thresh
+      // if Diff(a, b) > thresh or not Diff(c, d) > thresh
       // _____
       //      |[][][][][d]|{c}
       //      ¯¯¯¯¯¯¯¯¯¯b|_a_____
