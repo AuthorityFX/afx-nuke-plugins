@@ -31,6 +31,9 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 find_package(Nuke REQUIRED)
 find_package(Ipp REQUIRED COMPONENTS ippcore ippi)
+if(NOT DEFINED BOOST_ROOT)
+  set(BOOST_ROOT "/usr/local/boost")
+endif()
 find_package(Boost REQUIRED COMPONENTS system thread)
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
@@ -80,7 +83,7 @@ target_link_libraries(afx_glow lib_afx_core lib_afx_cuda)
 
 install(TARGETS lib_afx_core lib_afx_cuda DESTINATION lib)
 install(TARGETS afx_soft_clip afx_tone_map afx_median afx_chroma_key afx_despill afx_anti_alias afx_glow DESTINATION .)
-install(DIRECTORY icons DESTINATION  icons)
+install(DIRECTORY icons/ DESTINATION icons)
 install(FILES menu.py DESTINATION .)
 
 
