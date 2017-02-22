@@ -26,7 +26,7 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 # afx include files
-include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${CMAKE_SOURCE_DIR})
 
 find_package(Nuke REQUIRED)
 find_package(Ipp REQUIRED COMPONENTS ippcore ippi)
