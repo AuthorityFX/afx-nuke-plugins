@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef MLAA_H_
-#define MLAA_H_
+#ifndef INCLUDE_MLAA_H_
+#define INCLUDE_MLAA_H_
 
 #include <OpenEXR/half.h>
 
@@ -20,10 +20,10 @@
 namespace afx {
 
 enum DisFlags {
-  kDisPosDown      = 0x01, // pixel - bottom pixel is less than 0
-  kDisNegDown      = 0x02, // pixel - bottom pixel is greater than 0
-  kDisPosRight      = 0x04, // pixel - right pixel less than 0
-  kDisNegRight      = 0x08, // pixel - right pixel greater than 0
+  kDisPosDown   = 0x01,  // pixel - bottom pixel is less than 0
+  kDisNegDown   = 0x02,  // pixel - bottom pixel is greater than 0
+  kDisPosRight  = 0x04,  // pixel - right pixel less than 0
+  kDisNegRight  = 0x08,  // pixel - right pixel greater than 0
 };
 
 struct PixelInfo {
@@ -39,8 +39,8 @@ class ImageInfo {
   size_t pitch_;
   Bounds region_;
  public:
-  ImageInfo ();
-  ImageInfo(const Bounds& region);
+  ImageInfo();
+  explicit ImageInfo(const Bounds& region);
   ImageInfo(unsigned int width, unsigned int height);
   ~ImageInfo();
   void Create(const Bounds& region);
@@ -67,16 +67,16 @@ class MorphAA {
   void FindYLines_(const Bounds& region, const Image& input);
   void SetXLine_(PixelInfo* info_ptr, int length, int x, int y);
   void SetYLine_(PixelInfo* info_ptr, int length, int x, int y);
-  void BlendPixels_(const Bounds& region, const Image& input, Image& output);
+  void BlendPixels_(const Bounds& region, const Image& input, Image* output);
 
  public:
-  void Process(const Image& input, Image& output, float threshold, afx::Threader& threader);
-  void Process(const Image& input, Image& output, float threshold);
+  void Process(const Image& input, Image* output, float threshold, afx::Threader* threader);
+  void Process(const Image& input, Image* output, float threshold);
 };
 
-} // namespace afx
+}  // namespace afx
 
-#endif  // MLAA_H_
+#endif  // INCLUDE_MLAA_H_
 
 
 
