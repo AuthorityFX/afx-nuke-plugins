@@ -19,18 +19,20 @@
 #include <cuda_runtime.h>
 #include <math.h>
 
-#include "threading.h"
-#include "cuda_helper.h"
-#include "nuke_helper.h"
-#include "median.h"
+#include <algorithm>
+
+#include "include/threading.h"
+#include "include/cuda_helper.h"
+#include "include/nuke_helper.h"
+#include "include/median.h"
+
+#define ThisClass AFXMedian
 
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
 static const char* CLASS = "AFXMedian";
 static const char* HELP = "Smart Median Filter";
 
-#define ThisClass AFXMedian
-
-extern "C" void MedianCuda(cudaTextureObject_t tex, float* row_ptr, long int row_pitch, int med_size_i_, int med_size_o, int med_n_i,
+extern "C" void MedianCuda(cudaTextureObject_t tex, float* row_ptr, size_t row_pitch, int med_size_i_, int med_size_o, int med_n_i,
                            int med_n_o, float m_lerp, float m_i_lerp, float sharpness, afx::Bounds img_bnds, afx::Bounds row_bnds, cudaStream_t stream);
 
 using namespace DD::Image;
@@ -60,7 +62,7 @@ class ThisClass : public Iop {
   void ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row);
 
  public:
-  ThisClass(Node* node);
+  explicit ThisClass(Node* node);
   void knobs(Knob_Callback);
   const char* Class() const;
   const char* node_help() const;
@@ -73,7 +75,7 @@ class ThisClass : public Iop {
   void engine(int y, int x, int r, ChannelMask channels, Row& row);
 };
 ThisClass::ThisClass(Node* node) : Iop(node) {
-  //Set inputs
+  // Set inputs
   inputs(1);
 
   first_time_GPU_ = true;
@@ -83,7 +85,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
     cuda_process_.MakeReady();
   } catch (cudaError err) {}
 
-  //initialize knobs
+  // initialize knobs
   k_size_ = 1.0f;
   k_sharpness_ = 0.5f;
 }
@@ -101,18 +103,18 @@ const char* ThisClass::node_help() const { return HELP; }
 static Iop* build(Node* node) { return (new NukeWrapper(new ThisClass(node)))->channelsRGBoptionalAlpha(); }
 const Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Smart Median", build);
 void ThisClass::_validate(bool) {
-  //Copy source info
+  // Copy source info
   copy_info(0);
 
   format_bnds_ = afx::BoxToBounds(input(0)->format());
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
-  proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
+  proxy_scale_ = static_cast<float>(format_bnds_.GetWidth()) / static_cast<float>(format_f_bnds_.GetWidth());
 
-  m_lerp_ = fmod(afx::Clamp<float>(proxy_scale_ * k_size_, 0.0f, 25.0f), (float)1.0f);
+  m_lerp_ = fmod(afx::Clamp<float>(proxy_scale_ * k_size_, 0.0f, 25.0f), 1.0f);
   m_i_lerp_ = (1.0f - m_lerp_);
   med_size_f_ = afx::Clamp<float>(proxy_scale_ * k_size_, 0.0f, 25.0f);
-  med_size_i_ = (int)med_size_f_;
-  med_size_o_ = (int)std::ceil(med_size_f_);
+  med_size_i_ = static_cast<int>(med_size_f_);
+  med_size_o_ = static_cast<int>(std::ceil(med_size_f_));
   med_n_i_ = (med_size_i_ * 2 + 1) * (med_size_i_ * 2 + 1);
   med_n_o_ = (med_size_o_ * 2 + 1) * (med_size_o_ * 2 + 1);
   sharpness_ = afx::Clamp<float>(k_sharpness_, 0.0f, 3.0f);
@@ -136,7 +138,7 @@ void ThisClass::_close() {
   streams_.Clear();
 }
 void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
-  callCloseAfter(0); // Call close to dispose of all cuda mem allocations after last engine call
+  callCloseAfter(0);  // Call close to dispose of all cuda mem allocations after last engine call
   try {
     ProcessCUDA(y, x, r, channels, row);
   } catch (cudaError err) {
@@ -149,34 +151,34 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
   if (first_time_GPU_) {
     Guard guard(lock_);
     if (first_time_GPU_) {
-      cuda_process_.CheckReady(); // Throw error if device is not ready
+      cuda_process_.CheckReady();  // Throw error if device is not ready
 
       afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(med_size_o_);
       req_pad_bnds.Intersect(afx::InputBounds(input(0)));
 
       // Create plane of input channels for request bounds. Edge repication is handled by cuda texture
-      ImagePlane in_plane(afx::BoundsToBox(req_pad_bnds), false, channels); // Create plane "false" = non-packed.
-      if (aborted()) { return; } // Return if render aborted
-      input0().fetchPlane(in_plane); // Fetch plane
+      ImagePlane in_plane(afx::BoundsToBox(req_pad_bnds), false, channels);  // Create plane "false" = non-packed.
+      if (aborted()) { return; }  // Return if render aborted
+      input0().fetchPlane(in_plane);  // Fetch plane
       afx::CudaStreamArray streams;
-      foreach (z, in_plane.channels()) { // For each channel in plane
+      foreach(z, in_plane.channels()) {  // For each channel in plane
         in_imgs_.AddImage(req_pad_bnds);
-        in_imgs_.GetBackPtr()->AddAttribute("channel", z); // Add channel attribute to image
-        streams.Add(); // Add stream
+        in_imgs_.GetBackPtr()->AddAttribute("channel", z);  // Add channel attribute to image
+        streams.Add();  // Add stream
         in_imgs_.GetBackPtr()->MemCpyToDevice(&in_plane.readable()[in_plane.chanNo(z) * in_plane.chanStride()], in_plane.rowStride() * sizeof(float),
-                                              streams.GetBackPtr()->GetStream()); // Copy mem host plane to cuda on stream.
+                                              streams.GetBackPtr()->GetStream());  // Copy mem host plane to cuda on stream.
       }
-      cuda_process_.Synchonize(); // Sync all streams
-      in_imgs_.CreateTextures(); // Create texture objects for all cuda images
+      cuda_process_.Synchonize();  // Sync all streams
+      in_imgs_.CreateTextures();  // Create texture objects for all cuda images
       first_time_GPU_ = false;
     }
-  } // End first time guard
+  }  // End first time guard
 
   if (aborted()) { return; }
 
   afx::CudaImage cuda_row_img(row_bnds);
   afx::CudaStream cuda_row_stream;
-  foreach (z, channels) {
+  foreach(z, channels) {
     afx::CudaImage* in_ptr = in_imgs_.GetPtrByAttribute("channel", z);
     MedianCuda(in_ptr->GetTexture(), cuda_row_img.GetPtr(), cuda_row_img.GetPitch(), med_size_i_, med_size_o_, med_n_i_, med_n_o_, m_lerp_,
                m_i_lerp_, sharpness_, in_ptr->GetBounds(), row_bnds, cuda_row_stream.GetStream());
@@ -188,16 +190,16 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   afx::Bounds row_bnds(x, y, r - 1, y);
   afx::Bounds tile_bnds = row_bnds.GetPadBounds(med_size_o_);
 
-  //Must call get before initializing any pointers
+  // Must call get before initializing any pointers
   row.get(input0(), y, x, r, channels);
 
-  foreach (z, channels) {
+  foreach(z, channels) {
     // Get the input to compute median. Fill tile without multithreading.
     Tile tile(input0(), tile_bnds.x1(), tile_bnds.y1(), tile_bnds.x2() + 1, tile_bnds.y2() + 1, z, false);
     // The constructor may abort, you can't look at tile then:
     if (aborted()) { return; }
-    if (not tile.valid()) {
-      foreach (z, channels) {
+    if (!tile.valid()) {
+      foreach(z, channels) {
         float* out_ptr = row.writable(z);
         memset(&out_ptr[tile.x()], 0, (tile.r() - tile.x()) * sizeof(float));
       }
@@ -209,20 +211,20 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
     for (int row_x = row_bnds.x1(); row_x <= row_bnds.x2(); ++row_x) {
       float sum_i = 0.0f, sum_o = 0.0f, sum_sq_i = 0.0f, sum_sq_o = 0.0f;
       float list_i[med_n_i_], list_o[med_n_o_];
-      int n_i = 0, n_o = 0; // Counters to index median arrays
-      int y_i = 0; // Counter to find border pixels of median window
+      int n_i = 0, n_o = 0;  // Counters to index median arrays
+      int y_i = 0;  // Counter to find border pixels of median window
       for (int y0 = (row_bnds.y1() - med_size_o_); y0 <= (row_bnds.y2() + med_size_o_); ++y0) {
-        int x_i = 0; // Counter to find border pixels of median window
+        int x_i = 0;  // Counter to find border pixels of median window
         int y_clamp = tile.clampy(y0);
         for (int x0 = (row_x - med_size_o_); x0 <= (row_x + med_size_o_); ++x0) {
           // Tile is not accessible outside of requested reqion. Must clamp to bounds.
           float value = tile[z][y_clamp][tile.clampx(x0)];
           // If on outside ring of pixels
-          if (y_i == 0 or y_i == med_size_2 or x_i == 0 or x_i == med_size_2) {
+          if (y_i == 0 || y_i == med_size_2 || x_i == 0 || x_i == med_size_2) {
             // Outside sum and sumsq will be added to inside later. Saves cpu time.
             sum_o += value;
             sum_sq_o += value * value;
-          } else { // If on inside ring of pixels
+          } else {  // If on inside ring of pixels
             sum_i += value;
             sum_sq_i += value * value;
             list_i[n_i] = value;
@@ -235,11 +237,11 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
         y_i++;
       }
       float median = 0.0f, mean = 0.0f, std_dev = 0.0f;
-      if (m_lerp_ == 0 ) { // Integer median size, use outside list for stats
+      if (m_lerp_ == 0) {  // Integer median size, use outside list for stats
         median = afx::MedianQuickSelect(list_o, med_n_o_);
         mean = sum_o / std::max(med_n_o_, 1);
         std_dev = sqrtf(fmaxf((sum_sq_o) / std::max(med_n_o_, 1) - mean * mean, 0.0f));
-      } else { // Lerp inner and outter stats
+      } else {  // Lerp inner and outter stats
         float median_i = afx::MedianQuickSelect(list_i, med_n_i_);
         float median_o = afx::MedianQuickSelect(list_o, med_n_o_);
         // lerp between inner median and full median

@@ -7,11 +7,12 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef COLOR_OP_H_
-#define COLOR_OP_H_
+#ifndef INCLUDE_COLOR_OP_H_
+#define INCLUDE_COLOR_OP_H_
+
+#include <math.h>
 
 #include <algorithm>
-#include <math.h>
 
 namespace afx {
 
@@ -54,10 +55,11 @@ float SoftClip(float value, float clip, float knee) {
 class RotateColor {
  private:
   float m_[3][3];
+
  public:
   RotateColor();
   // Create transform object. Use Apply to perform an inplace rotation.
-  RotateColor(float deg);
+  explicit RotateColor(float deg);
   // Create transform object. Use Apply to perform an inplace rotation.
   RotateColor(const float (&axis)[3], float deg);
   // Build transform matrix for rotation
@@ -72,13 +74,12 @@ class RotateColor {
 };
 
 RotateColor::RotateColor() {
-  //Initialize identity matrix.
-  for (int r=0; r<3; ++r) {
-    for (int c=0; c<3; ++c) {
-      if (c==r) {
+  // Initialize identity matrix.
+  for (int r = 0; r < 3; ++r) {
+    for (int c = 0; c < 3; ++c) {
+      if (c == r) {
         m_[r][c] = 1.0f;
-      }
-      else {
+      } else {
         m_[r][c] = 0.0f;
       }
     }
@@ -103,8 +104,8 @@ void RotateColor::BuildMatrix(const float (&axis)[3], float deg) {
   float xy = x * y;
   float xz = x * z;
   float yz = y * z;
-  //Rodrigues' rotation formula
-  //http://en.wikipedia.org/wiki/Rodrigues'_rotation_formula
+  // Rodrigues' rotation formula
+  // http://en.wikipedia.org/wiki/Rodrigues'_rotation_formula
   m_[0][0] = cosA + (xx) * (1 - cosA);
   m_[0][1] = (xy) * (1 - cosA) - (z) * sinA;
   m_[0][2] = (xz) * (1 - cosA) + (y) * sinA;
@@ -133,16 +134,16 @@ void RotateColor::BuildMatrix(float deg) {
 }
 void RotateColor::Rotate(float* color) {
   float temp[3] = {0.0f, 0.0f, 0.0f};
-  for (int r=0; r<3; ++r) {
-    for (int c=0; c<3; ++c) {
+  for (int r = 0; r < 3; ++r) {
+    for (int c = 0; c < 3; ++c) {
       temp[r] += m_[r][c] * color[c];
     }
     color[r] = temp[r];
   }
 }
 void RotateColor::Invert() {
-  for (int r=0; r<3; ++r) {
-    for (int c=r; c<3; ++c) {
+  for (int r = 0; r < 3; ++r) {
+    for (int c = r; c < 3; ++c) {
       float temp;
       temp = m_[r][c];
       m_[r][c] = m_[c][r];
@@ -171,32 +172,31 @@ void RGBtoHSV(const float (&rgb)[3], float* hsv) {
   hsv[1] = sqrtf(powf(a, 2.0f) + powf(b, 2.0f));
   hsv[2] = max3(rgb[0], rgb[1], rgb[2]);
 }
-void HSVtoRGB(const float (&hsv)[3], float* rgb)
-{
+void HSVtoRGB(const float (&hsv)[3], float* rgb) {
   float C = hsv[2] * hsv[1];
   double Ho = 6.0f * hsv[0];
-  float X = C * (1.0f - fabsf((float)fmodf(Ho, 2.0) - 1.0f));
-  if( Ho >= 0 and Ho < 1) {
+  float X = C * (1.0f - fabsf(fmodf(Ho, 2.0) - 1.0f));
+  if (Ho >= 0 && Ho < 1) {
     rgb[0] = C;
     rgb[1] = X;
     rgb[2] = 0;
-  } else if( Ho >= 1 and Ho < 2) {
+  } else if (Ho >= 1 && Ho < 2) {
     rgb[0] = X;
     rgb[1] = C;
     rgb[2] = 0;
-  } else if( Ho >= 2 and Ho < 3) {
+  } else if (Ho >= 2 && Ho < 3) {
     rgb[0] = 0;
     rgb[1] = C;
     rgb[2] = X;
-  } else if( Ho >= 3 and Ho < 4) {
+  } else if (Ho >= 3 && Ho < 4) {
     rgb[0] = 0;
     rgb[1] = X;
     rgb[2] = C;
-  } else if( Ho >= 4 and Ho < 5) {
+  } else if (Ho >= 4 && Ho < 5) {
     rgb[0] = X;
     rgb[1] = 0;
     rgb[2] = C;
-  } else if( Ho >= 5) {
+  } else if (Ho >= 5) {
     rgb[0] = C;
     rgb[1] = 0;
     rgb[2] = X;
@@ -230,7 +230,7 @@ void RGBtoLab(const float (&rgb)[3], float (&lab)[3]) {
   lab[2] = 200 * (f(Y / 100.0f)  - f(Z / 108.883f));
 }
 void LabtoRGB(const float (&lab)[3], float (&rgb)[3]) {
-  //https://en.wikipedia.org/wiki/Lab_color_space
+  // https://en.wikipedia.org/wiki/Lab_color_space
   float X = 95.047f  * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f) + (1.0f / 500.0f) * lab[1]);
   float Y = 100.0f   * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f));
   float Z = 108.883f * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f) + (1.0f / 200.0f) * lab[2]);
@@ -294,6 +294,6 @@ float SpillSuppression(const float (&rgb)[3], int algorithm, ScreenColor color) 
   return suppression;
 }
 
-} // namespace afx
+}  // namespace afx
 
-#endif // COLOR_OP_H_
+#endif  // INCLUDE_COLOR_OP_H_

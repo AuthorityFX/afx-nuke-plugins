@@ -7,25 +7,25 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef IMAGE_H_
-#define IMAGE_H_
-
-#include <algorithm>
-#include <list>
-#include <boost/ptr_container/ptr_list.hpp>
-#include <boost/functional/hash.hpp>
-#include <boost/any.hpp>
+#ifndef INCLUDE_IMAGE_H_
+#define INCLUDE_IMAGE_H_
 
 #include <ipp.h>
 #include <ippcore.h>
 #include <ipptypes.h>
 #include <ippi.h>
 
-#include "types.h"
-#include "threading.h"
-#include "attribute.h"
+#include <boost/ptr_container/ptr_list.hpp>
+#include <boost/functional/hash.hpp>
+#include <boost/any.hpp>
 
-#include "settings.h"
+#include <algorithm>
+#include <list>
+
+#include "include/settings.h"
+#include "include/types.h"
+#include "include/threading.h"
+#include "include/attribute.h"
 
 namespace afx {
 
@@ -40,10 +40,11 @@ class Image : public AttributeBase {
   int pitch_;
   IppiSize image_size_;
   Bounds region_;
+
  public:
   Image();
   Image(unsigned int width, unsigned int height);
-  Image(const Bounds& region);
+  explicit Image(const Bounds& region);
   Image(const Image& other);
   Image& operator=(const Image& other);
   ~Image();
@@ -74,11 +75,11 @@ class ImageComplex : public Image {
     image_size_.height = region_.y2() - region_.y1() + 1;
     ptr_ = ippiMalloc_32fc_C1(image_size_.width, image_size_.height, &pitch_);
   }
-  virtual void Copy(const Image& other); // TODO
-  virtual void MemSet(float value); // TODO
-  virtual void MemSet(float value, const Bounds& region); // TODO
-  virtual void MemCpyIn(const float* src_ptr, size_t src_pitch, const Bounds& region); // TODO
-  virtual void MemCpyOut(float* dst_ptr, size_t dst_pitch, const Bounds& region); // TODO
+  virtual void Copy(const Image& other);  // TODO(rpw):
+  virtual void MemSet(float value);  // TODO(rpw):
+  virtual void MemSet(float value, const Bounds& region);  // TODO(rpw):
+  virtual void MemCpyIn(const float* src_ptr, size_t src_pitch, const Bounds& region);  // TODO(rpw):
+  virtual void MemCpyOut(float* dst_ptr, size_t dst_pitch, const Bounds& region);  // TODO(rpw):
 };
 
 class ImageArray : public Array<Image> {
@@ -89,7 +90,7 @@ class ImageArray : public Array<Image> {
 class Resize {
  private:
   IppiResizeSpec_32f* spec_ptr_;
-  int spec_size_, init_size_, buf_size_ ;
+  int spec_size_, init_size_, buf_size_;
   Ipp8u* buffer_ptr_;
   Ipp32f* init_buf_ptr_;
   IppiPoint dest_offset_;
@@ -98,16 +99,15 @@ class Resize {
   void ResizeTile_(Bounds region, Image* in, Image* out) {
     IppiBorderType border_style = ippBorderRepl;
 
-    if (in->GetBounds().x1() > region.x1()) { border_style = (IppiBorderType)((int)border_style | (int)ippBorderInMemRight); }
-    if (in->GetBounds().x2() < region.x2()) { border_style = (IppiBorderType)((int)border_style | (int)ippBorderInMemLeft); }
-    if (in->GetBounds().y1() > region.y1()) { border_style = (IppiBorderType)((int)border_style | (int)ippBorderInMemBottom); }
-    if (in->GetBounds().y2() < region.y2()) { border_style = (IppiBorderType)((int)border_style | (int)ippBorderInMemTop); }
+    if (in->GetBounds().x1() > region.x1()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemRight); }
+    if (in->GetBounds().x2() < region.x2()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemLeft); }
+    if (in->GetBounds().y1() > region.y1()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemBottom); }
+    if (in->GetBounds().y2() < region.y2()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemTop); }
 
     // select algorithm based on image size change. TODO dest tile size not full image size
     ippiResizeAntialiasing_32f_C1R(in->GetPtr(region.x1(), region.y1()), in->GetPitch(), out->GetPtr(region.x1(), region.y1()), out->GetPitch(),
                                    dest_offset_, out->GetSize(), border_style, border_value_, spec_ptr_, buffer_ptr_);
-
-  };
+  }
 
   void Dispose() {
     if (spec_ptr_ != nullptr) {
@@ -129,13 +129,13 @@ class Resize {
 
     // Spec and ippBBuf sizes TODO tile sizes not full image size
     ippiResizeGetSize_32f(in->GetSize(), out->GetSize(), ippLanczos, 1, &spec_size_, &init_size_);
-    init_buf_ptr_ = (Ipp32f*)ippsMalloc_32f(init_size_);
-    spec_ptr_ = (IppiResizeSpec_32f*)ippsMalloc_32f(spec_size_);
+    init_buf_ptr_ = reinterpret_cast<Ipp32f*>(ippsMalloc_32f(init_size_));
+    spec_ptr_ = reinterpret_cast<IppiResizeSpec_32f*>(ippsMalloc_32f(spec_size_));
 
     // Filter initialization TODO tile sizes not full image size
     ippiResizeLanczosInit_32f(in->GetSize(), out->GetSize(), 2, spec_ptr_, buffer_ptr_);
     ippiResizeGetBufferSize_32f(spec_ptr_, out->GetSize(), 1, &buf_size_);
-    buffer_ptr_ = (Ipp8u*)ippsMalloc_8u(buf_size_);
+    buffer_ptr_ = reinterpret_cast<Ipp8u*>(ippsMalloc_8u(buf_size_));
 
     *border_value_ = 0.0f;
 
@@ -146,4 +146,4 @@ class Resize {
 
 }  //  namespace afx
 
-#endif  // IMAGE_H_
+#endif  // INCLUDE_IMAGE_H_

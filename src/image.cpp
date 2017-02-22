@@ -7,13 +7,13 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#include "image.h"
+#include "include/image.h"
 
 #include <ipp.h>
 #include <ippcore.h>
 #include <ippi.h>
 
-#include "settings.h"
+#include "include/settings.h"
 
 namespace afx {
 
@@ -76,13 +76,13 @@ void Image::MemCpyOut(float* dst_ptr, size_t dst_pitch, const Bounds& region) {
 }
 Ipp32f* Image::GetPtr() const { return ptr_; }
 Ipp32f* Image::GetPtr(int x, int y) const {
-  return (Ipp32f*)((char*)(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(Ipp32f));
+  return reinterpret_cast<Ipp32f*>(reinterpret_cast<char*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(Ipp32f));
 }
 Ipp32f Image::GetVal(int x, int y) const {
-  return *(Ipp32f*)((char*)(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(Ipp32f));
+  return *reinterpret_cast<Ipp32f*>(reinterpret_cast<char*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(Ipp32f));
 }
 Ipp32f Image::GetValBnds(int x, int y) const {
-  return *(Ipp32f*)((char*)(ptr_) + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(Ipp32f));
+  return *reinterpret_cast<Ipp32f*>(reinterpret_cast<char*>(ptr_) + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(Ipp32f));
 }
 
 size_t Image::GetPitch() const { return pitch_; }
@@ -95,4 +95,4 @@ void ImageArray::AddImage(const Bounds& region) {
     this->array_.push_back(new Image(region));
 }
 
-} // namespace afx
+}  // namespace afx

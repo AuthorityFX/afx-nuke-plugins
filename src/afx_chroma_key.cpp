@@ -17,10 +17,12 @@
 
 #include <boost/geometry.hpp>
 
-#include "threading.h"
-#include "nuke_helper.h"
-#include "median.h"
-#include "color_op.h"
+#include "include/threading.h"
+#include "include/nuke_helper.h"
+#include "include/median.h"
+#include "include/color_op.h"
+
+#define ThisClass AFXChromaKey
 
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
@@ -29,16 +31,13 @@ namespace bgi = boost::geometry::index;
 static const char* CLASS = "AFXChromaKey";
 static const char* HELP = "Chroma Keyer";
 
-#define ThisClass AFXChromaKey
-
 typedef bg::model::point<float, 2, boost::geometry::cs::cartesian> Point;
 typedef bg::model::multi_point<Point> PointCloud;
 typedef bg::model::polygon<Point> Polygon;
 typedef bg::model::multi_polygon<Polygon> MultiGon;
 typedef bg::model::box<Point> BoundingBox;
 
-enum inputs
-{
+enum inputs {
   iSource = 0,
   iScreen = 1,
   iOutMatte = 2,
@@ -48,8 +47,7 @@ enum inputs
 using namespace DD::Image;
 
 class ThisClass : public Iop {
-private:
-
+ private:
   // members to store knob values
   float k_out_dilate_;
   float k_in_dilate_;
@@ -85,8 +83,8 @@ private:
 
   void Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte);
 
-public:
-  ThisClass(Node* node);
+ public:
+  explicit ThisClass(Node* node);
   void knobs(Knob_Callback);
   const char* Class() const;
   const char* node_help() const;
@@ -101,10 +99,9 @@ public:
   void engine(int y, int x, int r, ChannelMask channels, Row& row);
 };
 ThisClass::ThisClass(Node* node) : Iop(node) {
-
   first_time_engine_ = true;
 
-  //initialize knobs
+  // initialize knobs
   k_out_dilate_ = 0.25f;
   k_out_falloff_ = 0.5f;
   k_in_dilate_ = 0.25f;
@@ -135,7 +132,6 @@ void ThisClass::knobs(Knob_Callback f) {
   Bool_knob(f, &k_premultiply_, "premultiply", "Premultiply");
   SetFlags(f, Knob::STARTLINE);
   Tooltip(f, "Premultiply by alpha");
-
 }
 const char* ThisClass::Class() const { return CLASS; }
 const char* ThisClass::node_help() const { return HELP; }
@@ -174,7 +170,7 @@ void ThisClass::_validate(bool) {
 
     format_bnds_ = afx::BoxToBounds(input(0)->format());
     format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
-    proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
+    proxy_scale_ = static_cast<float>(format_bnds_.GetWidth()) / static_cast<float>(format_f_bnds_.GetWidth());
 
     out_falloff_ = fmaxf(1.0f + (1.0f - afx::Clamp(k_out_falloff_, 0.0f, 1.0f)), 0.008);
     in_falloff_ = afx::Clamp(1.0f + k_in_falloff_, 0.008f, 125.0f);
@@ -216,7 +212,6 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   if (first_time_engine_) {
     Guard guard(lock_);
     if (first_time_engine_) {
-
       bool use_screen_input = false;
       afx::Bounds screen_bnds;
       if (input(iScreen)) {
@@ -228,9 +223,9 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
         screen_bnds = afx::InputBounds(input(iSource));
       }
 
-      ImagePlane source_plane(afx::BoundsToBox(screen_bnds), false, Mask_RGB); // Create plane "false" = non-packed.
-      ImagePlane out_matte_plane(afx::BoundsToBox(screen_bnds), false, Mask_Alpha); // Create plane "false" = non-packed.
-      ImagePlane in_matte_plane(afx::BoundsToBox(screen_bnds), false, Mask_Alpha); // Create plane "false" = non-packed.
+      ImagePlane source_plane(afx::BoundsToBox(screen_bnds), false, Mask_RGB);  // Create plane "false" = non-packed.
+      ImagePlane out_matte_plane(afx::BoundsToBox(screen_bnds), false, Mask_Alpha);  // Create plane "false" = non-packed.
+      ImagePlane in_matte_plane(afx::BoundsToBox(screen_bnds), false, Mask_Alpha);  // Create plane "false" = non-packed.
 
       if (use_screen_input) {
         input(iScreen)->fetchPlane(source_plane);
@@ -268,7 +263,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
 
       first_time_engine_ = false;
     }
-  } // End first time guard
+  }  // End first time guard
 
 
   Channel rgba_chan[4];
@@ -283,15 +278,15 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   row.pre_copy(row, copy_mask);
   row.copy(row, copy_mask, x, r);
 
-  //Must call get before initializing any pointers
+  // Must call get before initializing any pointers
   row.get(input0(), y, x, r, Mask_RGBA);
 
   afx::ReadOnlyPixel in(3);
   afx::Pixel out(4);
-  for (int i = 0; i < 3; ++i) { in.SetPtr(row[rgba_chan[i]] + x, i); } // Set const in pointers RGB
-  for (int i = 0; i < 4; ++i) { out.SetPtr(row.writable(rgba_chan[i]) + x, i); } // Set out pointers RGBA
+  for (int i = 0; i < 3; ++i) { in.SetPtr(row[rgba_chan[i]] + x, i); }  // Set const in pointers RGB
+  for (int i = 0; i < 4; ++i) { out.SetPtr(row.writable(rgba_chan[i]) + x, i); }  // Set out pointers RGBA
 
-  for (int x0 = x; x0 < r; ++x0) { // Loop through pixels in row
+  for (int x0 = x; x0 < r; ++x0) {  // Loop through pixels in row
     float rgb[3];
     float lab[3];
     for (int i = 0; i < 3; ++i) { rgb[i] = in.GetVal(i); }
@@ -331,7 +326,6 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
 }
 
 void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, const ImagePlane& out_matte, const ImagePlane& in_matte) {
-
   afx::Bounds plane_bnds(afx::BoxToBounds(source.bounds()));
 
   float rgb[3];
@@ -362,7 +356,7 @@ void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, con
     for (int x = region.x1(); x <= region.x2(); ++x) {
       for (int i = 0; i < 3; i++) { rgb[i] = in.GetVal(i); }
       Point p;
-      if (*out_m_ptr > 0.5 or *in_m_ptr > 0.5) {
+      if (*out_m_ptr > 0.5 || *in_m_ptr > 0.5) {
         float lab[3];
         afx::RGBtoLab(rgb, lab);
         p = Point(lab[1], lab[2]);
@@ -382,6 +376,5 @@ void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, con
   boost::mutex::scoped_lock lock(mutex_);
   bg::append(out_pc_, out_pc);
   bg::append(in_pc_, in_pc);
-
 }
 

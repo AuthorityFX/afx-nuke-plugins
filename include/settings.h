@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef SETTINGS_H_
-#define SETTINGS_H_
+#ifndef INCLUDE_SETTINGS_H_
+#define INCLUDE_SETTINGS_H_
 
 // Use Google C++ Style
 // https://google.github.io/styleguide/cppguide.html
@@ -20,4 +20,4 @@
 #define BOOST_ALL_DYN_LINK
 #define BOOST_DYN_LINK
 
-#endif  // AFX_SETTINGS_H_
+#endif  // INCLUDE_SETTINGS_H_

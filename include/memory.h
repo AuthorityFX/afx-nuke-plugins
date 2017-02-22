@@ -7,25 +7,25 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef MEMORY_H_
-#define MEMORY_H_
+#ifndef INCLUDE_MEMORY_H_
+#define INCLUDE_MEMORY_H_
 
 #include <jemalloc/jemalloc.h>
 
-#include "types.h"
+#include "include/types.h"
 
 namespace afx {
 
 template <typename T>
 T* ImageMalloc(unsigned int width, unsigned int height, size_t* pitch) {
   *pitch = (((width * sizeof(T) + 63) / 64) * 64);
-  return (T*)je_aligned_alloc(64, *pitch * height);
+  return reinterpret_cast<T*>(je_aligned_alloc(64, *pitch * height));
 }
 
 void ImageFree(void* ptr) {
   je_free(ptr);
 }
 
-} // namespace afx
+}  // namespace afx
 
-#endif  // MEMORY_H_
+#endif  // INCLUDE_MEMORY_H_

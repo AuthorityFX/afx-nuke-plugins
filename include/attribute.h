@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef ATTRIBUTE_H_
-#define ATTRIBUTE_H_
+#ifndef INCLUDE_ATTRIBUTE_H_
+#define INCLUDE_ATTRIBUTE_H_
 
 #include <boost/ptr_container/ptr_list.hpp>
 #include <vector>
@@ -16,13 +16,11 @@
 #include <string>
 #include <sstream>
 
-#include "settings.h"
+#include "include/settings.h"
 
 namespace afx {
 
-//TODO use boost::variant to store different attribute types.
-
-// Attribute to store hashes of adhoc info like thread ids, channel names, etc
+// Attribute to store adhoc info like thread ids, channel names, etc
 struct Attribute {
   std::string name;
   int value;
@@ -31,13 +29,14 @@ struct Attribute {
 // Predicate to match attribute name
 struct CompareAttributeName {
   std::string cp_name;
-  CompareAttributeName(const std::string& name) : cp_name(name) {}
+  explicit CompareAttributeName(const std::string& name) : cp_name(name) {}
   bool operator() (const Attribute& attr) { return attr.name.compare(cp_name) == 0; }
 };
 
 class AttributeBase {
  protected:
   std::vector<Attribute> attributes_;
+
  public:
   void AddAttribute(const std::string& name, int value) { attributes_.push_back(Attribute(name, value)); }
   void AddAttributes(std::vector<Attribute> attributes) {
@@ -60,6 +59,7 @@ template <typename T>
 class Array {
  protected:
   boost::ptr_list<T> array_;
+
  public:
   typedef typename boost::ptr_list<T>::iterator ptr_list_it;
 
@@ -103,7 +103,7 @@ class Array {
   bool HasAttribute(const std::string& name, int value) {
     bool found = false;
     for (ptr_list_it it = array_.begin(); it != array_.end(); ++it) {
-      if (it->GetAttribute(name) == value ) {
+      if (it->GetAttribute(name) == value) {
         found = true;
         break;
       }
@@ -132,4 +132,4 @@ class Array {
 
 }  // namespace afx
 
-#endif  // ATTRIBUTE_H_
+#endif  // INCLUDE_ATTRIBUTE_H_

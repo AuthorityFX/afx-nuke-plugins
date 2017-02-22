@@ -7,12 +7,12 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef TYPES_H_
-#define TYPES_H_
+#ifndef INCLUDE_TYPES_H_
+#define INCLUDE_TYPES_H_
 
 #include <cuda_runtime.h>
 
-#include "settings.h"
+#include "include/settings.h"
 
 namespace afx {
 
@@ -23,9 +23,10 @@ T Clamp(T value, T min_v, T max_v) {
 }
 
 class Bounds {
-private:
+ private:
   int x1_, x2_, y1_, y2_;
-public:
+
+ public:
   __host__ __device__
   Bounds() : x1_(0), y1_(0), x2_(0), y2_(0) {}
   __host__ __device__
@@ -123,7 +124,7 @@ public:
   unsigned int GetHeight() const { return y2_ - y1_ + 1; }
   __host__ __device__
   bool CheckBounds(int x, int y) const {
-    if (x < x1_ or x > x2_ or y < y1_ or y > y2_) {
+    if (x < x1_ || x > x2_ || y < y1_ || y > y2_) {
       return false;
     } else {
       return true;
@@ -131,7 +132,7 @@ public:
   }
   __host__ __device__
   bool CheckBoundsX(int x) const {
-    if (x < x1_ or x > x2_) {
+    if (x < x1_ || x > x2_) {
       return false;
     } else {
       return true;
@@ -139,16 +140,16 @@ public:
   }
   __host__ __device__
   bool CheckBoundsY(int y) const {
-    if (y < y1_ or y > y2_) {
+    if (y < y1_ || y > y2_) {
       return false;
     } else {
       return true;
     }
   }
   __host__ __device__
-  float GetCenterX() const { return (float)(x2_ - x1_) / 2.0f + x1_; }
+  float GetCenterX() const { return static_cast<float>(x2_ - x1_) / 2.0f + x1_; }
   __host__ __device__
-  float GetCenterY() const { return (float)(y2_ - y1_) / 2.0f + y1_; }
+  float GetCenterY() const { return static_cast<float>(y2_ - y1_) / 2.0f + y1_; }
   __host__ __device__
   int ClampX(int x) const {
     return x >= x1_ ? (x <= x2_ ? x : x2_) : x1_;
@@ -160,7 +161,7 @@ public:
 };
 
 class ReadOnlyPixel {
-private:
+ private:
   const float** pixel_;
   unsigned int size_;
   void Init(unsigned int size) {
@@ -181,9 +182,10 @@ private:
       pixel_ = nullptr;
     }
   }
-public:
+
+ public:
   ReadOnlyPixel() : pixel_(nullptr) { Init(3); }
-  ReadOnlyPixel(unsigned int size) : pixel_(nullptr) { Init(size); }
+  explicit ReadOnlyPixel(unsigned int size) : pixel_(nullptr) { Init(size); }
   ReadOnlyPixel(const ReadOnlyPixel& other) { CopyPixel(other); }
   ReadOnlyPixel& operator=(const ReadOnlyPixel& other) {
     CopyPixel(other);
@@ -209,7 +211,7 @@ public:
 };
 
 class Pixel {
-private:
+ private:
   float** pixel_;
   unsigned int size_;
   void Init(unsigned int size) {
@@ -230,9 +232,10 @@ private:
       pixel_ = nullptr;
     }
   }
-public:
+
+ public:
   Pixel() : pixel_(nullptr) { Init(3); }
-  Pixel(unsigned int size) : pixel_(nullptr) { Init(size); }
+  explicit Pixel(unsigned int size) : pixel_(nullptr) { Init(size); }
   Pixel(const Pixel& other) { CopyPixel(other); }
   Pixel& operator=(const Pixel& other) {
     CopyPixel(other);
@@ -258,6 +261,6 @@ public:
   unsigned int GetSize() const {return size_; }
 };
 
-} // namespace afx
+}  // namespace afx
 
-#endif  // TYPES_H_
+#endif  // INCLUDE_TYPES_H_

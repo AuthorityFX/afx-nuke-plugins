@@ -7,11 +7,12 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#include "cuda_helper.h"
+#include "include/cuda_helper.h"
 
 #include <cuda_runtime_api.h>
 #include <cuda_runtime.h>
 #include <cufft.h>
+
 #include <algorithm>
 #include <list>
 
@@ -23,9 +24,9 @@ void CudaProcess::DevCount_() {
 }
 CudaProcess::CudaProcess() :ready_(false) {}
 CudaProcess::~CudaProcess() {
-  // TODO Nuke hangs with these. Maybe not host thread safe. IDK.
-  //Synchonize();
-  //Reset();
+  // TODO(rpw): Nuke hangs with these. Maybe not host thread safe. Look into it.
+  // Synchonize();
+  // Reset();
 }
 void CudaProcess::MakeReady() {
   DevCount_();
@@ -51,14 +52,14 @@ void CudaProcess::SetFastestDevice() {
 
   float max_clock = 0;
   float clock = 0;
-  int dev_num = -1; // Initialize to -1 so we know if there are no suitatble devices
+  int dev_num = -1;  // Initialize to -1 so we know if there are no suitatble devices
 
-  //Find device with max flops
+  // Find device with max flops
   cudaDeviceProp prop;
-  for(int i = 0; i < dev_count_; ++i) {
+  for (int i = 0; i < dev_count_; ++i) {
     cudaGetDeviceProperties(&prop, i);
-    clock = (float)prop.multiProcessorCount * prop.clockRate / 1000000.0f;
-    if (prop.major >= major_req and prop.minor >= minor_req and clock > max_clock) {
+    clock = static_cast<float>(prop.multiProcessorCount) * prop.clockRate / 1000000.0f;
+    if (prop.major >= major_req && prop.minor >= minor_req && clock > max_clock) {
       max_clock = clock;
       dev_num = i;
     }
@@ -70,7 +71,7 @@ void CudaProcess::SetFastestDevice() {
 }
 int CudaProcess::GetDevice() const { return dev_id_; }
 cudaDeviceProp CudaProcess::GetProp() const { return prop_; }
-bool CudaProcess::CheckReady() const { if (not ready_) { throw cudaErrorDevicesUnavailable; } }
+bool CudaProcess::CheckReady() const { if (!ready_) { throw cudaErrorDevicesUnavailable; } }
 void CudaProcess::CheckError() { CudaCheckError(); }
 
 
@@ -97,11 +98,11 @@ template <typename T>
 void CudaArray<T>::Create(size_t size) {
   Dispose();
   size_ = size;
-  CudaSafeCall(cudaMalloc((void**)&ptr_, size_ * sizeof(T)));
+  CudaSafeCall(cudaMalloc(reinterpret_cast<void**>(&ptr_), size_ * sizeof(T)));
 }
 template <typename T>
 void CudaArray<T>::Dispose() {
-  if (ptr_ != nullptr ) {
+  if (ptr_ != nullptr) {
     CudaSafeCall(cudaFree(ptr_) );
     ptr_ = nullptr;
   }
@@ -157,31 +158,31 @@ void CudaImage::Create(unsigned int width, unsigned int height) {
   Create(Bounds(0, width - 1, 0, height - 1));
 }
 void CudaImage::Create(const Bounds& region) {
-  Dispose(); // Dispose before creating
+  Dispose();  // Dispose before creating
   region_ = region;
-  CudaSafeCall(cudaMallocPitch((void**)&ptr_, &pitch_, region_.GetWidth() * sizeof(float), region_.GetHeight()));
+  CudaSafeCall(cudaMallocPitch(reinterpret_cast<void**>(&ptr_), &pitch_, region_.GetWidth() * sizeof(float), region_.GetHeight()));
 }
 void CudaImage::Dispose() {
-  if (ptr_ != nullptr ) {
+  if (ptr_ != nullptr) {
     CudaSafeCall(cudaFree(ptr_));
     ptr_ = nullptr;
   }
   DisposeTexture();
 }
 void CudaImage::CreateTexture(const cudaTextureAddressMode& address_mode) {
-  DisposeTexture(); // Dispose of old texture
-  address_mode_ = address_mode; // Set private address mode -- how out of bound pixel addressing is handled
-  memset(&res_desc_, 0, sizeof(res_desc_)); // memset res_desc_
-  res_desc_.resType = cudaResourceTypePitch2D; // set type to pitch2D for 2D image
-  res_desc_.res.pitch2D.desc = cudaCreateChannelDesc<float>(); // Create channels
-  res_desc_.res.pitch2D.devPtr = ptr_; // Device image data pointer
-  res_desc_.res.pitch2D.pitchInBytes = pitch_; // device ptich
+  DisposeTexture();  // Dispose of old texture
+  address_mode_ = address_mode;  // Set private address mode -- how out of bound pixel addressing is handled
+  memset(&res_desc_, 0, sizeof(res_desc_));  // memset res_desc_
+  res_desc_.resType = cudaResourceTypePitch2D;  // set type to pitch2D for 2D image
+  res_desc_.res.pitch2D.desc = cudaCreateChannelDesc<float>();  // Create channels
+  res_desc_.res.pitch2D.devPtr = ptr_;  // Device image data pointer
+  res_desc_.res.pitch2D.pitchInBytes = pitch_;  // device ptich
   res_desc_.res.pitch2D.width = region_.GetWidth();
   res_desc_.res.pitch2D.height = region_.GetHeight();
-  memset(&tex_desc_, 0, sizeof(tex_desc_)); // mem set tex desc
-  tex_desc_.readMode = cudaReadModeElementType; // Set read mode to element, not normalized float.
-  for (int i = 0; i < 3; ++i) { tex_desc_.addressMode[0] = address_mode; } // Set address mode in all dimensions
-  CudaSafeCall(cudaCreateTextureObject(&tex_, &res_desc_, &tex_desc_, NULL)); // Create texture object
+  memset(&tex_desc_, 0, sizeof(tex_desc_));  // mem set tex desc
+  tex_desc_.readMode = cudaReadModeElementType;  // Set read mode to element, not normalized float.
+  for (int i = 0; i < 3; ++i) { tex_desc_.addressMode[0] = address_mode; }  // Set address mode in all dimensions
+  CudaSafeCall(cudaCreateTextureObject(&tex_, &res_desc_, &tex_desc_, NULL));  // Create texture object
   has_tex_ = true;
 }
 void CudaImage::DisposeTexture() {
@@ -210,11 +211,11 @@ void CudaImage::MemCpyFromDevice(float* h_ptr, size_t h_pitch, cudaStream_t stre
 }
 float* CudaImage::GetPtr() const { return ptr_; }
 float* CudaImage::GetPtr(int x, int y) const {
-  float* ptr = (float*)((char*)(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(float));
+  float* ptr = reinterpret_cast<float*>(reinterpret_cast<char*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(float));
   return ptr;
 }
 size_t CudaImage::GetPitch() const { return pitch_; }
-unsigned int CudaImage::GetWidth() const{ return region_.GetWidth(); }
+unsigned int CudaImage::GetWidth() const { return region_.GetWidth(); }
 unsigned int CudaImage::GetHeight() const { return region_.GetHeight(); }
 Bounds CudaImage::GetBounds() const { return region_; }
 bool CudaImage::HasTexture() const { return has_tex_; }
@@ -229,32 +230,32 @@ cudaTextureObject_t CudaImage::GetTexture() const {
 
 
 
-CudaComplex::CudaComplex () : ptr_ (nullptr) {}
-CudaComplex::CudaComplex (unsigned int width, unsigned int height) : ptr_ (nullptr) { Create (width, height); }
-CudaComplex::CudaComplex (const CudaComplex& other) : ptr_ (nullptr) {
-  Create (other.GetHeight(), other.GetHeight());
-  CudaSafeCall (cudaMemcpy2D (ptr_, pitch_, other.GetPtr(), other.GetPitch(), width_ * sizeof (cufftComplex), height_, cudaMemcpyHostToHost));
+CudaComplex::CudaComplex() : ptr_(nullptr) {}
+CudaComplex::CudaComplex(unsigned int width, unsigned int height) : ptr_(nullptr) { Create(width, height); }
+CudaComplex::CudaComplex(const CudaComplex& other) : ptr_(nullptr) {
+  Create(other.GetHeight(), other.GetHeight());
+  CudaSafeCall(cudaMemcpy2D(ptr_, pitch_, other.GetPtr(), other.GetPitch(), width_ * sizeof(cufftComplex), height_, cudaMemcpyHostToHost));
 }
 CudaComplex& CudaComplex::operator= (const CudaComplex& other) {
-  Create (other.GetHeight(), other.GetHeight());
-  CudaSafeCall (cudaMemcpy2D (ptr_, pitch_, other.GetPtr(), other.GetPitch(), width_ * sizeof (cufftComplex), height_, cudaMemcpyHostToHost));
+  Create(other.GetHeight(), other.GetHeight());
+  CudaSafeCall(cudaMemcpy2D(ptr_, pitch_, other.GetPtr(), other.GetPitch(), width_ * sizeof(cufftComplex), height_, cudaMemcpyHostToHost));
 }
 CudaComplex::~CudaComplex() { Dispose(); }
-void CudaComplex::Create (unsigned int width, unsigned int height) {
-  Dispose(); // Dispose before creating
+void CudaComplex::Create(unsigned int width, unsigned int height) {
+  Dispose();  // Dispose before creating
   width_ = width;
   height_ = height;
-  CudaSafeCall (cudaMallocPitch ( (void**) &ptr_, &pitch_, width_ * sizeof (cufftComplex), height_));
+  CudaSafeCall(cudaMallocPitch(reinterpret_cast<void**>(&ptr_), &pitch_, width_ * sizeof(cufftComplex), height_));
 }
 void CudaComplex::Dispose() {
   if (ptr_ != nullptr) {
-    CudaSafeCall (cudaFree (ptr_));
+    CudaSafeCall(cudaFree(ptr_));
     ptr_ = nullptr;
   }
 }
 cufftComplex* CudaComplex::GetPtr() const { return ptr_; }
-cufftComplex* CudaComplex::GetPtr (int x, int y) const {
-  cufftComplex* ptr = (cufftComplex*) ( (char*) (ptr_) + y * pitch_ + x * sizeof (cufftComplex));
+cufftComplex* CudaComplex::GetPtr(int x, int y) const {
+  cufftComplex* ptr = reinterpret_cast<cufftComplex*>(reinterpret_cast<char*>(ptr_) + y * pitch_ + x * sizeof(cufftComplex));
   return ptr;
 }
 size_t CudaComplex::GetPitch() const {return pitch_; }
@@ -289,4 +290,4 @@ CudaStream::~CudaStream() { CudaSafeCall(cudaStreamDestroy(stream_)); }
 void CudaStream::Synchonize() { CudaSafeCall(cudaStreamSynchronize(stream_)); }
 cudaStream_t CudaStream::GetStream() { return stream_; }
 
-} // namespace afx
+}  // namespace afx

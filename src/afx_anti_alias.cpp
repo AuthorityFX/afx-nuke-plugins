@@ -19,10 +19,10 @@
 #include <boost/bind.hpp>
 #include <math.h>
 
-#include "threading.h"
-#include "image.h"
-#include "nuke_helper.h"
-#include "mlaa.h"
+#include "include/threading.h"
+#include "include/image.h"
+#include "include/nuke_helper.h"
+#include "include/mlaa.h"
 
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
 static const char* CLASS = "AFXAntiAlias";

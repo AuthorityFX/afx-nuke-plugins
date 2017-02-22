@@ -13,24 +13,22 @@
 #include <DDImage/ImagePlane.h>
 #include <DDImage/Thread.h>
 
-#include "nuke_helper.h"
-#include "median.h"
-#include "color_op.h"
+#include "include/nuke_helper.h"
+#include "include/median.h"
+#include "include/color_op.h"
+
+#define ThisClass AFXDeSpill
 
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
 static const char* CLASS = "AFXDeSpill";
 static const char* HELP = "Remove Spill";
 
-#define ThisClass AFXDeSpill
-
-enum inputs
-{
+enum inputs {
   iSource = 0,
   iMatte = 1
 };
 
-const char* algorithm_list[8] =
-{
+const char* algorithm_list[8] = {
   "Light",
   "Medium",
   "Hard",
@@ -44,8 +42,7 @@ const char* algorithm_list[8] =
 using namespace DD::Image;
 
 class ThisClass : public Iop {
-private:
-
+ private:
   // members to store knob values
   float k_screen_color_[3];
   float k_amount_;
@@ -58,11 +55,10 @@ private:
   float ref_suppression_;
   afx::ScreenColor color_;
 
-  void MetricsCPU(afx::Bounds region, const ImagePlane& source, const ImagePlane& matte, float* ref_hsv, double* sum, double* sum_sqrs, unsigned int& num);
   void ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row);
 
-public:
-  ThisClass(Node* node);
+ public:
+  explicit ThisClass(Node* node);
   void knobs(Knob_Callback);
   int knob_changed(Knob* k);
   const char* Class() const;
@@ -76,10 +72,10 @@ public:
   void engine(int y, int x, int r, ChannelMask channels, Row& row);
 };
 ThisClass::ThisClass(Node* node) : Iop(node) {
-  //Set inputs
+  // Set inputs
   inputs(2);
 
-  //initialize knobs
+  // initialize knobs
   k_algorithm_ = afx::kHarder;
   k_amount_ = 1.0f;
   k_lightness_adj = 1.0f;
@@ -87,7 +83,6 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_screen_color_[1] = 1.0f;
 }
 void ThisClass::knobs(Knob_Callback f) {
-
   Color_knob(f, k_screen_color_, "screen_color", "Screen Color");
   Tooltip(f, "Color of Chroma Screen");
   ClearFlags(f, Knob::MAGNITUDE | Knob::SLIDER);
@@ -110,7 +105,6 @@ void ThisClass::knobs(Knob_Callback f) {
   Divider(f, "Output");
 
   ChannelSet_knob(f, &k_spill_matte_channel_, "spill_matte", "Spill Matte");
-
 }
 int ThisClass::knob_changed(Knob* k) {
   return Iop::knob_changed(k);
@@ -156,22 +150,21 @@ void ThisClass::_validate(bool) {
   if (ref_rgb[1] > ref_rgb[2]) {
     center = 1.0f/3.0f;
     color_ = afx::kGreen;
-  }
-  else if (ref_rgb[2] > ref_rgb[1]) {
+  } else if (ref_rgb[2] > ref_rgb[1]) {
     center = 2.0f/3.0f;
     color_ = afx::kBlue;
   }
   float hue_rotation = 360.0f * (center - hsv[0]);
-  hue_shifter_.BuildMatrix(hue_rotation); //Initialize hue shifter object
-  hue_shifter_.Rotate(ref_rgb); // Rotate hue of ref RGB so that the mean hue is pure green
-  ref_suppression_ = afx::SpillSuppression(ref_rgb, k_algorithm_, color_); // Spill suppressoin of ref_rgb
+  hue_shifter_.BuildMatrix(hue_rotation);  // Initialize hue shifter object
+  hue_shifter_.Rotate(ref_rgb);  // Rotate hue of ref RGB so that the mean hue is pure green
+  ref_suppression_ = afx::SpillSuppression(ref_rgb, k_algorithm_, color_);  // Spill suppressoin of ref_rgb
   hue_shifter_inv_ = hue_shifter_;
   hue_shifter_inv_.Invert();
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   ChannelSet req_channels = channels;
   req_channels += Mask_RGB;
-  input(iSource)->request(x, y, r, t, req_channels, count); // Only request RGB
+  input(iSource)->request(x, y, r, t, req_channels, count);  // Only request RGB
   if (input(iMatte) != nullptr) { input(iMatte)->request(x, y, r, t, Mask_Alpha, count); }
 }
 void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
@@ -180,8 +173,8 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
 }
 void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
   ChannelSet req_channels = channels;
-  req_channels += Mask_RGB; // Add RGB to channels
-  row.get(input0(), y, x, r, req_channels); // Request all channels
+  req_channels += Mask_RGB;  // Add RGB to channels
+  row.get(input0(), y, x, r, req_channels);  // Request all channels
   // Copy channels that will not be changed
   ChannelSet copy_mask = channels - Mask_RGB - k_spill_matte_channel_;
   row.pre_copy(row, copy_mask);
@@ -194,23 +187,23 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   afx::ReadOnlyPixel in_px(3);
   afx::Pixel out_px(3);
   for (int i = 0; i < 3; i++) {
-    in_px.SetPtr(row[static_cast<Channel>(i + 1)] + x, i);// Set const in pointers RGB. (i + 1) Chan_Red = 1
-    out_px.SetPtr(row.writable(static_cast<Channel>(i + 1)) + x, i); // Set out pointers RGB
+    in_px.SetPtr(row[static_cast<Channel>(i + 1)] + x, i);  // Set const in pointers RGB. (i + 1) Chan_Red = 1
+    out_px.SetPtr(row.writable(static_cast<Channel>(i + 1)) + x, i);  // Set out pointers RGB
   }
   float one = 1.0f;
   const float* m_ptr = &one;
   if (input(iMatte) != nullptr) { m_ptr = m_row[Chan_Alpha] + x; }
-  for (int x0 = x; x0 < r; ++x0) { // Loop through pixels in row
+  for (int x0 = x; x0 < r; ++x0) {  // Loop through pixels in row
     for (int i = 0; i < 3; i++) { rgb[i] = in_px.GetVal(i); }
     float suppression_matte = 0.0f;
     float lightness_1 = 0.0f;
     float lightness_2 = 0.0f;
     float lightness_adjust = 0.0f;
     if (k_lightness_adj > 0) {
-      lightness_1 = powf(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2], 1.0f / 3.0f); // Lightness - cubic root of relative luminance
+      lightness_1 = powf(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2], 1.0f / 3.0f);  // Lightness - cubic root of relative luminance
     }
-    hue_shifter_.Rotate(rgb); //Shift hue so mean hue is center on ideal screen hue
-    float suppression = k_amount_ * (*m_ptr) * afx::SpillSuppression(rgb, k_algorithm_, color_); //Calculate suppression
+    hue_shifter_.Rotate(rgb);  // Shift hue so mean hue is center on ideal screen hue
+    float suppression = k_amount_ * (*m_ptr) * afx::SpillSuppression(rgb, k_algorithm_, color_);  // Calculate suppression
     switch (color_) {
       case afx::kGreen: {
         rgb[1] -= suppression;
@@ -233,7 +226,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
     if (k_spill_matte_channel_) {
       suppression_matte = suppression / fmaxf(ref_suppression_, 0.0f);
     }
-    foreach (z, k_spill_matte_channel_) { *(row.writable(z) + x0) = suppression_matte; }
+    foreach(z, k_spill_matte_channel_) { *(row.writable(z) + x0) = suppression_matte; }
     in_px++;
     out_px++;
     if (input(iMatte) != nullptr) { m_ptr++; }

@@ -7,29 +7,27 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef NUKE_HELPER_H_
-#define NUKE_HELPER_H_
+#ifndef INCLUDE_NUKE_HELPER_H_
+#define INCLUDE_NUKE_HELPER_H_
 
 #include <DDImage/Box.h>
 #include <DDImage/Iop.h>
 
-#include "types.h"
-
-using namespace DD::Image;
+#include "include/types.h"
 
 namespace afx {
 
-  afx::Bounds BoxToBounds(Box box) {
+  afx::Bounds BoxToBounds(DD::Image::Box box) {
     return afx::Bounds(box.x(), box.y(), box.r() - 1, box.t() - 1);
   }
-  Box BoundsToBox(afx::Bounds bnds) {
-    return Box(bnds.x1(), bnds.y1(), bnds.x2() + 1, bnds.y2() + 1);
+  DD::Image::Box BoundsToBox(afx::Bounds bnds) {
+    return DD::Image::Box(bnds.x1(), bnds.y1(), bnds.x2() + 1, bnds.y2() + 1);
   }
 
-  afx::Bounds InputBounds(Iop* input) {
+  afx::Bounds InputBounds(DD::Image::Iop* input) {
     return afx::BoxToBounds(input->info().box());
   }
 
-} // namespace afx
+}  // namespace afx
 
-#endif  // NUKE_HELPER_H_
+#endif  // INCLUDE_NUKE_HELPER_H_

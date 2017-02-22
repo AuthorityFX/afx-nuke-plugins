@@ -7,17 +7,16 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef CUDA_HELPER_H_
-#define CUDA_HELPER_H_
+#ifndef INCLUDE_CUDA_HELPER_H_
+#define INCLUDE_CUDA_HELPER_H_
 
 #include <cuda_runtime_api.h>
 #include <cuda_runtime.h>
 #include <cufft.h>
 
-#include "types.h"
-#include "attribute.h"
-
-#include "settings.h"
+#include "include/settings.h"
+#include "include/types.h"
+#include "include/attribute.h"
 
 namespace afx {
 
@@ -31,13 +30,14 @@ void CudaCheckError() {
 }
 
 class CudaProcess {
-private:
+ private:
   int dev_id_;
   int dev_count_;
   cudaDeviceProp prop_;
   bool ready_;
   void DevCount_();
-public:
+
+ public:
   CudaProcess();
   ~CudaProcess();
   void MakeReady();
@@ -59,7 +59,7 @@ class CudaArray : public AttributeBase {
   size_t size_;
  public:
   CudaArray();
-  CudaArray(size_t size);
+  explicit CudaArray(size_t size);
   CudaArray(const CudaArray<T>& other);
   CudaArray<T>& operator=(const CudaArray<T>& other);
   ~CudaArray();
@@ -88,10 +88,11 @@ class CudaImage : public AttributeBase {
   cudaTextureDesc tex_desc_;
   cudaTextureObject_t tex_;
   cudaTextureAddressMode address_mode_;
+
  public:
   CudaImage();
   CudaImage(unsigned int width, unsigned int height);
-  CudaImage(const Bounds& region);
+  explicit CudaImage(const Bounds& region);
   CudaImage(const CudaImage& other);
   CudaImage& operator=(const CudaImage& other);
   ~CudaImage();
@@ -117,12 +118,13 @@ class CudaImage : public AttributeBase {
 };
 
 class CudaComplex : public AttributeBase {
-private:
+ private:
   cufftComplex* ptr_;
   size_t pitch_;
   unsigned int width_;
   unsigned int height_;
-public:
+
+ public:
   CudaComplex();
   CudaComplex(unsigned int width, unsigned int height);
   CudaComplex(const CudaComplex& other);
@@ -140,8 +142,8 @@ public:
 
 class CudaImageArray : public Array<CudaImage> {
  public:
-   void AddImage(const Bounds& region);
-   void CreateTextures();
+  void AddImage(const Bounds& region);
+  void CreateTextures();
 };
 
 class CudaStream : public AttributeBase {
@@ -159,6 +161,6 @@ class CudaStream : public AttributeBase {
 
 class CudaStreamArray : public Array<CudaStream> {};
 
-} // namespace afx
+}  // namespace afx
 
-#endif  // CUDA_HELPER_H_
+#endif  // INCLUDE_CUDA_HELPER_H_

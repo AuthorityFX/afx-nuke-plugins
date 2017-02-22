@@ -15,27 +15,29 @@
 #include <DDImage/Thread.h>
 #include <DDImage/NukeWrapper.h>
 
-#include <cuda_runtime.h>
 #include <math.h>
 
-#include "threading.h"
-#include "image.h"
-#include "cuda_helper.h"
-#include "nuke_helper.h"
-#include "glow.h"
-#include "color_op.h"
+#include <cuda_runtime.h>
 
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
+
+#include <algorithm>
+
+#include "include/threading.h"
+#include "include/image.h"
+#include "include/cuda_helper.h"
+#include "include/nuke_helper.h"
+#include "include/glow.h"
+#include "include/color_op.h"
+
+#define ThisClass AFXGlow
 
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
 static const char* CLASS = "AFXGlow";
 static const char* HELP = "Glow";
 
-#define ThisClass AFXGlow
-
-enum inputs
-{
+enum inputs {
   iSource = 0,
   iMatte = 1
 };
@@ -43,8 +45,7 @@ enum inputs
 using namespace DD::Image;
 
 class ThisClass : public Iop {
-private:
-
+ private:
   // members to store knob values
   float k_exposure_;
   float k_threshold_;
@@ -88,8 +89,8 @@ private:
   void GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, const Channel (&chan_ref)[3]);
   void GetInput(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, Channel z);
 
-public:
-  ThisClass(Node* node);
+ public:
+  explicit ThisClass(Node* node);
   void knobs(Knob_Callback);
   const char* Class() const;
   const char* node_help() const;
@@ -104,13 +105,13 @@ public:
   void engine(int y, int x, int r, ChannelMask channels, Row& row);
 };
 ThisClass::ThisClass(Node* node) : Iop(node) {
-  //Set inputs
+  // Set inputs
   inputs(2);
 
   first_time_GPU_ = true;
   first_time_CPU_ = true;
 
-  //initialize knobs
+  // initialize knobs
   k_exposure_ = 0.0f;
   k_threshold_ = 1.0f;
   k_threshold_falloff_ = 0.25f;
@@ -123,7 +124,6 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_expand_box_ = false;
 }
 void ThisClass::knobs(Knob_Callback f) {
-
   Float_knob(f, &k_exposure_, "exposure", "Exposure");
   Tooltip(f, "Exposure");
   SetRange(f, -5.0, 5.0);
@@ -163,7 +163,6 @@ void ThisClass::knobs(Knob_Callback f) {
   Bool_knob(f, &k_expand_box_, "expand_box", "Expand Box");
   Tooltip(f, "Expand box");
   SetFlags(f, Knob::STARTLINE);
-
 }
 const char* ThisClass::Class() const { return CLASS; }
 const char* ThisClass::node_help() const { return HELP; }
@@ -193,7 +192,7 @@ void ThisClass::_validate(bool) {
 
   format_bnds_ = afx::BoxToBounds(input(0)->format());
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
-  proxy_scale_ = (float)format_bnds_.GetWidth() / (float)format_f_bnds_.GetWidth();
+  proxy_scale_ = static_cast<float>(format_bnds_.GetWidth()) / static_cast<float>(format_f_bnds_.GetWidth());
 
   exposure_ = k_exposure_;
   threshold_ = k_threshold_;
@@ -203,7 +202,7 @@ void ThisClass::_validate(bool) {
   diffusion_ = afx::AfxClamp<float>(k_diffusion_, 0.0, 1.0f);
   quality_ = afx::AfxClamp<float>(k_quality_, 0.0f, 1.0f);
   replicate_ = k_replicate_;
-  replicate_depth_ = (int)(proxy_scale_ * std::max(k_replicate_depth_, 0));
+  replicate_depth_ = static_cast<int>(proxy_scale_ * std::max(k_replicate_depth_, 0));
   expand_box_ = k_expand_box_;
 
   glow_.ComputeGaussSize(size_, softness_, diffusion_, quality_);
@@ -211,7 +210,6 @@ void ThisClass::_validate(bool) {
   if (k_expand_box_) { info_.pad(glow_.GetKernelPadding()); }
 
   info_.black_outside();
-
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   unsigned int pad = glow_.GetKernelPadding();
@@ -246,34 +244,33 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   if (first_time_CPU_) {
     Guard guard(lock_);
     if (first_time_CPU_) {
-
-      glow_.InitKernel(exposure_, threader_);
+      glow_.InitKernel(exposure_, &threader_);
 
       afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetKernelPadding());
       afx::Bounds plane_bnds = glow_bnds;
       plane_bnds.Intersect(afx::InputBounds(input(0)));
 
-      ImagePlane in_plane(afx::BoundsToBox(plane_bnds), false, channels); // Create plane "false" = non-packed.
-      ImagePlane matte_plane(afx::BoundsToBox(plane_bnds), false, Mask_Alpha); // Create plane "false" = non-packed.
+      ImagePlane in_plane(afx::BoundsToBox(plane_bnds), false, channels);  // Create plane "false" = non-packed.
+      ImagePlane matte_plane(afx::BoundsToBox(plane_bnds), false, Mask_Alpha);  // Create plane "false" = non-packed.
       if (aborted()) {
         threader_.Synchonize();
         return;
-      } // Return if render aborted
-      input0().fetchPlane(in_plane); // Fetch plane
-      if (input(iMatte) != nullptr ) { input(iMatte)->fetchPlane(matte_plane); } // Fetch matte plane
+      }  // Return if render aborted
+      input0().fetchPlane(in_plane);  // Fetch plane
+      if (input(iMatte) != nullptr ) { input(iMatte)->fetchPlane(matte_plane); }  // Fetch matte plane
 
       ChannelSet done;
-      foreach (z, in_plane.channels()) {
-        if (not (done & z) and colourIndex(z) < 3 ) { // Handle color channels
+      foreach(z, in_plane.channels()) {
+        if (!(done & z) && colourIndex(z) < 3) {  // Handle color channels
           bool has_all_rgb = true;
           Channel rgb_chan[3];
           for (int i = 0; i < 3; ++i) {
-            rgb_chan[i] = brother(z, i); // Find brother rgb channel
-            if (rgb_chan[i] == Chan_Black or not (channels & rgb_chan[i])) { has_all_rgb = false; } // If brother does not exist
+            rgb_chan[i] = brother(z, i);  // Find brother rgb channel
+            if (rgb_chan[i] == Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; }  // If brother does not exist
           }
           if (has_all_rgb) {
             for (int i = 0; i < 3; ++i) {
-              done += rgb_chan[i]; // Add channel to done channel set
+              done += rgb_chan[i];  // Add channel to done channel set
               in_imgs_.AddImage(glow_bnds);
               in_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
             }
@@ -284,7 +281,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
             }
           }
         }
-        if (not (done & z)) { // Handle non color channel
+        if (!(done & z)) {  // Handle non color channel
           done += z;
           in_imgs_.AddImage(glow_bnds);
           in_imgs_.GetBackPtr()->AddAttribute("channel", z);
@@ -297,7 +294,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
       if (aborted()) {
         threader_.Synchonize();
         return;
-      } // Return if render aborted
+      }  // Return if render aborted
 
       threader_.Synchonize();
       for (afx::ImageArray::ptr_list_it it = in_imgs_.GetBegin(); it != in_imgs_.GetEnd(); ++it) {
@@ -308,14 +305,13 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
       threader_.Synchonize();
       first_time_CPU_ = false;
     }
-  } // End first time guard
+  }  // End first time guard
 
   if (aborted()) { return; }
 
-  foreach (z, channels) {
+  foreach(z, channels) {
     out_imgs_.GetPtrByAttribute("channel", z)->MemCpyOut(row.writable(z) + x, row_bnds.GetWidth() * sizeof(float), row_bnds);
   }
-
 }
 
 void ThisClass::GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, const Channel (&rgb_chan)[3]) {
@@ -345,14 +341,14 @@ void ThisClass::GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plan
       } else {
         for (int i = 0; i < 3; ++i) { out.SetVal(fmaxf(in.GetVal(i) * *m_ptr, 0.0f), i); }
       }
-      if (not plane_bnds.CheckBounds(x, y)) {
-        if (not replicate_ or x < plane_bnds.x1() - replicate_depth_ or x > plane_bnds.x2() + replicate_depth_ or y < plane_bnds.y1() - replicate_depth_ or
+      if (!plane_bnds.CheckBounds(x, y)) {
+        if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
             y > plane_bnds.y2() + replicate_depth_) {
           for (int i = 0; i < 3; ++i) { out.SetVal(0.0f, i); }
         }
       }
       out++;
-      if (x >= plane_bnds.x1() and x < plane_bnds.x2()) {
+      if (x >= plane_bnds.x1() && x < plane_bnds.x2()) {
         in++;
         if (input(iMatte) != nullptr) { m_ptr++; }
       }
@@ -379,14 +375,14 @@ void ThisClass::GetInput(const afx::Bounds& region, const ImagePlane& in_plane, 
       } else {
         *out_ptr = fmaxf(*in_ptr * *m_ptr, 0.0f);
       }
-      if (not plane_bnds.CheckBounds(x, y)) {
-        if (not replicate_ or x < plane_bnds.x1() - replicate_depth_ or x > plane_bnds.x2() + replicate_depth_ or y < plane_bnds.y1() - replicate_depth_ or
+      if (!plane_bnds.CheckBounds(x, y)) {
+        if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
             y > plane_bnds.y2() + replicate_depth_) {
           *out_ptr = 0.0f;
         }
       }
       out_ptr++;
-      if (x >= plane_bnds.x1() and x < plane_bnds.x2()) {
+      if (plane_bnds.CheckBoundsX(x)) {
         in_ptr++;
         if (input(iMatte) != nullptr) { m_ptr++; }
       }

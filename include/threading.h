@@ -7,22 +7,21 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef THREADING_H_
-#define THREADING_H_
+#ifndef INCLUDE_THREADING_H_
+#define INCLUDE_THREADING_H_
 
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
 #include <boost/scoped_ptr.hpp>
 
-#include "types.h"
-
-#include "settings.h"
+#include "include/settings.h"
+#include "include/types.h"
 
 namespace afx {
 
 class Threader {
-private:
+ private:
   boost::asio::io_service io_service_;
   boost::thread_group thread_pool_;
   boost::scoped_ptr<boost::asio::io_service::work> work_ptr_;
@@ -36,9 +35,10 @@ private:
 
   // This is the function that is run in each thread
   void Worker_();
-public:
+
+ public:
   Threader();
-  Threader(unsigned int req_num_threads);
+  explicit Threader(unsigned int req_num_threads);
   ~Threader();
   // This is an exit point for Interupt()
   // Call this from function sent to Threader via AddWork.
@@ -60,6 +60,6 @@ public:
   void ThreadImageChunks(const Bounds& region, boost::function<void(Bounds)> function);
 };
 
-} // namespace afx
+}  // namespace afx
 
-#endif  // THREADING_H_
+#endif  // INCLUDE_THREADING_H_

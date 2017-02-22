@@ -7,14 +7,16 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#include "threading.h"
+#include "include/threading.h"
 
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
 #include <boost/scoped_ptr.hpp>
 
-#include "settings.h"
+#include <algorithm>
+
+#include "include/settings.h"
 
 namespace afx {
 
@@ -35,7 +37,7 @@ void Threader::AddThreads(unsigned int num_threads) {
   }
 }
 void Threader::InitializeThreads(unsigned int req_num_threads) {
-  if (running_) { StopAndJoin(); } // If running join threads so empty thread pool
+  if (running_) { StopAndJoin(); }  // If running join threads so empty thread pool
   work_ptr_.reset(new boost::asio::io_service::work(io_service_));
   if (io_service_.stopped()) { io_service_.reset(); }
   running_ = true;
@@ -46,32 +48,32 @@ void Threader::InitializeThreads(unsigned int req_num_threads) {
   }
 }
 void Threader::Worker_() {
-  while(running_) {
-    io_service_.run(); // Blocks. Will do work from queue
-    synchronized_.notify_one(); // Notify that this thread has exited run()
+  while (running_) {
+    io_service_.run();  // Blocks. Will do work from queue
+    synchronized_.notify_one();  // Notify that this thread has exited run()
     boost::unique_lock<boost::mutex> lock(mutex_);
-    while (running_ and io_service_.stopped()) {
-      ready_condition_.wait(lock); // Wait until io_service_ has been reset
+    while (running_ && io_service_.stopped()) {
+      ready_condition_.wait(lock);  // Wait until io_service_ has been reset
     }
   }
 }
 void Threader::Synchonize() {
-  work_ptr_.reset(); // Destroy work object to allow run all handlers to finish normally and for run to return.
+  work_ptr_.reset();  // Destroy work object to allow run all handlers to finish normally and for run to return.
   boost::mutex dummy;
   boost::unique_lock<boost::mutex> lock(dummy);
   while (!io_service_.stopped()) {
-    synchronized_.wait(lock); // Wait for all threads to exit run() in Worker_.
+    synchronized_.wait(lock);  // Wait for all threads to exit run() in Worker_.
   }
   if (running_) {
     work_ptr_.reset(new boost::asio::io_service::work(io_service_));
     io_service_.reset();
   }
-  ready_condition_.notify_all(); // Allow threads to advance to end of while loop in Worker_
+  ready_condition_.notify_all();  // Allow threads to advance to end of while loop in Worker_
 }
-void Threader::Interupt() { // TODO This needs testing.
+void Threader::Interupt() {  // TODO(rpw): This needs testing.
   running_ = false;
   thread_pool_.interrupt_all();
-  io_service_.stop(); // Return from run asap
+  io_service_.stop();  // Return from run asap
   Synchonize();
   thread_pool_.join_all();
 }
@@ -93,10 +95,10 @@ void Threader::ThreadImageChunks(const Bounds& region, boost::function<void(Boun
   num_chunks = std::min(num_chunks, region.GetHeight());
   Bounds thread_region = region;
   for (int i = 0; i < num_chunks; ++i) {
-    thread_region.SetY1((int)ceil((double)region.GetHeight() * (double) i      / (double)num_chunks)      + region.y1());
-    thread_region.SetY2((int)ceil((double)region.GetHeight() * (double)(i + 1) / (double)num_chunks) - 1  + region.y1());
+    thread_region.SetY1(static_cast<int>(ceil(static_cast<float>(region.GetHeight()) * static_cast<float>(i)     / static_cast<float>(num_chunks))      + region.y1()));
+    thread_region.SetY2(static_cast<int>(ceil(static_cast<float>(region.GetHeight()) * static_cast<float>(i + 1) / static_cast<float>(num_chunks)) - 1  + region.y1()));
     io_service_.post(boost::bind(function, thread_region));
   }
 }
 
-} // namespace afx
+}  // namespace afx
