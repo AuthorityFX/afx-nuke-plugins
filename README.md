@@ -62,6 +62,7 @@ Redistributable Libraries
 * libippin8.so
 * libippi.so
 * libippiy8.so
+* libjemalloc.so
 
 TODO
 --------------------------------------------------

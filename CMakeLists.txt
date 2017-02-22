@@ -7,7 +7,6 @@
 #      Authority FX, Inc.
 #      www.authorityfx.com
 
-
 cmake_minimum_required(VERSION 2.6)
 project(afx-nuke-plugins)
 
@@ -85,5 +84,3 @@ install(TARGETS lib_afx_core lib_afx_cuda DESTINATION lib)
 install(TARGETS afx_soft_clip afx_tone_map afx_median afx_chroma_key afx_despill afx_anti_alias afx_glow DESTINATION .)
 install(DIRECTORY icons/ DESTINATION icons)
 install(FILES menu.py DESTINATION .)
-
-
