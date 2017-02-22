@@ -196,7 +196,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
     Tile tile(input0(), tile_bnds.x1(), tile_bnds.y1(), tile_bnds.x2() + 1, tile_bnds.y2() + 1, z, false);
     // The constructor may abort, you can't look at tile then:
     if (aborted()) { return; }
-    if (!tile.valid()) {
+    if (not tile.valid()) {
       foreach (z, channels) {
         float* out_ptr = row.writable(z);
         memset(&out_ptr[tile.x()], 0, (tile.r() - tile.x()) * sizeof(float));
@@ -218,7 +218,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
           // Tile is not accessible outside of requested reqion. Must clamp to bounds.
           float value = tile[z][y_clamp][tile.clampx(x0)];
           // If on outside ring of pixels
-          if (y_i == 0 || y_i == med_size_2 || x_i == 0 || x_i == med_size_2) {
+          if (y_i == 0 or y_i == med_size_2 or x_i == 0 or x_i == med_size_2) {
             // Outside sum and sumsq will be added to inside later. Saves cpu time.
             sum_o += value;
             sum_sq_o += value * value;

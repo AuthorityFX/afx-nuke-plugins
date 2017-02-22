@@ -264,12 +264,12 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 
       ChannelSet done;
       foreach (z, in_plane.channels()) {
-        if (!(done & z) && colourIndex(z) < 3 ) { // Handle color channels
+        if (not (done & z) and colourIndex(z) < 3 ) { // Handle color channels
           bool has_all_rgb = true;
           Channel rgb_chan[3];
           for (int i = 0; i < 3; ++i) {
             rgb_chan[i] = brother(z, i); // Find brother rgb channel
-            if (rgb_chan[i] == Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; } // If brother does not exist
+            if (rgb_chan[i] == Chan_Black or not (channels & rgb_chan[i])) { has_all_rgb = false; } // If brother does not exist
           }
           if (has_all_rgb) {
             for (int i = 0; i < 3; ++i) {
@@ -284,7 +284,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
             }
           }
         }
-        if (!(done & z)) { // Handle non color channel
+        if (not (done & z)) { // Handle non color channel
           done += z;
           in_imgs_.AddImage(glow_bnds);
           in_imgs_.GetBackPtr()->AddAttribute("channel", z);
@@ -345,14 +345,14 @@ void ThisClass::GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plan
       } else {
         for (int i = 0; i < 3; ++i) { out.SetVal(fmaxf(in.GetVal(i) * *m_ptr, 0.0f), i); }
       }
-      if (!plane_bnds.CheckBounds(x, y)) {
-        if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
+      if (not plane_bnds.CheckBounds(x, y)) {
+        if (not replicate_ or x < plane_bnds.x1() - replicate_depth_ or x > plane_bnds.x2() + replicate_depth_ or y < plane_bnds.y1() - replicate_depth_ or
             y > plane_bnds.y2() + replicate_depth_) {
           for (int i = 0; i < 3; ++i) { out.SetVal(0.0f, i); }
         }
       }
       out++;
-      if (x >= plane_bnds.x1() && x < plane_bnds.x2()) {
+      if (x >= plane_bnds.x1() and x < plane_bnds.x2()) {
         in++;
         if (input(iMatte) != nullptr) { m_ptr++; }
       }
@@ -379,14 +379,14 @@ void ThisClass::GetInput(const afx::Bounds& region, const ImagePlane& in_plane, 
       } else {
         *out_ptr = fmaxf(*in_ptr * *m_ptr, 0.0f);
       }
-      if (!plane_bnds.CheckBounds(x, y)) {
-        if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
+      if (not plane_bnds.CheckBounds(x, y)) {
+        if (not replicate_ or x < plane_bnds.x1() - replicate_depth_ or x > plane_bnds.x2() + replicate_depth_ or y < plane_bnds.y1() - replicate_depth_ or
             y > plane_bnds.y2() + replicate_depth_) {
           *out_ptr = 0.0f;
         }
       }
       out_ptr++;
-      if (x >= plane_bnds.x1() && x < plane_bnds.x2()) {
+      if (x >= plane_bnds.x1() and x < plane_bnds.x2()) {
         in_ptr++;
         if (input(iMatte) != nullptr) { m_ptr++; }
       }

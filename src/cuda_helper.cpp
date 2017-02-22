@@ -58,7 +58,7 @@ void CudaProcess::SetFastestDevice() {
   for(int i = 0; i < dev_count_; ++i) {
     cudaGetDeviceProperties(&prop, i);
     clock = (float)prop.multiProcessorCount * prop.clockRate / 1000000.0f;
-    if (prop.major >= major_req && prop.minor >= minor_req && clock > max_clock) {
+    if (prop.major >= major_req and prop.minor >= minor_req and clock > max_clock) {
       max_clock = clock;
       dev_num = i;
     }
@@ -70,7 +70,7 @@ void CudaProcess::SetFastestDevice() {
 }
 int CudaProcess::GetDevice() const { return dev_id_; }
 cudaDeviceProp CudaProcess::GetProp() const { return prop_; }
-bool CudaProcess::CheckReady() const { if (!ready_) { throw cudaErrorDevicesUnavailable; } }
+bool CudaProcess::CheckReady() const { if (not ready_) { throw cudaErrorDevicesUnavailable; } }
 void CudaProcess::CheckError() { CudaCheckError(); }
 
 

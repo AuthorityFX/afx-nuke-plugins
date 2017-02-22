@@ -118,12 +118,12 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
 
   ChannelSet done;
   foreach (z, channels) { // Handle color channels
-    if (!(done & z) && colourIndex(z) < 3 ) { // Handle color channel
+    if (not (done & z) and colourIndex(z) < 3 ) { // Handle color channel
       bool has_all_rgb = true;
       Channel rgb_chan[3];
       for (int i = 0; i < 3; ++i) {
         rgb_chan[i] = brother(z, i); // Find brother rgb channel
-        if (rgb_chan[i] == Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; } // If brother does not exist
+        if (rgb_chan[i] == Chan_Black or not (channels & rgb_chan[i])) { has_all_rgb = false; } // If brother does not exist
       }
       if (has_all_rgb) {
         afx::ReadOnlyPixel in_px;
@@ -158,7 +158,7 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
         }
       }
     }
-    if (!(done & z)) { // Handle non color channel
+    if (not (done & z)) { // Handle non color channel
       done += z;
       const float* in_ptr = row[z] + x;
       float* out_ptr = row.writable(z) + x;

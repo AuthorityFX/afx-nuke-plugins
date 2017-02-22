@@ -236,7 +236,7 @@ class Glow : public GlowBase {
         for (int i = iterations_ - 1; i >= 0; --i) {
           //Offset of largest gauss and current gauss
           int gauss_offset = max_gauss_size_ - gauss_size_ptr_[i];
-          if (x0 >= gauss_offset && y0 >= gauss_offset) {
+          if (x0 >= gauss_offset and y0 >= gauss_offset) {
             sum += gauss_ptr_ptr_[i][x0 - gauss_offset] * gauss_ptr_ptr_[i][y0 - gauss_offset];
           } else {
             break;
@@ -253,7 +253,7 @@ class Glow : public GlowBase {
           *kernel_.GetPtr(x, kernel_.GetBounds().y2() - y0) = sum;
           kernel_sum_l += sum;
         }
-        if (x0 < max_gauss_size_ - 1 && y0 < max_gauss_size_ - 1) {
+        if (x0 < max_gauss_size_ - 1 and y0 < max_gauss_size_ - 1) {
           *kernel_.GetPtr(kernel_.GetBounds().x2() - x0, kernel_.GetBounds().y2() - y0) = sum;
           kernel_sum_l += sum;
         }

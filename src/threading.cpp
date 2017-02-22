@@ -50,7 +50,7 @@ void Threader::Worker_() {
     io_service_.run(); // Blocks. Will do work from queue
     synchronized_.notify_one(); // Notify that this thread has exited run()
     boost::unique_lock<boost::mutex> lock(mutex_);
-    while (running_ && io_service_.stopped()) {
+    while (running_ and io_service_.stopped()) {
       ready_condition_.wait(lock); // Wait until io_service_ has been reset
     }
   }

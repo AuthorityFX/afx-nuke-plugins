@@ -123,7 +123,7 @@ public:
   unsigned int GetHeight() const { return y2_ - y1_ + 1; }
   __host__ __device__
   bool CheckBounds(int x, int y) const {
-    if (x < x1_ || x > x2_ || y < y1_ || y > y2_) {
+    if (x < x1_ or x > x2_ or y < y1_ or y > y2_) {
       return false;
     } else {
       return true;
@@ -131,7 +131,7 @@ public:
   }
   __host__ __device__
   bool CheckBoundsX(int x) const {
-    if (x < x1_ || x > x2_) {
+    if (x < x1_ or x > x2_) {
       return false;
     } else {
       return true;
@@ -139,7 +139,7 @@ public:
   }
   __host__ __device__
   bool CheckBoundsY(int y) const {
-    if (y < y1_ || y > y2_) {
+    if (y < y1_ or y > y2_) {
       return false;
     } else {
       return true;

@@ -362,7 +362,7 @@ void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, con
     for (int x = region.x1(); x <= region.x2(); ++x) {
       for (int i = 0; i < 3; i++) { rgb[i] = in.GetVal(i); }
       Point p;
-      if (*out_m_ptr > 0.5 || *in_m_ptr > 0.5) {
+      if (*out_m_ptr > 0.5 or *in_m_ptr > 0.5) {
         float lab[3];
         afx::RGBtoLab(rgb, lab);
         p = Point(lab[1], lab[2]);
