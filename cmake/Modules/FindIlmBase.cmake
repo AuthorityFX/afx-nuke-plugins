@@ -20,7 +20,41 @@ find_path(
 )
 
 if(IlmBase_INCLUDE_DIR)
-  include_directories(${Jemalloc_INCLUDE_DIR})
+  include_directories(${IlmBase_INCLUDE_DIR})
+  find_file(
+    _IlmBase_CONFIG
+    NAME IlmBaseConfig.h
+    PATHS "${IlmBase_INCLUDE_DIR}/OpenEXR"
+    NO_DEFAULT_PATH
+    )
+  if(_IlmBase_CONFIG)
+    file(
+      STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_MAJOR_STRING
+      REGEX "#define[ ]+ILMBASE_VERSION_MAJOR[ ]+([0-9]+)"
+      )
+      if(_IlmBase_VERSION_MAJOR_STRING)
+        string(REGEX MATCH "[0-9]+" IlmBase_VERSION_MAJOR ${_IlmBase_VERSION_MAJOR_STRING})
+      endif()
+
+    file(
+      STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_MINOR_STRING
+      REGEX "#define[ ]+ILMBASE_VERSION_MINOR[ ]+([0-9]+)"
+      )
+      if(_IlmBase_VERSION_MINOR_STRING)
+        string(REGEX MATCH "[0-9]+" IlmBase_VERSION_MINOR ${_IlmBase_VERSION_MINOR_STRING})
+      endif()
+
+    file(
+      STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_PATCH_STRING
+      REGEX "#define[ ]+ILMBASE_VERSION_PATCH[ ]+([0-9]+)"
+      )
+      if(_IlmBase_VERSION_PATCH_STRING)
+        string(REGEX MATCH "[0-9]+" IlmBase_VERSION_PATCH ${_IlmBase_VERSION_PATCH_STRING})
+      endif()
+
+      message("-- IlmBase version: ${IlmBase_VERSION_MAJOR}.${IlmBase_VERSION_MINOR}.${IlmBase_VERSION_PATCH}")
+  endif()
+
 endif()
 
 foreach(COMPONENT ${IlmBase_FIND_COMPONENTS})
@@ -29,7 +63,7 @@ foreach(COMPONENT ${IlmBase_FIND_COMPONENTS})
     IlmBase_${UPPERCOMPONENT}_LIBRARY
     NAMES ${COMPONENT}
     PATHS ${ILMBASE_ROOT}
-    PATH_SUFFIXES lib
+    PATH_SUFFIXES lib lib64
     NO_DEFAULT_PATH
   )
 
