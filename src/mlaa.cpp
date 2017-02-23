@@ -112,7 +112,7 @@ void MorphAA::FindXLines_(const Bounds& region, const Image& input) {
           break;
         }
         default: {  // looking for end of line
-          if ((info_ptr->flags & start_flag_x) && x < info_.GetBounds().x2()) {
+          if ((info_ptr->flags & start_flag_x) && x < info_.GetBounds().x2() && length <= max_line_length_) {
             length++;
           } else {  // End of line, loop back through and set info for all pixels in line
             SetXLine_(info_ptr, length, x, y);
@@ -142,7 +142,7 @@ void MorphAA::FindYLines_(const Bounds& region, const Image& input) {
           break;
         }
         default: {  // Looking for end of line
-          if ((info_ptr->flags & start_flag_y) && y < info_.GetBounds().y2()) {  // Line continues
+          if ((info_ptr->flags & start_flag_y) && y < info_.GetBounds().y2() && length <= max_line_length_) {  // Line continues
             length++;
           } else {  // End of line
             SetYLine_(info_ptr, length, x, y);
@@ -387,9 +387,10 @@ void MorphAA::BlendPixels_(const Bounds& region, const Image& input, Image* outp
   }
 }
 
-void MorphAA::Process(const Image& input, Image* output, float threshold, afx::Threader* threader) {
+void MorphAA::Process(const Image& input, Image* output, float threshold, unsigned int max_line_length, afx::Threader* threader) {
   threshold_ = threshold;
   info_.Create(input.GetBounds());
+  max_line_length_ = max_line_length;
 
   threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::MarkDisc_, this, _1, boost::cref(input)));
   threader->Synchonize();
@@ -397,11 +398,11 @@ void MorphAA::Process(const Image& input, Image* output, float threshold, afx::T
   threader->Synchonize();
   threader->ThreadImageChunksY(info_.GetBounds(), boost::bind(&MorphAA::FindYLines_, this, _1, boost::cref(input)));
   threader->Synchonize();
-  threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::BlendPixels_, this, _1, boost::cref(input), boost::ref(output)));
+  threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::BlendPixels_, this, _1, boost::cref(input), output));
   threader->Synchonize();
 }
 
-void MorphAA::Process(const Image& input, Image* output, float threshold) {
+void MorphAA::Process(const Image& input, Image* output, float threshold, unsigned int max_line_length) {
   threshold_ = threshold;
   info_.Create(input.GetBounds());
 

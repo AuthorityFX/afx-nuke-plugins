@@ -34,6 +34,7 @@ class ThisClass : public Iop {
  private:
   // members to store knob values
   float k_threshold_;
+  int k_max_line_length_;
 
   // members to store processed knob values
   boost::mutex mutex_;
@@ -69,9 +70,13 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
 
   // initialize knobs
   k_threshold_ = 0.25f;
+  k_max_line_length_ = 100;
 }
 void ThisClass::knobs(Knob_Callback f) {
   Float_knob(f, &k_threshold_, "threshold", "Threshold");
+  Tooltip(f, "Anti Alias Threshold");
+  SetRange(f, 0.0, 1.0);
+  Int_knob(f, &k_max_line_length_, "max_line_length", "Max Line Length");
   Tooltip(f, "Anti Alias Threshold");
   SetRange(f, 0.0, 1.0);
 }
@@ -89,9 +94,10 @@ void ThisClass::_validate(bool) {
 }
 void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
   // Request source
-  Box req_box(x + 50, y + 50, r + 50, t + 50);  // TODO(rpw): add knob to control this
+  Box req_box(x, y, r, t);
+  req_bnds_ = afx::BoxToBounds(req_box);
+  req_box.pad(k_max_line_length_);
   input0().request(req_box, channels, count);
-  req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
 void ThisClass::_open() {
   first_time_CPU_ = true;
@@ -106,7 +112,6 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
 }
 void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
-
   {
     Guard guard(lock_);
     if (first_time_CPU_) {
@@ -118,19 +123,20 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
       out_imgs_.Clear();
       afx::Image in_img(req_pad_bnds);
       foreach(z, source_plane.channels()) {  // For each channel in plane
+        if (aborted()) { return; }
         // TODO(rpw): don't need to copy this image, just need to setup pointer, pitch, bounds
         in_img.MemCpyIn(&source_plane.readable()[source_plane.chanNo(z) * source_plane.chanStride()], source_plane.rowStride() * sizeof(float), in_img.GetBounds());
         out_imgs_.AddImage(req_pad_bnds);
         out_imgs_.GetBackPtr()->AddAttribute("channel", z);
         afx::MorphAA aa;
-        aa.Process(in_img, out_imgs_.GetBackPtr(), k_threshold_, &threader_);
+        // TODO (rpw): crashing with threader
+        aa.Process(in_img, out_imgs_.GetBackPtr(), k_threshold_, k_max_line_length_);//, &threader_);
       }
       first_time_CPU_ = false;
     }
   }  // End first time guard
 
   if (aborted()) { return; }
-
   foreach(z, channels) {
     afx::Image* chan_ptr = out_imgs_.GetPtrByAttribute("channel", z);
     chan_ptr->MemCpyOut(row.writable(z) + row_bnds.x1(), row_bnds.GetWidth() * sizeof(float), row_bnds);
