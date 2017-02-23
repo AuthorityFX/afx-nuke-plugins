@@ -58,6 +58,8 @@ class Threader {
   void ThreadImageRows(const Bounds& region, boost::function<void(Bounds)> function);
   // Split Bounds into num_threads chunks in y axis.
   void ThreadImageChunks(const Bounds& region, boost::function<void(Bounds)> function);
+  // Split Bounds into num_threads chunks in y axis.
+  void ThreadImageChunksY(const Bounds& region, boost::function<void(Bounds)> function);
 };
 
 }  // namespace afx
