@@ -14,7 +14,7 @@ if(NOT DEFINED NUKE_ROOT)
   list(GET _nuke_ROOT_DIRS 0 NUKE_ROOT)
 endif()
 
-string(REGEX MATCHALL "[0-9]+.[0-9]+v[0-9]" Nuke_VERSION ${NUKE_ROOT})
+string(REGEX MATCHALL "[0-9]+\\.[0-9]+v[0-9]" Nuke_VERSION ${NUKE_ROOT})
 
 find_path(
   Nuke_INCLUDE_DIR
@@ -28,8 +28,10 @@ if(Nuke_INCLUDE_DIR)
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(Nuke DEFAULT_MSG
+find_package_handle_standard_args(Nuke
+  REQUIRED_VARS
     NUKE_ROOT
     Nuke_INCLUDE_DIR
+  VERSION_VAR
     Nuke_VERSION
  )

@@ -21,40 +21,41 @@ find_path(
 
 if(IlmBase_INCLUDE_DIR)
   include_directories(${IlmBase_INCLUDE_DIR})
+
   find_file(
     _IlmBase_CONFIG
     NAME IlmBaseConfig.h
-    PATHS "${IlmBase_INCLUDE_DIR}/OpenEXR"
+    PATHS ${IlmBase_INCLUDE_DIR}/OpenEXR
     NO_DEFAULT_PATH
     )
+
   if(_IlmBase_CONFIG)
     file(
-      STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_MAJOR_STRING
+      STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_MAJOR
       REGEX "#define[ ]+ILMBASE_VERSION_MAJOR[ ]+([0-9]+)"
       )
-      if(_IlmBase_VERSION_MAJOR_STRING)
-        string(REGEX MATCH "[0-9]+" IlmBase_VERSION_MAJOR ${_IlmBase_VERSION_MAJOR_STRING})
-      endif()
+    if(_IlmBase_VERSION_MAJOR)
+      string(REGEX MATCH "[0-9]+" IlmBase_VERSION_MAJOR ${_IlmBase_VERSION_MAJOR})
+    endif()
 
     file(
-      STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_MINOR_STRING
+      STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_MINOR
       REGEX "#define[ ]+ILMBASE_VERSION_MINOR[ ]+([0-9]+)"
       )
-      if(_IlmBase_VERSION_MINOR_STRING)
-        string(REGEX MATCH "[0-9]+" IlmBase_VERSION_MINOR ${_IlmBase_VERSION_MINOR_STRING})
-      endif()
+    if(_IlmBase_VERSION_MINOR)
+      string(REGEX MATCH "[0-9]+" IlmBase_VERSION_MINOR ${_IlmBase_VERSION_MINOR})
+    endif()
 
     file(
-      STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_PATCH_STRING
+      STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_PATCH
       REGEX "#define[ ]+ILMBASE_VERSION_PATCH[ ]+([0-9]+)"
       )
-      if(_IlmBase_VERSION_PATCH_STRING)
-        string(REGEX MATCH "[0-9]+" IlmBase_VERSION_PATCH ${_IlmBase_VERSION_PATCH_STRING})
-      endif()
+    if(_IlmBase_VERSION_PATCH)
+      string(REGEX MATCH "[0-9]+" IlmBase_VERSION_PATCH ${_IlmBase_VERSION_PATCH})
+    endif()
 
-      message("-- IlmBase version: ${IlmBase_VERSION_MAJOR}.${IlmBase_VERSION_MINOR}.${IlmBase_VERSION_PATCH}")
+    set(IlmBase_VERSION "${IlmBase_VERSION_MAJOR}.${IlmBase_VERSION_MINOR}.${IlmBase_VERSION_PATCH}" CACHE STRING "Version of IlmBase computed from IlmBaseConfig.h")
   endif()
-
 endif()
 
 foreach(COMPONENT ${IlmBase_FIND_COMPONENTS})
@@ -75,7 +76,6 @@ foreach(COMPONENT ${IlmBase_FIND_COMPONENTS})
 
     list(APPEND IlmBase_LIBRARIES ${IlmBase_${UPPERCOMPONENT}_LIBRARY})
   endif()
-
 endforeach()
 
 foreach(COMPONENT ${IlmBase_FIND_COMPONENTS})
@@ -95,9 +95,12 @@ if(IlmBase_MISSING_LIBS)
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(IlmBase DEFAULT_MSG
+find_package_handle_standard_args(IlmBase
+  REQUIRED_VARS
     ILMBASE_ROOT
     IlmBase_INCLUDE_DIR
     IlmBase_LIBRARIES
     IlmBase_LIBRARY_DIR
+  VERSION_VAR
+    IlmBase_VERSION
  )

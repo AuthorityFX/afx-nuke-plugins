@@ -21,6 +21,41 @@ find_path(
 
 if(Ipp_INCLUDE_DIR)
   include_directories(${Ipp_INCLUDE_DIR})
+
+  find_file(
+    _Ipp_VERSION_H
+    NAME ippversion.h
+    PATHS ${Ipp_INCLUDE_DIR}
+    NO_DEFAULT_PATH
+    )
+
+  if(_Ipp_VERSION_H)
+    file(
+      STRINGS ${_Ipp_VERSION_H} _Ipp_VERSION_MAJOR
+      REGEX "#define[ ]+IPP_VERSION_MAJOR[ ]+[0-9]+"
+      )
+    if(_Ipp_VERSION_MAJOR)
+      string(REGEX MATCH "[0-9]+" Ipp_VERSION_MAJOR ${_Ipp_VERSION_MAJOR})
+    endif()
+
+    file(
+      STRINGS ${_Ipp_VERSION_H} _Ipp_VERSION_MINOR
+      REGEX "#define[ ]+IPP_VERSION_MINOR[ ]+[0-9]+"
+      )
+    if(_Ipp_VERSION_MINOR)
+      string(REGEX MATCH "[0-9]+" Ipp_VERSION_MINOR ${_Ipp_VERSION_MINOR})
+    endif()
+
+    file(
+      STRINGS ${_Ipp_VERSION_H} _Ipp_VERSION_UPDATE
+      REGEX "#define[ ]+IPP_VERSION_UPDATE[ ]+[0-9]+"
+      )
+    if(_Ipp_VERSION_UPDATE)
+      string(REGEX MATCH "[0-9]+" Ipp_VERSION_UPDATE ${_Ipp_VERSION_UPDATE})
+    endif()
+
+    set(Ipp_VERSION "${Ipp_VERSION_MAJOR}.${Ipp_VERSION_MINOR}.${Ipp_VERSION_UPDATE}" CACHE STRING "Version of Ipp computed from ippversion.h")
+  endif()
 endif()
 
 foreach(COMPONENT ${Ipp_FIND_COMPONENTS})
@@ -61,9 +96,12 @@ if(Ipp_MISSING_LIBS)
 endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(Ipp DEFAULT_MSG
+find_package_handle_standard_args(Ipp
+  REQUIRED_VARS
     IPP_ROOT
     Ipp_INCLUDE_DIR
     Ipp_LIBRARIES
     Ipp_LIBRARY_DIR
+  VERSION_VAR
+    Ipp_VERSION
  )
