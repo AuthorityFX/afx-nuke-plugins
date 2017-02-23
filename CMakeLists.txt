@@ -10,17 +10,17 @@
 cmake_minimum_required(VERSION 2.6)
 project(afx-nuke-plugins)
 
-# Set CMAKE_SKIP_RPATH TRUE for redistributable build, place all
-# redistributable library dependencies in lib folder
-set(CMAKE_SKIP_RPATH FALSE)
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-rpath,'$ORIGIN/lib'")
-# Disable rpath stripping at install
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O3 -DNDEBUG")
 endif()
+
+# Set install RPATH
+set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
+# Build with with install RPATH
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+# Add RPATHS outside of the build tree to install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # Append project Modules directory
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
