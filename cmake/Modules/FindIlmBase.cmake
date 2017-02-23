@@ -58,41 +58,29 @@ if(IlmBase_INCLUDE_DIR)
   endif()
 endif()
 
+# Find Half library
+find_library(
+  _IlmBase_HALF_LIBRARY
+  NAMES Half
+  HINTS ${ILMBASE_ROOT}
+  PATH_SUFFIXES lib lib64
+  NO_DEFAULT_PATH
+)
+# Set library directory
+get_filename_component(_dir ${_IlmBase_HALF_LIBRARY} PATH)
+set(IlmBase_LIBRARY_DIR "${_dir}" CACHE PATH "IlmBase library directory")
+
 foreach(COMPONENT ${IlmBase_FIND_COMPONENTS})
-  string(TOUPPER ${COMPONENT} UPPERCOMPONENT)
   find_library(
-    IlmBase_${UPPERCOMPONENT}_LIBRARY
+    IlmBase_${COMPONENT}_FOUND
     NAMES ${COMPONENT}
-    PATHS ${ILMBASE_ROOT}
-    PATH_SUFFIXES lib lib64
+    PATHS ${IlmBase_LIBRARY_DIR}
     NO_DEFAULT_PATH
   )
-
-  if(IlmBase_${UPPERCOMPONENT}_LIBRARY)
-    if(NOT DEFINED IlmBase_LIBRARY_DIR)
-      get_filename_component(_dir "${IlmBase_${UPPERCOMPONENT}_LIBRARY}" PATH)
-      set(IlmBase_LIBRARY_DIR "${_dir}" CACHE PATH "IlmBase library directory" FORCE)
-    endif()
-
-    list(APPEND IlmBase_LIBRARIES ${IlmBase_${UPPERCOMPONENT}_LIBRARY})
+  if(IlmBase_${COMPONENT}_FOUND)
+    list(APPEND IlmBase_LIBRARIES ${IlmBase_${COMPONENT}_FOUND})
   endif()
 endforeach()
-
-foreach(COMPONENT ${IlmBase_FIND_COMPONENTS})
-  string(TOUPPER ${COMPONENT} UPPERCOMPONENT)
-
-  if(NOT IlmBase_${UPPERCOMPONENT}_LIBRARY)
-    set(IlmBase_LIBRARIES "")
-    set(IlmBase_MISSING_LIBS "${IlmBase_MISSING_LIBS}\n  -- ${COMPONENT}")
-  endif()
-endforeach()
-
-if(IlmBase_MISSING_LIBS)
-  message("**********IlmBase Missing Libraries************")
-  message("Unable to find the following IlmBase libraries: ${IlmBase_MISSING_LIBS}")
-  message("Use cmake -D ILMBASE_ROOT=")
-  message("***********************************************")
-endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(IlmBase
@@ -103,4 +91,5 @@ find_package_handle_standard_args(IlmBase
     IlmBase_LIBRARY_DIR
   VERSION_VAR
     IlmBase_VERSION
+  HANDLE_COMPONENTS
  )

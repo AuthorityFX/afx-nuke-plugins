@@ -58,42 +58,31 @@ if(Ipp_INCLUDE_DIR)
   endif()
 endif()
 
+# Find ippcore library
+find_library(
+  _Ipp_CORE_LIBRARY
+  NAMES ippcore
+  HINTS ${IPP_ROOT}
+  PATH_SUFFIXES
+    lib
+    lib/intel64
+  NO_DEFAULT_PATH
+)
+# Set library directory
+get_filename_component(_dir ${_Ipp_CORE_LIBRARY} PATH)
+set(Ipp_LIBRARY_DIR "${_dir}" CACHE PATH "Ipp library directory")
+
 foreach(COMPONENT ${Ipp_FIND_COMPONENTS})
-  string(TOUPPER ${COMPONENT} UPPERCOMPONENT)
   find_library(
-    Ipp_${UPPERCOMPONENT}_LIBRARY
+    Ipp_${COMPONENT}_FOUND
     NAMES ${COMPONENT}
-    PATHS ${IPP_ROOT}/lib/intel64
-    PATH_SUFFIXES lib
+    PATHS ${Ipp_LIBRARY_DIR}
     NO_DEFAULT_PATH
   )
-
-  if(Ipp_${UPPERCOMPONENT}_LIBRARY)
-    if(NOT DEFINED Ipp_LIBRARY_DIR)
-      get_filename_component(_dir "${Ipp_${UPPERCOMPONENT}_LIBRARY}" PATH)
-      set(Ipp_LIBRARY_DIR "${_dir}" CACHE PATH "Ipp library directory" FORCE)
-    endif()
-
-    list(APPEND Ipp_LIBRARIES ${Ipp_${UPPERCOMPONENT}_LIBRARY})
-  endif()
-
-endforeach()
-
-foreach(COMPONENT ${Ipp_FIND_COMPONENTS})
-  string(TOUPPER ${COMPONENT} UPPERCOMPONENT)
-
-  if(NOT Ipp_${UPPERCOMPONENT}_LIBRARY)
-    set(Ipp_LIBRARIES "")
-    set(Ipp_MISSING_LIBS "${Ipp_MISSING_LIBS}\n  -- ${COMPONENT}")
+  if(Ipp_${COMPONENT}_FOUND)
+    list(APPEND Ipp_LIBRARIES ${Ipp_${COMPONENT}_FOUND})
   endif()
 endforeach()
-
-if(Ipp_MISSING_LIBS)
-  message("**********Ipp Missing Libraries************")
-  message("Unable to find the following Ipp libraries: ${Ipp_MISSING_LIBS}")
-  message("Use cmake -D IPP_ROOT=")
-  message("***********************************************")
-endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Ipp
@@ -104,4 +93,5 @@ find_package_handle_standard_args(Ipp
     Ipp_LIBRARY_DIR
   VERSION_VAR
     Ipp_VERSION
+  HANDLE_COMPONENTS
  )

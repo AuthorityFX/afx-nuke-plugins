@@ -41,46 +41,69 @@ find_package(CUDA REQUIRED)
 find_package(IlmBase REQUIRED COMPONENTS Half)
 find_package(Jemalloc REQUIRED)
 
-# AFX CORE LIBRARY
-add_library(lib_afx_core SHARED src/image.cpp src/threading.cpp src/mlaa.cpp)
-set_target_properties(lib_afx_core PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY "./lib")
-target_link_libraries(lib_afx_core ${Ipp_LIBRARIES} ${Boost_LIBRARIES} ${IlmBase_LIBRARIES} ${Jemalloc_LIBRARIES})
+add_library(core SHARED src/image.cpp src/threading.cpp)
+set_target_properties(core PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
+target_link_libraries(core ${Ipp_LIBRARIES} ${Boost_LIBRARIES} ${IlmBase_LIBRARIES} ${Jemalloc_LIBRARIES})
+list(APPEND afx_LIBRARIES core)
 
-# Cuda Helper Library
-add_library(lib_afx_cuda SHARED src/cuda_helper.cpp)
-set_target_properties(lib_afx_cuda PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY "./lib")
-target_link_libraries(lib_afx_cuda lib_afx_core)
+cuda_add_library(cuda src/cuda_helper.cpp SHARED)
+set_target_properties(cuda PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
+target_link_libraries(cuda core)
+add_dependencies(cuda core)
+list(APPEND afx_LIBRARIES cuda)
 
 add_library(afx_soft_clip SHARED src/afx_soft_clip.cpp)
 set_target_properties(afx_soft_clip PROPERTIES PREFIX "")
-target_link_libraries(afx_soft_clip)
+list(APPEND afx_PLUGINS afx_soft_clip)
 
 add_library(afx_tone_map SHARED src/afx_tone_map.cpp)
 set_target_properties(afx_tone_map PROPERTIES PREFIX "")
-target_link_libraries(afx_tone_map)
+list(APPEND afx_PLUGINS afx_tone_map)
 
 add_library(afx_chroma_key SHARED src/afx_chroma_key.cpp)
 set_target_properties(afx_chroma_key PROPERTIES PREFIX "")
-target_link_libraries(afx_chroma_key lib_afx_core)
+target_link_libraries(afx_chroma_key core)
+add_dependencies(afx_chroma_key core)
+list(APPEND afx_PLUGINS afx_chroma_key)
 
-add_library(afx_anti_alias SHARED src/afx_anti_alias.cpp)
+add_library(afx_anti_alias SHARED src/afx_anti_alias.cpp src/mlaa.cpp)
 set_target_properties(afx_anti_alias PROPERTIES PREFIX "")
-target_link_libraries(afx_anti_alias lib_afx_core)
+target_link_libraries(afx_anti_alias core)
+add_dependencies(afx_anti_alias core)
+list(APPEND afx_PLUGINS afx_anti_alias)
 
 add_library(afx_despill SHARED src/afx_despill.cpp)
 set_target_properties(afx_despill PROPERTIES PREFIX "")
-target_link_libraries(afx_despill lib_afx_core)
+target_link_libraries(afx_despill core)
+add_dependencies(afx_despill core)
+list(APPEND afx_PLUGINS afx_despill)
 
 cuda_add_library(afx_median src/afx_median.cpp src/afx_median.cu SHARED)
 set_target_properties(afx_median PROPERTIES PREFIX "")
-target_link_libraries(afx_median lib_afx_core lib_afx_cuda)
+target_link_libraries(afx_median core cuda)
+add_dependencies(afx_median core cuda)
+list(APPEND afx_PLUGINS afx_median)
 
-cuda_add_library(afx_glow src/afx_glow.cpp SHARED)
+add_library(afx_glow SHARED src/afx_glow.cpp)
 set_target_properties(afx_glow PROPERTIES PREFIX "")
-target_link_libraries(afx_glow lib_afx_core lib_afx_cuda)
+target_link_libraries(afx_glow core cuda)
+add_dependencies(afx_median core cuda)
+list(APPEND afx_PLUGINS afx_median)
 
 
-install(TARGETS lib_afx_core lib_afx_cuda DESTINATION lib)
-install(TARGETS afx_soft_clip afx_tone_map afx_median afx_chroma_key afx_despill afx_anti_alias afx_glow DESTINATION .)
-install(DIRECTORY icons/ DESTINATION icons)
-install(FILES menu.py DESTINATION .)
+install(
+  TARGETS ${afx_LIBRARIES}
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+  )
+install(
+  TARGETS ${afx_PLUGINS}
+  DESTINATION ${CMAKE_INSTALL_PREFIX}
+  )
+install(
+  DIRECTORY icons/
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/icons
+  )
+install(
+  FILES menu.py
+  DESTINATION ${CMAKE_INSTALL_PREFIX}
+  )

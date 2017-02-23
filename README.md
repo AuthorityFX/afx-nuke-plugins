@@ -7,6 +7,8 @@ Requirements
 * Intel IPP (Community Licensing is free https://registrationcenter.intel.com/en/forms/?productid=2558)
 * BOOST
 * Nuke NDK
+* IlmBase
+* Jemalloc
 
 Build and Install
 -----------------
@@ -52,17 +54,10 @@ Redistributable Libraries
 * libboost_system.so
 * libboost_thread.so
 * libcudart.so
-* libippcore.so
-* libippie9.so
-* libippik0.so
-* libippil9.so
-* libippim7.so
-* libippimx.so
-* libippin0.so
-* libippin8.so
 * libippi.so
-* libippiy8.so
+* libippcore.so
 * libjemalloc.so
+* libHalf.so
 
 TODO
 --------------------------------------------------
