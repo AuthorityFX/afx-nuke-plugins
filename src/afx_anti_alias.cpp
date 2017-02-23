@@ -17,10 +17,10 @@
 #include <boost/bind.hpp>
 #include <math.h>
 
-#include "threading.h"
-#include "image.h"
-#include "nuke_helper.h"
-#include "mlaa.h"
+#include "include/threading.h"
+#include "include/image.h"
+#include "include/nuke_helper.h"
+#include "include/mlaa.h"
 
 #define ThisClass AFXAntiAlias
 
@@ -129,8 +129,8 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
         out_imgs_.AddImage(req_pad_bnds);
         out_imgs_.GetBackPtr()->AddAttribute("channel", z);
         afx::MorphAA aa;
-        // TODO (rpw): crashing with threader
-        aa.Process(in_img, out_imgs_.GetBackPtr(), k_threshold_, k_max_line_length_);//, &threader_);
+        // TODO(rpw): crashing with threader
+        aa.Process(in_img, out_imgs_.GetBackPtr(), k_threshold_, k_max_line_length_);  //, &threader_);
       }
       first_time_CPU_ = false;
     }

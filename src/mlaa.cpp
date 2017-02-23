@@ -7,15 +7,15 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#include "mlaa.h"
+#include "include/mlaa.h"
 
 #include <math.h>
 #include <boost/bind.hpp>
 
-#include "settings.h"
-#include "image.h"
-#include "threading.h"
-#include "memory.h"
+#include "include/settings.h"
+#include "include/image.h"
+#include "include/threading.h"
+#include "include/memory.h"
 
 namespace afx {
 
