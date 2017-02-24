@@ -167,7 +167,7 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, int length, int x, int y) {
   //      ¯¯¯¯¯¯¯¯¯¯¯¯               |______x
   //          0.0f
   if ((info_ptr - 1)->flags & afx::kDisPosDown) {  // last pixel in line is greater than bottom pixel
-    if (info_.GetPtrBnds(x - 1, y - 1)->flags & afx::kDisNegRight ||  !(info_ptr - 1)->flags & (afx::kDisPosRight | afx::kDisNegRight)) {
+    if (info_.GetPtrBnds(x - 1, y - 1)->flags & afx::kDisNegRight || !((info_ptr - 1)->flags & (afx::kDisPosRight | afx::kDisNegRight))) {
       // if Diff(a, b) > thresh
       // _____
       //      |[][][][][]|{}
@@ -180,11 +180,11 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, int length, int x, int y) {
       //      ¯¯¯¯¯¯¯¯¯¯¯¯
       end_blend = true;
     }
-    if (info_.GetPtrBnds(x - length - 1, y)->flags & afx::kDisNegRight) {
+    if (info_.GetPtrBnds(x - length - 1, y)->flags & afx::kDisNegRight && !(info_.GetPtrBnds(x - length - 1, y - 1)->flags & afx::kDisPosRight)) {
       // if Diff(a, b) > thresh
       // _____            ______
       //     a|[b][][][][]|{}
-      //      ¯¯¯¯¯¯¯¯¯¯¯¯
+      //     c ¯d¯¯¯¯¯¯¯¯¯¯¯
       start_blend = true;
     } else {  // Since we know "a" has no dis_h, start is by default orientation false
       //                 ______
@@ -197,7 +197,7 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, int length, int x, int y) {
     // _____|¯¯¯¯¯¯¯¯¯¯|______
     //          1.0f
   } else {  // last pixel in line is less than bottom pixel
-    if ((info_ptr - 1)->flags & afx::kDisNegRight || info_.GetPtrBnds(x, y + 1)->flags & afx::kDisNegDown) {
+    if ((info_ptr - 1)->flags & afx::kDisNegRight || info_.GetPtrBnds(x, y + 1)->flags & (afx::kDisNegDown | afx::kDisPosDown)) {
       // if Diff(a, b) > thresh or Diff(c, b) > thresh
       //                  __c_____
       //       [][][][][a]|{b}
@@ -208,10 +208,10 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, int length, int x, int y) {
       // _____|¯¯¯¯¯¯¯¯¯¯|_____
       end_blend = true;
     }
-    if (info_.GetPtrBnds(x - length - 1, y - 1)->flags & afx::kDisNegRight) {
+    if (info_.GetPtrBnds(x - length - 1, y - 1)->flags & afx::kDisNegRight && !(info_.GetPtrBnds(x - length - 1, y)->flags & afx::kDisPosRight)) {
       // if Diff(a, b) > thresh
       //
-      //       [][][][][]{}
+      //     c [d][][][][]{}
       // ____a|b¯¯¯¯¯¯¯¯¯|_____
       start_blend = true;
     } else {
@@ -263,7 +263,7 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, int length, int x, int y) {
   //      ¯¯¯¯¯¯¯¯¯¯¯¯               x
   //          0.0f
   if (info_.PreviousRow(info_ptr)->flags & afx::kDisPosRight) {  // last pixel in line is greater than right pixel
-    if (info_.GetPtrBnds(x + 1, y)->flags & afx::kDisPosDown || !info_ptr->flags & (afx::kDisPosDown | afx::kDisNegDown)) {
+    if (info_.GetPtrBnds(x + 1, y)->flags & afx::kDisPosDown || !(info_ptr->flags & (afx::kDisPosDown | afx::kDisNegDown))) {
       // if Diff(a, b) > thresh or not Diff(c, d) > thresh
       // _____
       //      |[][][][][d]|{c}
@@ -275,11 +275,11 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, int length, int x, int y) {
       //      ¯¯¯¯¯¯¯¯¯¯¯¯
       end_blend = true;
     }
-    if (info_.GetPtr(x, y - length)->flags & afx::kDisPosDown) {
+    if (info_.GetPtr(x, y - length)->flags & afx::kDisPosDown && !(info_.GetPtrBnds(x + 1, y - length)->flags & afx::kDisNegDown)) {
       // if Diff(a, b) > thresh
       // _____            ______
       //     b|[a][][][][]|{}
-      //      ¯¯¯¯¯¯¯¯¯¯¯¯
+      //     d ¯c¯¯¯¯¯¯¯¯¯¯
       start_blend = true;
     } else {  // Since we know "a" has no dis_h, start is by default orientation false
       //                 ______
@@ -303,10 +303,10 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, int length, int x, int y) {
       // _____|¯¯¯¯¯¯¯¯¯¯|_____
       end_blend = true;
     }
-    if (info_.GetPtrBnds(x + 1, y - length)->flags & afx::kDisPosDown) {
+    if (info_.GetPtrBnds(x + 1, y - length)->flags & afx::kDisPosDown && !(info_.GetPtr(x, y - length)->flags & afx::kDisNegDown)) {
       // if Diff(a, b) > thresh
       //
-      //       [][][][][]{}
+      //     d [c][][][][]{}
       // ____b|a¯¯¯¯¯¯¯¯¯|_____
       start_blend = true;
     } else {
