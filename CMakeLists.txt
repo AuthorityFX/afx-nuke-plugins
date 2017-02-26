@@ -87,8 +87,8 @@ list(APPEND afx_PLUGINS afx_median)
 add_library(afx_glow SHARED src/afx_glow.cpp)
 set_target_properties(afx_glow PROPERTIES PREFIX "")
 target_link_libraries(afx_glow core cuda)
-add_dependencies(afx_median core cuda)
-list(APPEND afx_PLUGINS afx_median)
+add_dependencies(afx_glow core cuda)
+list(APPEND afx_PLUGINS afx_glow)
 
 
 install(
