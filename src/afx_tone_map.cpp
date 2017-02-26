@@ -125,8 +125,8 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
         if (rgb_chan[i] == Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; }  // If brother does not exist
       }
       if (has_all_rgb) {
-        afx::ReadOnlyPixel in_px;
-        afx::Pixel out_px;
+        afx::Pixel<const float> in_px;
+        afx::Pixel<float> out_px;
         for (int i = 0; i < 3; ++i) {
           done += rgb_chan[i];  // Add channel to done channel set
           in_px.SetPtr(row[rgb_chan[i]] + x, i);

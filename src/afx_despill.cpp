@@ -185,8 +185,8 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   if (input(iMatte) != nullptr) { m_row.get(*input(iMatte), y, x, r, Mask_Alpha); }
 
   float rgb[3] = {0, 0, 0};
-  afx::ReadOnlyPixel in_px(3);
-  afx::Pixel out_px(3);
+  afx::Pixel<const float> in_px(3);
+  afx::Pixel<float> out_px(3);
   for (int i = 0; i < 3; i++) {
     in_px.SetPtr(row[static_cast<Channel>(i + 1)] + x, i);  // Set const in pointers RGB. (i + 1) Chan_Red = 1
     out_px.SetPtr(row.writable(static_cast<Channel>(i + 1)) + x, i);  // Set out pointers RGB

@@ -282,8 +282,8 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
   // Must call get before initializing any pointers
   row.get(input0(), y, x, r, Mask_RGBA);
 
-  afx::ReadOnlyPixel in(3);
-  afx::Pixel out(4);
+  afx::Pixel<const float> in(3);
+  afx::Pixel<float> out(4);
   for (int i = 0; i < 3; ++i) { in.SetPtr(row[rgba_chan[i]] + x, i); }  // Set const in pointers RGB
   for (int i = 0; i < 4; ++i) { out.SetPtr(row.writable(rgba_chan[i]) + x, i); }  // Set out pointers RGBA
 
@@ -333,7 +333,7 @@ void ThisClass::Metrics(const afx::Bounds& region, const ImagePlane& source, con
   PointCloud out_pc;
   PointCloud in_pc;
 
-  afx::ReadOnlyPixel in(3);
+  afx::Pixel<const float> in(3);
   const float zero = 0.0f;
   const float* out_m_ptr = &zero;
   const float* in_m_ptr = &zero;

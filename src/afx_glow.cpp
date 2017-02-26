@@ -317,8 +317,8 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 
 void ThisClass::GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, const Channel (&rgb_chan)[3]) {
   afx::Bounds plane_bnds = afx::BoxToBounds(in_plane.bounds());
-  afx::ReadOnlyPixel in(3);
-  afx::Pixel out(3);
+  afx::Pixel<const float> in(3);
+  afx::Pixel<float> out(3);
   const float one = 1.0f;
   const float* m_ptr = &one;
   for (int y = region.y1(); y <= region.y2(); ++y) {
