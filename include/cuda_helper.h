@@ -15,7 +15,7 @@
 #include <cufft.h>
 
 #include "include/settings.h"
-#include "include/types.h"
+#include "include/bounds.h"
 #include "include/attribute.h"
 
 namespace afx {

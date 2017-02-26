@@ -13,7 +13,7 @@
 #include <OpenEXR/half.h>
 
 #include "settings.h"
-#include "types.h"
+#include "bounds.h"
 #include "image.h"
 #include "threading.h"
 

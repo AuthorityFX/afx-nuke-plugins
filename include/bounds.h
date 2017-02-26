@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_TYPES_H_
-#define INCLUDE_TYPES_H_
+#ifndef INCLUDE_BOUNDS_H_
+#define INCLUDE_BOUNDS_H_
 
 #include <cuda_runtime.h>
 
@@ -160,107 +160,6 @@ class Bounds {
   }
 };
 
-class ReadOnlyPixel {
- private:
-  const float** pixel_;
-  unsigned int size_;
-  void Init(unsigned int size) {
-    Dispose();
-    size_ = size;
-    pixel_ = new const float*[size_];
-    for (unsigned int x = 0; x < size_; ++x) { pixel_[x] = nullptr; }
-  }
-  void CopyPixel(const ReadOnlyPixel& other) {
-    Init(other.size_);
-    for (unsigned int i = 0; i < size_; ++i) {
-      pixel_[i] = other.pixel_[i];
-    }
-  }
-  void Dispose() {
-    if (pixel_ != nullptr) {
-      delete[] pixel_;
-      pixel_ = nullptr;
-    }
-  }
-
- public:
-  ReadOnlyPixel() : pixel_(nullptr) { Init(3); }
-  explicit ReadOnlyPixel(unsigned int size) : pixel_(nullptr) { Init(size); }
-  ReadOnlyPixel(const ReadOnlyPixel& other) { CopyPixel(other); }
-  ReadOnlyPixel& operator=(const ReadOnlyPixel& other) {
-    CopyPixel(other);
-    return *this;
-  }
-  ~ReadOnlyPixel() { Dispose(); }
-
-  void NextPixel() {
-    for (unsigned int i = 0; i < size_; ++i) {
-      if (pixel_ != nullptr) { pixel_[i]++; }
-    }
-  }
-  void operator++(int) {
-    NextPixel();
-  }
-  const float& operator[](unsigned int index) {
-    return *pixel_[index];
-  }
-  void SetPtr(const float* ptr, unsigned int index) { pixel_[index] = ptr; }
-  const float* GetPtr(unsigned int index) const { return pixel_[index]; }
-  float GetVal(unsigned int index) const { return *pixel_[index]; }
-  unsigned int GetSize() const {return size_; }
-};
-
-class Pixel {
- private:
-  float** pixel_;
-  unsigned int size_;
-  void Init(unsigned int size) {
-    Dispose();
-    size_ = size;
-    pixel_ = new float*[size_];
-    for (unsigned int x = 0; x < size_; ++x) { pixel_[x] = nullptr; }
-  }
-  void CopyPixel(const Pixel& other) {
-    Init(other.size_);
-    for (unsigned int i = 0; i < size_; ++i) {
-      pixel_[i] = other.pixel_[i];
-    }
-  }
-  void Dispose() {
-    if (pixel_ != nullptr) {
-      delete[] pixel_;
-      pixel_ = nullptr;
-    }
-  }
-
- public:
-  Pixel() : pixel_(nullptr) { Init(3); }
-  explicit Pixel(unsigned int size) : pixel_(nullptr) { Init(size); }
-  Pixel(const Pixel& other) { CopyPixel(other); }
-  Pixel& operator=(const Pixel& other) {
-    CopyPixel(other);
-    return *this;
-  }
-  ~Pixel() { Dispose(); }
-
-  void NextPixel() {
-    for (unsigned int i = 0; i < size_; ++i) {
-      if (pixel_ != nullptr) { pixel_[i]++; }
-    }
-  }
-  void operator++(int) {
-    NextPixel();
-  }
-  float& operator[](unsigned int index) {
-    return *pixel_[index];
-  }
-  void SetPtr(float* ptr, unsigned int index) { pixel_[index] = ptr; }
-  void SetVal(float val, unsigned int index) { *pixel_[index] = val; }
-  float* GetPtr(unsigned int index) const { return pixel_[index]; }
-  float GetVal(unsigned int index) const { return *pixel_[index]; }
-  unsigned int GetSize() const {return size_; }
-};
-
 }  // namespace afx
 
-#endif  // INCLUDE_TYPES_H_
+#endif  // INCLUDE_BOUNDS_H_

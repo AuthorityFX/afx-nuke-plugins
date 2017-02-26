@@ -26,6 +26,7 @@
 
 #include "include/threading.h"
 #include "include/image.h"
+#include "include/pixel.h"
 #include "include/cuda_helper.h"
 #include "include/nuke_helper.h"
 #include "include/glow.h"

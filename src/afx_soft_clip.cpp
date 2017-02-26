@@ -16,7 +16,8 @@
 
 #include <cmath>
 
-#include "include/types.h"
+#include "include/bounds.h"
+#include "include/pixel.h"
 #include "include/color_op.h"
 
 #define ThisClass AFXSoftClip

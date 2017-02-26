@@ -23,7 +23,7 @@
 #include <list>
 
 #include "include/settings.h"
-#include "include/types.h"
+#include "include/bounds.h"
 #include "include/threading.h"
 #include "include/attribute.h"
 

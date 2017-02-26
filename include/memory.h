@@ -12,7 +12,7 @@
 
 #include <jemalloc/jemalloc.h>
 
-#include "include/types.h"
+#include "include/bounds.h"
 
 namespace afx {
 

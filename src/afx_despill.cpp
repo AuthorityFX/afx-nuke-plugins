@@ -13,6 +13,7 @@
 #include <DDImage/ImagePlane.h>
 #include <DDImage/Thread.h>
 
+#include "include/pixel.h"
 #include "include/nuke_helper.h"
 #include "include/median.h"
 #include "include/color_op.h"

@@ -16,7 +16,7 @@
 #include <boost/scoped_ptr.hpp>
 
 #include "include/settings.h"
-#include "include/types.h"
+#include "include/bounds.h"
 
 namespace afx {
 

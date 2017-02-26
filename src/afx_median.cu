@@ -12,7 +12,7 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#include "include/types.h"
+#include "include/bounds.h"
 
 __global__
 void KernelMedian(cudaTextureObject_t tex, float* row_ptr, size_t row_pitch, int med_size_i, int med_size_o, int med_n_i, int med_n_o, float m_lerp, float m_i_lerp, float sharpness, afx::Bounds img_bnds, afx::Bounds row_bnds, int med_size_2) {

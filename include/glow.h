@@ -26,7 +26,7 @@
 
 #include "include/settings.h"
 #include "include/cuda_helper.h"
-#include "include/types.h"
+#include "include/bounds.h"
 #include "include/image.h"
 
 namespace afx {

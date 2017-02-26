@@ -18,6 +18,7 @@
 #include <boost/geometry.hpp>
 
 #include "include/threading.h"
+#include "include/pixel.h"
 #include "include/nuke_helper.h"
 #include "include/median.h"
 #include "include/color_op.h"
