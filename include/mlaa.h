@@ -12,10 +12,10 @@
 
 #include <OpenEXR/half.h>
 
-#include "settings.h"
-#include "bounds.h"
-#include "image.h"
-#include "threading.h"
+#include "include/settings.h"
+#include "include/bounds.h"
+#include "include/image.h"
+#include "include/threading.h"
 
 namespace afx {
 

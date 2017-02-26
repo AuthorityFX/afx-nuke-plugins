@@ -18,6 +18,7 @@ template <class T> class PackedPixel {
  private:
   T* ptr_;
   size_t stride_;
+
  public:
   explicit PackedPixel(T* ptr) : ptr_(ptr), stride_(0) {}
   PackedPixel(T* ptr, size_t stride) : ptr_(ptr), stride_(stride) {}
