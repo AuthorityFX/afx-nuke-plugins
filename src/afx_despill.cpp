@@ -20,6 +20,8 @@
 
 #define ThisClass AFXDeSpill
 
+namespace nuke = DD::Image;
+
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
 static const char* CLASS = "AFXDeSpill";
 static const char* HELP = "Remove Spill";
@@ -40,28 +42,26 @@ const char* algorithm_list[8] = {
   0
 };
 
-using namespace DD::Image;
-
-class ThisClass : public Iop {
+class ThisClass : public nuke::Iop {
  private:
   // members to store knob values
   float k_screen_color_[3];
   float k_amount_;
   float k_lightness_adj;
   int k_algorithm_;
-  ChannelSet k_spill_matte_channel_;
+  nuke::ChannelSet k_spill_matte_channel_;
 
   afx::RotateColor hue_shifter_;
   afx::RotateColor hue_shifter_inv_;
   float ref_suppression_;
   afx::ScreenColor color_;
 
-  void ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row);
+  void ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 
  public:
   explicit ThisClass(Node* node);
-  void knobs(Knob_Callback);
-  int knob_changed(Knob* k);
+  void knobs(nuke::Knob_Callback);
+  int knob_changed(nuke::Knob* k);
   const char* Class() const;
   const char* node_help() const;
   static const Iop::Description d;
@@ -69,10 +69,10 @@ class ThisClass : public Iop {
   const char* input_label(int input, char* buffer) const;
 
   void _validate(bool);
-  void _request(int x, int y, int r, int t, ChannelMask channels, int count);
-  void engine(int y, int x, int r, ChannelMask channels, Row& row);
+  void _request(int x, int y, int r, int t, nuke::ChannelMask channels, int count);
+  void engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 };
-ThisClass::ThisClass(Node* node) : Iop(node) {
+ThisClass::ThisClass(Node* node) : nuke::Iop(node) {
   // Set inputs
   inputs(2);
 
@@ -83,39 +83,39 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_screen_color_[0] = k_screen_color_[2] = 0.0f;
   k_screen_color_[1] = 1.0f;
 }
-void ThisClass::knobs(Knob_Callback f) {
-  Color_knob(f, k_screen_color_, "screen_color", "Screen Color");
-  Tooltip(f, "Color of Chroma Screen");
-  ClearFlags(f, Knob::MAGNITUDE | Knob::SLIDER);
+void ThisClass::knobs(nuke::Knob_Callback f) {
+  nuke::Color_knob(f, k_screen_color_, "screen_color", "Screen Color");
+  nuke::Tooltip(f, "Color of Chroma Screen");
+  nuke::ClearFlags(f, nuke::Knob::MAGNITUDE | nuke::Knob::SLIDER);
 
-  Divider(f, "Settings");
+  nuke::Divider(f, "Settings");
 
-  Float_knob(f, &k_amount_, "amount", "Spill Amount");
-  Tooltip(f, "Amount of spill to remove");
-  SetRange(f, 0.0, 1.0);
-  SetFlags(f, Knob::FORCE_RANGE);
+  nuke::Float_knob(f, &k_amount_, "amount", "Spill Amount");
+  nuke::Tooltip(f, "Amount of spill to remove");
+  nuke::SetRange(f, 0.0, 1.0);
+  nuke::SetFlags(f, nuke::Knob::FORCE_RANGE);
 
-  Float_knob(f, &k_lightness_adj, "lightness_adj", "Lightness Adjustment");
-  Tooltip(f, "Adjust perceived lightness");
-  SetRange(f, 0.0, 1.0);
-  SetFlags(f, Knob::FORCE_RANGE);
+  nuke::Float_knob(f, &k_lightness_adj, "lightness_adj", "Lightness Adjustment");
+  nuke::Tooltip(f, "Adjust perceived lightness");
+  nuke::SetRange(f, 0.0, 1.0);
+  nuke::SetFlags(f, nuke::Knob::FORCE_RANGE);
 
-  Enumeration_knob(f, &k_algorithm_, algorithm_list, "algorithm", "Algorithm");
-  Tooltip(f, "Spill Algorithm");
+  nuke::Enumeration_knob(f, &k_algorithm_, algorithm_list, "algorithm", "Algorithm");
+  nuke::Tooltip(f, "Spill Algorithm");
 
-  Divider(f, "Output");
+  nuke::Divider(f, "Output");
 
-  ChannelSet_knob(f, &k_spill_matte_channel_, "spill_matte", "Spill Matte");
+  nuke::ChannelSet_knob(f, &k_spill_matte_channel_, "spill_matte", "Spill Matte");
 }
-int ThisClass::knob_changed(Knob* k) {
-  return Iop::knob_changed(k);
+int ThisClass::knob_changed(nuke::Knob* k) {
+  return nuke::Iop::knob_changed(k);
 }
 const char* ThisClass::Class() const { return CLASS; }
 const char* ThisClass::node_help() const { return HELP; }
-static Iop* build(Node* node) { return new ThisClass(node); }
-const Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Smart Median", build);
-Op* ThisClass::default_input(int input) const {
-  if (input == 0) { return Iop::default_input(0); }
+static nuke::Iop* build(Node* node) { return new ThisClass(node); }
+const nuke::Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Smart Median", build);
+nuke::Op* ThisClass::default_input(int input) const {
+  if (input == 0) { return nuke::Iop::default_input(0); }
   return 0;
 }
 const char* ThisClass::input_label(int input, char* buffer) const {
@@ -136,7 +136,7 @@ const char* ThisClass::input_label(int input, char* buffer) const {
 void ThisClass::_validate(bool) {
   copy_info(0);
 
-  ChannelSet out_channels = channels();
+  nuke::ChannelSet out_channels = channels();
   out_channels += k_spill_matte_channel_;
   set_out_channels(out_channels);
   info_.turn_on(out_channels);
@@ -162,38 +162,38 @@ void ThisClass::_validate(bool) {
   hue_shifter_inv_ = hue_shifter_;
   hue_shifter_inv_.Invert();
 }
-void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
-  ChannelSet req_channels = channels;
-  req_channels += Mask_RGB;
+void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
+  nuke::ChannelSet req_channels = channels;
+  req_channels += nuke::Mask_RGB;
   input(iSource)->request(x, y, r, t, req_channels, count);  // Only request RGB
-  if (input(iMatte) != nullptr) { input(iMatte)->request(x, y, r, t, Mask_Alpha, count); }
+  if (input(iMatte) != nullptr) { input(iMatte)->request(x, y, r, t, nuke::Mask_Alpha, count); }
 }
-void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   callCloseAfter(0);
   ProcessCPU(y, x, r, channels, row);
 }
-void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
-  ChannelSet req_channels = channels;
-  req_channels += Mask_RGB;  // Add RGB to channels
+void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
+  nuke::ChannelSet req_channels = channels;
+  req_channels += nuke::Mask_RGB;  // Add RGB to channels
   row.get(input0(), y, x, r, req_channels);  // Request all channels
   // Copy channels that will not be changed
-  ChannelSet copy_mask = channels - Mask_RGB - k_spill_matte_channel_;
+  nuke::ChannelSet copy_mask = channels - nuke::Mask_RGB - k_spill_matte_channel_;
   row.pre_copy(row, copy_mask);
   row.copy(row, copy_mask, x, r);
 
-  Row m_row(x, r);
-  if (input(iMatte) != nullptr) { m_row.get(*input(iMatte), y, x, r, Mask_Alpha); }
+  nuke::Row m_row(x, r);
+  if (input(iMatte) != nullptr) { m_row.get(*input(iMatte), y, x, r, nuke::Mask_Alpha); }
 
   float rgb[3] = {0, 0, 0};
   afx::Pixel<const float> in_px(3);
   afx::Pixel<float> out_px(3);
   for (int i = 0; i < 3; i++) {
-    in_px.SetPtr(row[static_cast<Channel>(i + 1)] + x, i);  // Set const in pointers RGB. (i + 1) Chan_Red = 1
-    out_px.SetPtr(row.writable(static_cast<Channel>(i + 1)) + x, i);  // Set out pointers RGB
+    in_px.SetPtr(row[static_cast<nuke::Channel>(i + 1)] + x, i);  // Set const in pointers RGB. (i + 1) Chan_Red = 1
+    out_px.SetPtr(row.writable(static_cast<nuke::Channel>(i + 1)) + x, i);  // Set out pointers RGB
   }
   float one = 1.0f;
   const float* m_ptr = &one;
-  if (input(iMatte) != nullptr) { m_ptr = m_row[Chan_Alpha] + x; }
+  if (input(iMatte) != nullptr) { m_ptr = m_row[nuke::Chan_Alpha] + x; }
   for (int x0 = x; x0 < r; ++x0) {  // Loop through pixels in row
     for (int i = 0; i < 3; i++) { rgb[i] = in_px.GetVal(i); }
     float suppression_matte = 0.0f;

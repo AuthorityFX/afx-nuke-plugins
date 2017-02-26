@@ -15,16 +15,18 @@
 
 #include "include/bounds.h"
 
+namespace nuke = DD::Image;
+
 namespace afx {
 
-  afx::Bounds BoxToBounds(DD::Image::Box box) {
+  afx::Bounds BoxToBounds(nuke::Box box) {
     return afx::Bounds(box.x(), box.y(), box.r() - 1, box.t() - 1);
   }
-  DD::Image::Box BoundsToBox(afx::Bounds bnds) {
-    return DD::Image::Box(bnds.x1(), bnds.y1(), bnds.x2() + 1, bnds.y2() + 1);
+  nuke::Box BoundsToBox(afx::Bounds bnds) {
+    return nuke::Box(bnds.x1(), bnds.y1(), bnds.x2() + 1, bnds.y2() + 1);
   }
 
-  afx::Bounds InputBounds(DD::Image::Iop* input) {
+  afx::Bounds InputBounds(nuke::Iop* input) {
     return afx::BoxToBounds(input->info().box());
   }
 

@@ -22,6 +22,8 @@
 
 #define ThisClass AFXToneMap
 
+namespace nuke = DD::Image;
+
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
 static const char* const CLASS = "AFXToneMap";
 static const char* const HELP = "Tone mapping";
@@ -33,9 +35,7 @@ const char* metric_list[8] = {
   0
 };
 
-using namespace DD::Image;
-
-class ThisClass : public Iop {
+class ThisClass : public nuke::Iop {
  private:
   int k_metric_;
   float k_darks_;
@@ -51,17 +51,17 @@ class ThisClass : public Iop {
 
  public:
   explicit ThisClass(Node* node);
-  void knobs(Knob_Callback);
+  void knobs(nuke::Knob_Callback);
   const char* Class() const;
   const char* node_help() const;
   static const Iop::Description d;
 
   void _validate(bool);
-  void _request(int x, int y, int r, int t, ChannelMask channels, int count);
-  void engine(int y, int x, int r, ChannelMask channels, Row& row);
+  void _request(int x, int y, int r, int t, nuke::ChannelMask channels, int count);
+  void engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 };
 
-ThisClass::ThisClass(Node* node) : Iop(node) {
+ThisClass::ThisClass(Node* node) : nuke::Iop(node) {
   // Set inputs
   inputs(1);
 
@@ -73,30 +73,30 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_knee_ = 0.5f;
   do_limit_ = 0;
 }
-void ThisClass::knobs(Knob_Callback f) {
-  Enumeration_knob(f, &k_metric_, metric_list, "metric", "Metric");
-  Tooltip(f, "Metric");
+void ThisClass::knobs(nuke::Knob_Callback f) {
+  nuke::Enumeration_knob(f, &k_metric_, metric_list, "metric", "Metric");
+  nuke::Tooltip(f, "Metric");
 
-  Float_knob(f, &k_exposure_, "exposure", "Exposure");
-  Tooltip(f, "Exposure");
-  SetRange(f, -5, 5);
+  nuke::Float_knob(f, &k_exposure_, "exposure", "Exposure");
+  nuke::Tooltip(f, "Exposure");
+  nuke::SetRange(f, -5, 5);
 
-  Float_knob(f, &k_darks_, "darks", "Darks");
-  Tooltip(f, "Adjust Darks");
-  SetRange(f, 0, 2);
+  nuke::Float_knob(f, &k_darks_, "darks", "Darks");
+  nuke::Tooltip(f, "Adjust Darks");
+  nuke::SetRange(f, 0, 2);
 
-  Float_knob(f, &k_clip_, "clip", "Clip");
-  Tooltip(f, "Clip Value");
-  SetRange(f, 0, 10);
+  nuke::Float_knob(f, &k_clip_, "clip", "Clip");
+  nuke::Tooltip(f, "Clip Value");
+  nuke::SetRange(f, 0, 10);
 
-  Float_knob(f, &k_knee_, "knee", "Knee");
-  Tooltip(f, "Knee Sharpness");
-  SetRange(f, 0, 1);
+  nuke::Float_knob(f, &k_knee_, "knee", "Knee");
+  nuke::Tooltip(f, "Knee Sharpness");
+  nuke::SetRange(f, 0, 1);
 }
 const char* ThisClass::Class() const { return CLASS; }
 const char* ThisClass::node_help() const { return HELP; }
-static Iop* build(Node* node) { return (new NukeWrapper(new ThisClass(node)))->channelsRGBoptionalAlpha(); }
-const Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Tone Map", build);
+static nuke::Iop* build(Node* node) { return (new nuke::NukeWrapper(new ThisClass(node)))->channelsRGBoptionalAlpha(); }
+const nuke::Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Tone Map", build);
 void ThisClass::_validate(bool) {
   copy_info(0);
 
@@ -108,21 +108,21 @@ void ThisClass::_validate(bool) {
   clip_ = afx::AfxClamp(k_clip_, min_v, max_v);
   knee_ = afx::AfxClamp(k_knee_, min_v, max_v);
 }
-void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
+void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
   input0().request(x, y, r, t, channels, count);
 }
-void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   // Must call get before initializing any pointers
   row.get(input0(), y, x, r, channels);
 
-  ChannelSet done;
+  nuke::ChannelSet done;
   foreach(z, channels) {  // Handle color channels
     if (!(done & z) && colourIndex(z) < 3) {  // Handle color channel
       bool has_all_rgb = true;
-      Channel rgb_chan[3];
+      nuke::Channel rgb_chan[3];
       for (int i = 0; i < 3; ++i) {
         rgb_chan[i] = brother(z, i);  // Find brother rgb channel
-        if (rgb_chan[i] == Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; }  // If brother does not exist
+        if (rgb_chan[i] == nuke::Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; }  // If brother does not exist
       }
       if (has_all_rgb) {
         afx::Pixel<const float> in_px;

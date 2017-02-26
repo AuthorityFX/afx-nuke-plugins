@@ -28,6 +28,8 @@
 
 #define ThisClass AFXMedian
 
+namespace nuke = DD::Image;
+
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
 static const char* CLASS = "AFXMedian";
 static const char* HELP = "Smart Median Filter";
@@ -35,9 +37,7 @@ static const char* HELP = "Smart Median Filter";
 extern "C" void MedianCuda(cudaTextureObject_t tex, float* row_ptr, size_t row_pitch, int med_size_i_, int med_size_o, int med_n_i,
                            int med_n_o, float m_lerp, float m_i_lerp, float sharpness, afx::Bounds img_bnds, afx::Bounds row_bnds, cudaStream_t stream);
 
-using namespace DD::Image;
-
-class ThisClass : public Iop {
+class ThisClass : public nuke::Iop {
  private:
   // members to store knob values
   float k_size_, k_sharpness_;
@@ -48,7 +48,7 @@ class ThisClass : public Iop {
   boost::mutex mutex_;
   bool first_time_GPU_;
   bool first_time_CPU_;
-  Lock lock_;
+  nuke::Lock lock_;
 
   afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
@@ -58,21 +58,21 @@ class ThisClass : public Iop {
   afx::CudaImageArray in_imgs_;
   afx::CudaStreamArray streams_;
 
-  void ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row);
-  void ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row);
+  void ProcessCUDA(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
+  void ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 
  public:
   explicit ThisClass(Node* node);
-  void knobs(Knob_Callback);
+  void knobs(nuke::Knob_Callback);
   const char* Class() const;
   const char* node_help() const;
   static const Iop::Description d;
 
   void _validate(bool);
-  void _request(int x, int y, int r, int t, ChannelMask channels, int count);
+  void _request(int x, int y, int r, int t, nuke::ChannelMask channels, int count);
   void _open();
   void _close();
-  void engine(int y, int x, int r, ChannelMask channels, Row& row);
+  void engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 };
 ThisClass::ThisClass(Node* node) : Iop(node) {
   // Set inputs
@@ -89,19 +89,19 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_size_ = 1.0f;
   k_sharpness_ = 0.5f;
 }
-void ThisClass::knobs(Knob_Callback f) {
-  Float_knob(f, &k_size_, "size", "Size");
-  Tooltip(f, "Median Size");
-  SetRange(f, 0.0, 10.0);
+void ThisClass::knobs(nuke::Knob_Callback f) {
+  nuke::Float_knob(f, &k_size_, "size", "Size");
+  nuke::Tooltip(f, "Median Size");
+  nuke::SetRange(f, 0.0, 10.0);
 
-  Float_knob(f, &k_sharpness_, "sharpness", "Sharpness");
-  Tooltip(f, "Sharpen high contrast regions");
-  SetRange(f, 0.0, 1.0);
+  nuke::Float_knob(f, &k_sharpness_, "sharpness", "Sharpness");
+  nuke::Tooltip(f, "Sharpen high contrast regions");
+  nuke::SetRange(f, 0.0, 1.0);
 }
 const char* ThisClass::Class() const { return CLASS; }
 const char* ThisClass::node_help() const { return HELP; }
-static Iop* build(Node* node) { return (new NukeWrapper(new ThisClass(node)))->channelsRGBoptionalAlpha(); }
-const Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Smart Median", build);
+static nuke::Iop* build(Node* node) { return (new nuke::NukeWrapper(new ThisClass(node)))->channelsRGBoptionalAlpha(); }
+const nuke::Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Smart Median", build);
 void ThisClass::_validate(bool) {
   // Copy source info
   copy_info(0);
@@ -119,7 +119,7 @@ void ThisClass::_validate(bool) {
   med_n_o_ = (med_size_o_ * 2 + 1) * (med_size_o_ * 2 + 1);
   sharpness_ = afx::Clamp<float>(k_sharpness_, 0.0f, 3.0f);
 }
-void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
+void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
   input0().request(afx::BoundsToBox(req_bnds_.GetPadBounds(med_size_o_)), channels, count);
 }
@@ -137,7 +137,7 @@ void ThisClass::_close() {
   row_imgs_.Clear();
   streams_.Clear();
 }
-void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   callCloseAfter(0);  // Call close to dispose of all cuda mem allocations after last engine call
   try {
     ProcessCUDA(y, x, r, channels, row);
@@ -145,11 +145,11 @@ void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
     ProcessCPU(y, x, r, channels, row);
   }
 }
-void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::ProcessCUDA(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
 
-  if (first_time_GPU_) {
-    Guard guard(lock_);
+  {
+    nuke::Guard guard(lock_);
     if (first_time_GPU_) {
       cuda_process_.CheckReady();  // Throw error if device is not ready
 
@@ -157,7 +157,7 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
       req_pad_bnds.Intersect(afx::InputBounds(input(0)));
 
       // Create plane of input channels for request bounds. Edge repication is handled by cuda texture
-      ImagePlane in_plane(afx::BoundsToBox(req_pad_bnds), false, channels);  // Create plane "false" = non-packed.
+      nuke::ImagePlane in_plane(afx::BoundsToBox(req_pad_bnds), false, channels);  // Create plane "false" = non-packed.
       if (aborted()) { return; }  // Return if render aborted
       input0().fetchPlane(in_plane);  // Fetch plane
       afx::CudaStreamArray streams;
@@ -186,7 +186,7 @@ void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row)
     cuda_row_img.MemCpyFromDevice(row.writable(z) + row_bnds.x1(), cuda_row_img.GetWidth() * sizeof(float));
   }
 }
-void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
   afx::Bounds tile_bnds = row_bnds.GetPadBounds(med_size_o_);
 
@@ -195,7 +195,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
 
   foreach(z, channels) {
     // Get the input to compute median. Fill tile without multithreading.
-    Tile tile(input0(), tile_bnds.x1(), tile_bnds.y1(), tile_bnds.x2() + 1, tile_bnds.y2() + 1, z, false);
+    nuke::Tile tile(input0(), tile_bnds.x1(), tile_bnds.y1(), tile_bnds.x2() + 1, tile_bnds.y2() + 1, z, false);
     // The constructor may abort, you can't look at tile then:
     if (aborted()) { return; }
     if (!tile.valid()) {

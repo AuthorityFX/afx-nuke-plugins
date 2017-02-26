@@ -28,9 +28,9 @@
 static const char* CLASS = "AFXAntiAlias";
 static const char* HELP = "Anti Alias";
 
-using namespace DD::Image;
+namespace nuke = DD::Image;
 
-class ThisClass : public Iop {
+class ThisClass : public nuke::Iop {
  private:
   // members to store knob values
   float k_threshold_;
@@ -39,7 +39,7 @@ class ThisClass : public Iop {
   // members to store processed knob values
   boost::mutex mutex_;
   bool first_time_CPU_;
-  Lock lock_;
+  nuke::Lock lock_;
 
   afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
@@ -48,20 +48,20 @@ class ThisClass : public Iop {
 
   afx::Threader threader_;
 
-  void ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row);
+  void ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 
  public:
   explicit ThisClass(Node* node);
-  void knobs(Knob_Callback);
+  void knobs(nuke::Knob_Callback);
   const char* Class() const;
   const char* node_help() const;
   static const Iop::Description d;
 
   void _validate(bool);
-  void _request(int x, int y, int r, int t, ChannelMask channels, int count);
+  void _request(int x, int y, int r, int t, nuke::ChannelMask channels, int count);
   void _open();
   void _close();
-  void engine(int y, int x, int r, ChannelMask channels, Row& row);
+  void engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 };
 ThisClass::ThisClass(Node* node) : Iop(node) {
   inputs(1);
@@ -72,18 +72,18 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_threshold_ = 0.25f;
   k_max_line_length_ = 100;
 }
-void ThisClass::knobs(Knob_Callback f) {
-  Float_knob(f, &k_threshold_, "threshold", "Threshold");
-  Tooltip(f, "Anti Alias Threshold");
-  SetRange(f, 0.0, 1.0);
-  Int_knob(f, &k_max_line_length_, "max_line_length", "Max Line Length");
-  Tooltip(f, "Anti Alias Threshold");
-  SetRange(f, 0.0, 1.0);
+void ThisClass::knobs(nuke::Knob_Callback f) {
+  nuke::Float_knob(f, &k_threshold_, "threshold", "Threshold");
+  nuke::Tooltip(f, "Anti Alias Threshold");
+  nuke::SetRange(f, 0.0, 1.0);
+  nuke::Int_knob(f, &k_max_line_length_, "max_line_length", "Max Line Length");
+  nuke::Tooltip(f, "Anti Alias Threshold");
+  nuke::SetRange(f, 0.0, 1.0);
 }
 const char* ThisClass::Class() const { return CLASS; }
 const char* ThisClass::node_help() const { return HELP; }
-static Iop* build(Node* node) { return (new NukeWrapper(new ThisClass(node)))->channelsRGBoptionalAlpha(); }
-const Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Anti Alias", build);
+static nuke::Iop* build(Node* node) { return (new nuke::NukeWrapper(new ThisClass(node)))->channelsRGBoptionalAlpha(); }
+const nuke::Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Anti Alias", build);
 
 void ThisClass::_validate(bool) {
   copy_info(0);
@@ -92,9 +92,9 @@ void ThisClass::_validate(bool) {
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
   proxy_scale_ = static_cast<float>(format_bnds_.GetWidth()) / static_cast<float>(format_f_bnds_.GetWidth());
 }
-void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
+void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
   // Request source
-  Box req_box(x, y, r, t);
+  nuke::Box req_box(x, y, r, t);
   req_bnds_ = afx::BoxToBounds(req_box);
   req_box.pad(k_max_line_length_);
   input0().request(req_box, channels, count);
@@ -106,19 +106,19 @@ void ThisClass::_close() {
   first_time_CPU_ = true;
   out_imgs_.Clear();
 }
-void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   callCloseAfter(0);
   ProcessCPU(y, x, r, channels, row);
 }
-void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
   {
-    Guard guard(lock_);
+    nuke::Guard guard(lock_);
     if (first_time_CPU_) {
       afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(50);
       req_pad_bnds.Intersect(afx::InputBounds(input(0)));
 
-      ImagePlane source_plane(afx::BoundsToBox(req_pad_bnds), false, channels);  // Create plane "false" = non-packed.
+      nuke::ImagePlane source_plane(afx::BoundsToBox(req_pad_bnds), false, channels);  // Create plane "false" = non-packed.
       input0().fetchPlane(source_plane);  // Fetch plane
       out_imgs_.Clear();
       afx::Image in_img(req_pad_bnds);

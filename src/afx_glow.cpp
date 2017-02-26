@@ -34,6 +34,8 @@
 
 #define ThisClass AFXGlow
 
+namespace nuke = DD::Image;
+
 // The class name must match exactly what is in the meny.py: nuke.createNode(CLASS)
 static const char* CLASS = "AFXGlow";
 static const char* HELP = "Glow";
@@ -43,9 +45,7 @@ enum inputs {
   iMatte = 1
 };
 
-using namespace DD::Image;
-
-class ThisClass : public Iop {
+class ThisClass : public nuke::Iop {
  private:
   // members to store knob values
   float k_exposure_;
@@ -69,7 +69,7 @@ class ThisClass : public Iop {
   boost::mutex mutex_;
   bool first_time_GPU_;
   bool first_time_CPU_;
-  Lock lock_;
+  nuke::Lock lock_;
 
   afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
@@ -84,15 +84,15 @@ class ThisClass : public Iop {
 
   afx::Threader threader_;
 
-  void ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row);
-  void ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row);
+  void ProcessCUDA(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
+  void ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 
-  void GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, const Channel (&chan_ref)[3]);
-  void GetInput(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, Channel z);
+  void GetInputRGB(const afx::Bounds& region, const nuke::ImagePlane& in_plane, const nuke::ImagePlane& matte_plane, const nuke::Channel (&chan_ref)[3]);
+  void GetInput(const afx::Bounds& region, const nuke::ImagePlane& in_plane, const nuke::ImagePlane& matte_plane, nuke::Channel z);
 
  public:
   explicit ThisClass(Node* node);
-  void knobs(Knob_Callback);
+  void knobs(nuke::Knob_Callback);
   const char* Class() const;
   const char* node_help() const;
   static const Iop::Description d;
@@ -100,10 +100,10 @@ class ThisClass : public Iop {
   const char* input_label(int input, char* buffer) const;
 
   void _validate(bool);
-  void _request(int x, int y, int r, int t, ChannelMask channels, int count);
+  void _request(int x, int y, int r, int t, nuke::ChannelMask channels, int count);
   void _open();
   void _close();
-  void engine(int y, int x, int r, ChannelMask channels, Row& row);
+  void engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 };
 ThisClass::ThisClass(Node* node) : Iop(node) {
   // Set inputs
@@ -124,52 +124,52 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_replicate_depth_ = 5;
   k_expand_box_ = false;
 }
-void ThisClass::knobs(Knob_Callback f) {
-  Float_knob(f, &k_exposure_, "exposure", "Exposure");
-  Tooltip(f, "Exposure");
-  SetRange(f, -5.0, 5.0);
+void ThisClass::knobs(nuke::Knob_Callback f) {
+  nuke::Float_knob(f, &k_exposure_, "exposure", "Exposure");
+  nuke::Tooltip(f, "Exposure");
+  nuke::SetRange(f, -5.0, 5.0);
 
-  Float_knob(f, &k_threshold_, "threshold", "Threshold");
-  Tooltip(f, "Threshold");
-  SetRange(f, 0.0, 1.0);
+  nuke::Float_knob(f, &k_threshold_, "threshold", "Threshold");
+  nuke::Tooltip(f, "Threshold");
+  nuke::SetRange(f, 0.0, 1.0);
 
-  Float_knob(f, &k_threshold_falloff_, "threshold_falloff", "Threshold Falloff");
-  Tooltip(f, "Threshold falloff");
-  SetRange(f, 0.0, 1.0);
+  nuke::Float_knob(f, &k_threshold_falloff_, "threshold_falloff", "Threshold Falloff");
+  nuke::Tooltip(f, "Threshold falloff");
+  nuke::SetRange(f, 0.0, 1.0);
 
-  Float_knob(f, &k_size_, "size", "Glow Size");
-  Tooltip(f, "Glow size in pixels");
-  SetRange(f, 1.0, 500.0);
+  nuke::Float_knob(f, &k_size_, "size", "Glow Size");
+  nuke::Tooltip(f, "Glow size in pixels");
+  nuke::SetRange(f, 1.0, 500.0);
 
-  Float_knob(f, &k_softness_, "softness", "Softness");
-  Tooltip(f, "Softness");
-  SetRange(f, 0.0, 1.0);
+  nuke::Float_knob(f, &k_softness_, "softness", "Softness");
+  nuke::Tooltip(f, "Softness");
+  nuke::SetRange(f, 0.0, 1.0);
 
-  Float_knob(f, &k_diffusion_, "Diffusion", "Diffusion");
-  Tooltip(f, "Diffusion");
-  SetRange(f, 0.0, 1.0);
+  nuke::Float_knob(f, &k_diffusion_, "Diffusion", "Diffusion");
+  nuke::Tooltip(f, "Diffusion");
+  nuke::SetRange(f, 0.0, 1.0);
 
-  Float_knob(f, &k_quality_, "quality", "Quality");
-  Tooltip(f, "Quality multiplier");
-  SetRange(f, 0.0, 1.0);
+  nuke::Float_knob(f, &k_quality_, "quality", "Quality");
+  nuke::Tooltip(f, "Quality multiplier");
+  nuke::SetRange(f, 0.0, 1.0);
 
-  Bool_knob(f, &k_replicate_, "replicate", "Replicate Border");
-  Tooltip(f, "Replicate borders");
-  SetFlags(f, Knob::STARTLINE);
+  nuke::Bool_knob(f, &k_replicate_, "replicate", "Replicate Border");
+  nuke::Tooltip(f, "Replicate borders");
+  nuke::SetFlags(f, nuke::Knob::STARTLINE);
 
-  Int_knob(f, &k_replicate_depth_, "replicate_depth", "Replicate Depth");
-  Tooltip(f, "Replicate depth");
-  SetRange(f, 0, 25);
+  nuke::Int_knob(f, &k_replicate_depth_, "replicate_depth", "Replicate Depth");
+  nuke::Tooltip(f, "Replicate depth");
+  nuke::SetRange(f, 0, 25);
 
-  Bool_knob(f, &k_expand_box_, "expand_box", "Expand Box");
-  Tooltip(f, "Expand box");
-  SetFlags(f, Knob::STARTLINE);
+  nuke::Bool_knob(f, &k_expand_box_, "expand_box", "Expand Box");
+  nuke::Tooltip(f, "Expand box");
+  nuke::SetFlags(f, nuke::Knob::STARTLINE);
 }
 const char* ThisClass::Class() const { return CLASS; }
 const char* ThisClass::node_help() const { return HELP; }
-static Iop* build(Node* node) { return (new NukeWrapper(new ThisClass(node)))->channelsRGBoptionalAlpha(); }
-const Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Glow", build);
-Op* ThisClass::default_input(int input) const {
+static nuke::Iop* build(Node* node) { return (new nuke::NukeWrapper(new ThisClass(node)))->channelsRGBoptionalAlpha(); }
+const nuke::Op::Description ThisClass::d(CLASS, "AuthorityFX/AFX Glow", build);
+nuke::Op* ThisClass::default_input(int input) const {
   if (input == 0) { return Iop::default_input(0); }
   return 0;
 }
@@ -212,11 +212,11 @@ void ThisClass::_validate(bool) {
 
   info_.black_outside();
 }
-void ThisClass::_request(int x, int y, int r, int t, ChannelMask channels, int count) {
+void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
   unsigned int pad = glow_.GetKernelPadding();
-  Box req_box(x + pad, y + pad, r + pad, t + pad);
+  nuke::Box req_box(x + pad, y + pad, r + pad, t + pad);
   input0().request(req_box, channels, count);
-  if (input(iMatte) != nullptr) { input(iMatte)->request(req_box, Mask_Alpha, count); }
+  if (input(iMatte) != nullptr) { input(iMatte)->request(req_box, nuke::Mask_Alpha, count); }
 
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
@@ -232,18 +232,18 @@ void ThisClass::_close() {
   in_imgs_.Clear();
   out_imgs_.Clear();
 }
-void ThisClass::engine(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   callCloseAfter(0);
   ProcessCPU(y, x, r, channels, row);
 }
-void ThisClass::ProcessCUDA(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::ProcessCUDA(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
 }
-void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) {
+void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
 
   if (first_time_CPU_) {
-    Guard guard(lock_);
+    nuke::Guard guard(lock_);
     if (first_time_CPU_) {
       glow_.InitKernel(exposure_, &threader_);
 
@@ -251,8 +251,8 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
       afx::Bounds plane_bnds = glow_bnds;
       plane_bnds.Intersect(afx::InputBounds(input(0)));
 
-      ImagePlane in_plane(afx::BoundsToBox(plane_bnds), false, channels);  // Create plane "false" = non-packed.
-      ImagePlane matte_plane(afx::BoundsToBox(plane_bnds), false, Mask_Alpha);  // Create plane "false" = non-packed.
+      nuke::ImagePlane in_plane(afx::BoundsToBox(plane_bnds), false, channels);  // Create plane "false" = non-packed.
+      nuke::ImagePlane matte_plane(afx::BoundsToBox(plane_bnds), false, nuke::Mask_Alpha);  // Create plane "false" = non-packed.
       if (aborted()) {
         threader_.Synchonize();
         return;
@@ -260,14 +260,14 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
       input0().fetchPlane(in_plane);  // Fetch plane
       if (input(iMatte) != nullptr ) { input(iMatte)->fetchPlane(matte_plane); }  // Fetch matte plane
 
-      ChannelSet done;
+      nuke::ChannelSet done;
       foreach(z, in_plane.channels()) {
         if (!(done & z) && colourIndex(z) < 3) {  // Handle color channels
           bool has_all_rgb = true;
-          Channel rgb_chan[3];
+          nuke::Channel rgb_chan[3];
           for (int i = 0; i < 3; ++i) {
             rgb_chan[i] = brother(z, i);  // Find brother rgb channel
-            if (rgb_chan[i] == Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; }  // If brother does not exist
+            if (rgb_chan[i] == nuke::Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; }  // If brother does not exist
           }
           if (has_all_rgb) {
             for (int i = 0; i < 3; ++i) {
@@ -315,7 +315,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, ChannelMask channels, Row& row) 
   }
 }
 
-void ThisClass::GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, const Channel (&rgb_chan)[3]) {
+void ThisClass::GetInputRGB(const afx::Bounds& region, const nuke::ImagePlane& in_plane, const nuke::ImagePlane& matte_plane, const nuke::Channel (&rgb_chan)[3]) {
   afx::Bounds plane_bnds = afx::BoxToBounds(in_plane.bounds());
   afx::Pixel<const float> in(3);
   afx::Pixel<float> out(3);
@@ -329,7 +329,7 @@ void ThisClass::GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plan
       out.SetPtr(in_imgs_.GetPtrByAttribute("channel", rgb_chan[i])->GetPtr(region.x1(), y), i);
     }
     if (input(iMatte) != nullptr) { m_ptr =
-                                            &matte_plane.readable()[matte_plane.chanNo(Chan_Alpha) * matte_plane.chanStride() + matte_plane.rowStride() *
+                                            &matte_plane.readable()[matte_plane.chanNo(nuke::Chan_Alpha) * matte_plane.chanStride() + matte_plane.rowStride() *
                                             (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
                                   }
     for (int x = region.x1(); x <= region.x2(); ++x) {
@@ -357,7 +357,7 @@ void ThisClass::GetInputRGB(const afx::Bounds& region, const ImagePlane& in_plan
   }
 }
 
-void ThisClass::GetInput(const afx::Bounds& region, const ImagePlane& in_plane, const ImagePlane& matte_plane, Channel z) {
+void ThisClass::GetInput(const afx::Bounds& region, const nuke::ImagePlane& in_plane, const nuke::ImagePlane& matte_plane, nuke::Channel z) {
   afx::Bounds plane_bnds = afx::BoxToBounds(in_plane.bounds());
   const float one = 1.0f;
   const float* m_ptr = &one;
@@ -366,7 +366,7 @@ void ThisClass::GetInput(const afx::Bounds& region, const ImagePlane& in_plane, 
     const float* in_ptr = &in_plane.readable()[in_plane.chanNo(z) * in_plane.chanStride() + in_plane.rowStride() * (plane_bnds.ClampY(y) - plane_bnds.y1()) +
                           plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
     if (input(iMatte) != nullptr) { m_ptr =
-                                            &matte_plane.readable()[matte_plane.chanNo(Chan_Alpha) * matte_plane.chanStride() + matte_plane.rowStride() *
+                                            &matte_plane.readable()[matte_plane.chanNo(nuke::Chan_Alpha) * matte_plane.chanStride() + matte_plane.rowStride() *
                                             (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
                                   }
     float* out_ptr = in_imgs_.GetPtrByAttribute("channel", z)->GetPtr(region.x1(), y);
