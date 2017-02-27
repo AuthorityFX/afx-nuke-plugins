@@ -168,7 +168,6 @@ const char* ThisClass::input_label(int input, char* buffer) const {
 void ThisClass::_validate(bool) {
   copy_info(0);
   if (input(iSource) != default_input(iSource)) {
-
     format_bnds_ = afx::BoxToBounds(input(0)->format());
     format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
     proxy_scale_ = static_cast<float>(format_bnds_.GetWidth()) / static_cast<float>(format_f_bnds_.GetWidth());
