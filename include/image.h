@@ -25,6 +25,7 @@
 
 #include "include/settings.h"
 #include "include/bounds.h"
+#include "include/memory.h"
 #include "include/threading.h"
 #include "include/attribute.h"
 
@@ -34,6 +35,69 @@ namespace afx {
 inline void IppSafeCall(IppStatus status) {
   if (status != ippStsNoErr) { throw status; }
 }
+
+template <class T> class ImageBase : public AttributeBase {
+ private:
+  T* ptr_;
+  size_t pitch_;
+  afx::Bounds region_;
+
+ public:
+  ImageBase<T>() : ptr_(nullptr), pitch_(0), region_(afx::Bounds()) {}
+  explicit ImageBase<T>(const afx::Bounds& region) : ptr_(nullptr), pitch_(0) {
+    Allocate(region);
+  }
+  ImageBase<T>(unsigned int width, unsigned int height) : ptr_(nullptr), pitch_(0) {
+    afx::Bounds region(0, 0, width, height);
+    Allocate(region);
+  }
+  ImageBase<T>(const ImageBase<T>& other) {
+    Copy(other);
+  }
+  ImageBase<T>& operator=(const ImageBase<T>& other) {
+    Copy(other);
+  }
+  virtual ~ImageBase<T>() {
+    Dispose();
+  }
+  virtual void Allocate(const afx::Bounds& region) {
+    Dispose();
+    region_ = region;
+    ptr_ = afx::ImageMalloc<T>(region_.GetWidth(), region_.GetHeight(), &pitch_);
+  }
+  virtual void Copy(const ImageBase<T>& other) {
+    region_ = other.region_;
+    Allocate(region_);
+    for (int y = region_.y1(); y <= region_.y2(); ++y) {
+      memcpy(GetPtr(region_.x1(), y), other.GetPtr(other.region_.x1(), y), region_.GetWidth() * sizeof(T));
+    }
+  }
+  virtual void Dispose() {
+    afx::ImageFree(ptr_);
+  }
+  T* GetPtr() const {
+    return ptr_;
+  }
+  T* GetPtr(int x, int y) const {
+    return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(T));
+  }
+  T* GetPtrBnds(int x, int y) const {
+    return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr_) + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(T));
+  }
+  T* NextRow(T* ptr) {
+    return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) + pitch_);
+  }
+  T* PreviousRow(T* ptr) {
+    return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) - pitch_);
+  }
+  size_t GetPitch() const {
+    return pitch_;
+  }
+  afx::Bounds GetBounds() const {
+    return region_;
+  }
+};
+
 
 class Image : public AttributeBase {
  protected:
@@ -67,22 +131,6 @@ class Image : public AttributeBase {
   Bounds GetBounds() const;
 };
 
-class ImageComplex : public Image {
- protected:
-  Ipp32fc* ptr_;
-  virtual void Create(const Bounds& region) {
-    Dispose();
-    region_ = region;
-    image_size_.width = region_.x2() - region_.x1() + 1;
-    image_size_.height = region_.y2() - region_.y1() + 1;
-    ptr_ = ippiMalloc_32fc_C1(image_size_.width, image_size_.height, &pitch_);
-  }
-  virtual void Copy(const Image& other);  // TODO(rpw):
-  virtual void MemSet(float value);  // TODO(rpw):
-  virtual void MemSet(float value, const Bounds& region);  // TODO(rpw):
-  virtual void MemCpyIn(const float* src_ptr, size_t src_pitch, const Bounds& region);  // TODO(rpw):
-  virtual void MemCpyOut(float* dst_ptr, size_t dst_pitch, const Bounds& region);  // TODO(rpw):
-};
 
 class ImageArray : public Array<Image> {
  public:

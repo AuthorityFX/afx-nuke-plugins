@@ -17,13 +17,16 @@
 namespace afx {
 
 template <typename T>
-T* ImageMalloc(unsigned int width, unsigned int height, size_t* pitch) {
+inline T* ImageMalloc(unsigned int width, unsigned int height, size_t* pitch) {
   *pitch = (((width * sizeof(T) + 63) / 64) * 64);
   return reinterpret_cast<T*>(je_aligned_alloc(64, *pitch * height));
 }
 
-void ImageFree(void* ptr) {
-  je_free(ptr);
+inline void ImageFree(void* ptr) {
+  if (ptr != nullptr) {
+    je_free(ptr);
+  }
+  ptr = nullptr;
 }
 
 }  // namespace afx
