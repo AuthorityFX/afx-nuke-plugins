@@ -33,27 +33,7 @@ struct PixelInfo {
   PixelInfo() : blend_x(0.0f), blend_y(0.0f), flags(0) {}
 };
 
-class ImageInfo {
- private:
-  PixelInfo* ptr_;
-  size_t pitch_;
-  Bounds region_;
- public:
-  ImageInfo();
-  explicit ImageInfo(const Bounds& region);
-  ImageInfo(unsigned int width, unsigned int height);
-  ~ImageInfo();
-  void Create(const Bounds& region);
-  void Dispose();
-  PixelInfo& GetVal(unsigned int x, unsigned int y) const;
-  PixelInfo& GetValBnds(unsigned int x, unsigned int y) const;
-  PixelInfo* GetPtr(unsigned int x, unsigned int y) const;
-  PixelInfo* GetPtrBnds(unsigned int x, unsigned int y) const;
-  PixelInfo* NextRow(PixelInfo* ptr);
-  PixelInfo* PreviousRow(PixelInfo* ptr);
-  size_t GetPitch() const;
-  Bounds GetBounds() const;
-};
+class ImageInfo : public ImageBase<PixelInfo> {};
 
 class MorphAA {
  private:

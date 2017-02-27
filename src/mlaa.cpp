@@ -15,45 +15,8 @@
 #include "include/settings.h"
 #include "include/image.h"
 #include "include/threading.h"
-#include "include/memory.h"
 
 namespace afx {
-
-ImageInfo::ImageInfo() : ptr_(nullptr), pitch_(0), region_(Bounds()) {}
-ImageInfo::ImageInfo(const Bounds& region) : ptr_(nullptr) { Create(region); }
-ImageInfo::ImageInfo(unsigned int width, unsigned int height) : ptr_(nullptr) { Create(Bounds(0, 0, width - 1, height - 1)); }
-ImageInfo::~ImageInfo() { Dispose(); }
-void ImageInfo::Create(const Bounds& region) {
-  Dispose();
-  region_ = region;
-  ptr_ = afx::ImageMalloc<PixelInfo>(region_.GetWidth(), region.GetHeight(), &pitch_);
-}
-void ImageInfo::Dispose() {
-  if (ptr_ != nullptr) {
-    afx::ImageFree(ptr_);
-    ptr_ = nullptr;
-  }
-}
-PixelInfo& ImageInfo::GetVal(unsigned int x, unsigned int y) const {
-  return *reinterpret_cast<PixelInfo*>(reinterpret_cast<char*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(PixelInfo));
-}
-PixelInfo& ImageInfo::GetValBnds(unsigned int x, unsigned int y) const {
-  return *reinterpret_cast<PixelInfo*>(reinterpret_cast<char*>(ptr_) + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(PixelInfo));
-}
-PixelInfo* ImageInfo::GetPtr(unsigned int x, unsigned int y) const {
-  return reinterpret_cast<PixelInfo*>(reinterpret_cast<char*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(PixelInfo));
-}
-PixelInfo* ImageInfo::GetPtrBnds(unsigned int x, unsigned int y) const {
-  return reinterpret_cast<PixelInfo*>(reinterpret_cast<char*>(ptr_) + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(PixelInfo));
-}
-PixelInfo* ImageInfo::NextRow(PixelInfo* ptr) {
-  return reinterpret_cast<PixelInfo*>(reinterpret_cast<char*>(ptr) + pitch_);
-}
-PixelInfo* ImageInfo::PreviousRow(PixelInfo* ptr) {
-  return reinterpret_cast<PixelInfo*>(reinterpret_cast<char*>(ptr) - pitch_);
-}
-size_t ImageInfo::GetPitch() const { return pitch_; }
-Bounds ImageInfo::GetBounds() const { return region_; }
 
 float MorphAA::CalcTrapArea_(int pos, float length) {
   // Will never be called when length is 0
@@ -159,7 +122,8 @@ void MorphAA::FindYLines_(const Bounds& region, const Image& input) {
 }
 // Set X Line
 void MorphAA::SetXLine_(PixelInfo* info_ptr, int length, int x, int y) {
-  bool start_blend, end_blend;
+  bool start_blend = false;
+  bool end_blend = false;
   // [] is a pixel in the line
   // {} is the current pixel x, y    y
   // _____    1.0f    ______         |
@@ -167,58 +131,34 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, int length, int x, int y) {
   //      ¯¯¯¯¯¯¯¯¯¯¯¯               |______x
   //          0.0f
   if ((info_ptr - 1)->flags & afx::kDisPosDown) {  // last pixel in line is greater than bottom pixel
-    if (info_.GetPtrBnds(x - 1, y - 1)->flags & afx::kDisNegRight || !((info_ptr - 1)->flags & (afx::kDisPosRight | afx::kDisNegRight))) {
-      // if Diff(a, b) > thresh
-      // _____
-      //      |[][][][][]|{}
-      //      ¯¯¯¯¯¯¯¯¯¯a|b_____
-      //
-      end_blend = false;
-    } else {  // Since we know the pixel above "b" has no dis_h, end is by default orientation false
-      // _____           ______
-      //      |[][][][][]|{}
-      //      ¯¯¯¯¯¯¯¯¯¯¯¯
+    if ((info_ptr - 1)->flags & afx::kDisPosRight && !(info_.GetPtrBnds(x - 1, y - 1)->flags & kDisNegRight)) {
+      // _____            ______
+      //      |[][][][][a]|{}
+      //      ¯¯¯¯¯¯¯¯¯¯b¯¯
       end_blend = true;
     }
     if (info_.GetPtrBnds(x - length - 1, y)->flags & afx::kDisNegRight && !(info_.GetPtrBnds(x - length - 1, y - 1)->flags & afx::kDisPosRight)) {
-      // if Diff(a, b) > thresh
       // _____            ______
-      //     a|[b][][][][]|{}
-      //     c ¯d¯¯¯¯¯¯¯¯¯¯¯
+      //     a|[][][][][]|{}
+      //     b¯¯¯¯¯¯¯¯¯¯¯¯
       start_blend = true;
-    } else {  // Since we know "a" has no dis_h, start is by default orientation false
-      //                 ______
-      //       [][][][][]|{}
-      // _____|¯¯¯¯¯¯¯¯¯¯
-      start_blend = false;
     }
     //          0.0f
     //       [][][][][]{}
     // _____|¯¯¯¯¯¯¯¯¯¯|______
     //          1.0f
   } else {  // last pixel in line is less than bottom pixel
-    if ((info_ptr - 1)->flags & afx::kDisNegRight || info_.GetPtrBnds(x, y + 1)->flags & (afx::kDisNegDown | afx::kDisPosDown)) {
-      // if Diff(a, b) > thresh or Diff(c, b) > thresh
-      //                  __c_____
-      //       [][][][][a]|{b}
-      // _____|¯¯¯¯¯¯¯¯¯¯¯
-      end_blend = false;
-    } else {
-      //       [][][][][]{}
-      // _____|¯¯¯¯¯¯¯¯¯¯|_____
+    if (info_.GetPtrBnds(x - 1, y - 1)->flags & afx::kDisPosRight && !((info_ptr - 1)->flags & afx::kDisNegRight)) {
+      //       [][][][][b]{}
+      // _____|¯¯¯¯¯¯¯¯¯a|_____
       end_blend = true;
     }
     if (info_.GetPtrBnds(x - length - 1, y - 1)->flags & afx::kDisNegRight && !(info_.GetPtrBnds(x - length - 1, y)->flags & afx::kDisPosRight)) {
       // if Diff(a, b) > thresh
       //
-      //     c [d][][][][]{}
-      // ____a|b¯¯¯¯¯¯¯¯¯|_____
+      //     b [][][][][]{}
+      // ____a|¯¯¯¯¯¯¯¯¯|_____
       start_blend = true;
-    } else {
-      // _____
-      //      |[][][][][]{}
-      //       ¯¯¯¯¯¯¯¯¯¯|_____
-      start_blend = false;
     }
   }
   // Loop back through line and pos and length based on end orientations
@@ -255,7 +195,8 @@ void MorphAA::SetXLine_(PixelInfo* info_ptr, int length, int x, int y) {
 }
 // Set Y Line
 void MorphAA::SetYLine_(PixelInfo* info_ptr, int length, int x, int y) {
-  bool start_blend, end_blend;
+  bool start_blend = false;
+  bool end_blend = false;
   // [] is a pixel in the line
   // {} is the current pixel x, y     _____y
   // _____    1.0f    ______         |
@@ -263,57 +204,34 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, int length, int x, int y) {
   //      ¯¯¯¯¯¯¯¯¯¯¯¯               x
   //          0.0f
   if (info_.PreviousRow(info_ptr)->flags & afx::kDisPosRight) {  // last pixel in line is greater than right pixel
-    if (info_.GetPtrBnds(x + 1, y)->flags & afx::kDisPosDown || !(info_ptr->flags & (afx::kDisPosDown | afx::kDisNegDown))) {
-      // if Diff(a, b) > thresh or not Diff(c, d) > thresh
-      // _____
-      //      |[][][][][d]|{c}
-      //      ¯¯¯¯¯¯¯¯¯¯b|_a_____
-      end_blend = false;
-    } else {  // Since we know the pixel above "b" has no dis_h, end is by default orientation false
+    if ((info_ptr->flags & afx::kDisNegDown) && !(info_.GetPtrBnds(x + 1, y)->flags & afx::kDisPosDown)) {
       // _____           ______
-      //      |[][][][][]|{}
-      //      ¯¯¯¯¯¯¯¯¯¯¯¯
+      //      |[][][][][]|{a}
+      //      ¯¯¯¯¯¯¯¯¯¯¯¯ b
       end_blend = true;
     }
-    if (info_.GetPtr(x, y - length)->flags & afx::kDisPosDown && !(info_.GetPtrBnds(x + 1, y - length)->flags & afx::kDisNegDown)) {
+    if (info_.GetPtrBnds(x, y - length)->flags & afx::kDisPosDown && !(info_.GetPtrBnds(x + 1, y - length)->flags & afx::kDisNegDown)) {
       // if Diff(a, b) > thresh
       // _____            ______
-      //     b|[a][][][][]|{}
-      //     d ¯c¯¯¯¯¯¯¯¯¯¯
+      //      |[a][][][][]|{}
+      //       ¯b¯¯¯¯¯¯¯¯¯¯
       start_blend = true;
-    } else {  // Since we know "a" has no dis_h, start is by default orientation false
-      //                 ______
-      //       [][][][][]|{}
-      // _____|¯¯¯¯¯¯¯¯¯¯
-      start_blend = false;
     }
     //          0.0f
     //       [][][][][]{}
     // _____|¯¯¯¯¯¯¯¯¯¯|______
     //          1.0f
   } else {  // last pixel in line is less than right pixel
-    if (info_ptr->flags & afx::kDisPosDown) {
-      // if Diff(a, b) > thresh
-      //                  _______
-      //       [][][][][b]|{a}
-      // _____|¯¯¯¯¯¯¯¯¯¯¯
-      end_blend = false;
-    } else {
-      //       [][][][][]{}
-      // _____|¯¯¯¯¯¯¯¯¯¯|_____
+    if ((info_.GetPtrBnds(x + 1, y)->flags & afx::kDisNegDown) && !(info_ptr->flags & afx::kDisPosDown)) {
+      //       [][][][][]{b}
+      // _____|¯¯¯¯¯¯¯¯¯¯|a_____
       end_blend = true;
     }
-    if (info_.GetPtrBnds(x + 1, y - length)->flags & afx::kDisPosDown && !(info_.GetPtr(x, y - length)->flags & afx::kDisNegDown)) {
-      // if Diff(a, b) > thresh
+    if (info_.GetPtrBnds(x + 1, y - length)->flags & afx::kDisPosDown && !(info_.GetPtrBnds(x, y - length)->flags & afx::kDisNegDown)) {
       //
-      //     d [c][][][][]{}
-      // ____b|a¯¯¯¯¯¯¯¯¯|_____
+      //      [b][][][][]{}
+      // _____|a¯¯¯¯¯¯¯¯¯|_____
       start_blend = true;
-    } else {
-      // _____
-      //      |[][][][][]{}
-      //       ¯¯¯¯¯¯¯¯¯¯|_____
-      start_blend = false;
     }
   }
   // Loop back through line and pos and length based on end orientations
@@ -389,7 +307,7 @@ void MorphAA::BlendPixels_(const Bounds& region, const Image& input, Image* outp
 
 void MorphAA::Process(const Image& input, Image* output, float threshold, unsigned int max_line_length, afx::Threader* threader) {
   threshold_ = threshold;
-  info_.Create(input.GetBounds());
+  info_.Allocate(input.GetBounds());
   max_line_length_ = max_line_length;
 
   threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::MarkDisc_, this, _1, boost::cref(input)));
@@ -404,7 +322,8 @@ void MorphAA::Process(const Image& input, Image* output, float threshold, unsign
 
 void MorphAA::Process(const Image& input, Image* output, float threshold, unsigned int max_line_length) {
   threshold_ = threshold;
-  info_.Create(input.GetBounds());
+  info_.Allocate(input.GetBounds());
+  max_line_length_ = max_line_length;
 
   MarkDisc_(info_.GetBounds(), input);
   FindXLines_(info_.GetBounds(), input);
