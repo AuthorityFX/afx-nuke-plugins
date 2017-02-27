@@ -16,6 +16,7 @@
 #include <ippi.h>
 
 #include <boost/ptr_container/ptr_list.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/any.hpp>
 
@@ -90,58 +91,37 @@ class ImageArray : public Array<Image> {
 
 class Resize {
  private:
-  IppiResizeSpec_32f* spec_ptr_;
-  int spec_size_, init_size_, buf_size_;
-  Ipp8u* buffer_ptr_;
-  Ipp32f* init_buf_ptr_;
-  IppiPoint dest_offset_;
-  float* border_value_;
-
-  void ResizeTile_(Bounds region, Image* in, Image* out) {
+  void ResizeTile_(Bounds region, const Image& in, Image* out) {
     IppiBorderType border_style = ippBorderRepl;
+    if (in.GetBounds().x1() > region.x1()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemRight); }
+    if (in.GetBounds().x2() < region.x2()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemLeft); }
+    if (in.GetBounds().y1() > region.y1()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemBottom); }
+    if (in.GetBounds().y2() < region.y2()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemTop); }
 
-    if (in->GetBounds().x1() > region.x1()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemRight); }
-    if (in->GetBounds().x2() < region.x2()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemLeft); }
-    if (in->GetBounds().y1() > region.y1()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemBottom); }
-    if (in->GetBounds().y2() < region.y2()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemTop); }
+    int spec_structure_size;
+    int init_buffer_size;
 
-    // select algorithm based on image size change. TODO dest tile size not full image size
-    ippiResizeAntialiasing_32f_C1R(in->GetPtr(region.x1(), region.y1()), in->GetPitch(), out->GetPtr(region.x1(), region.y1()), out->GetPitch(),
-                                   dest_offset_, out->GetSize(), border_style, border_value_, spec_ptr_, buffer_ptr_);
-  }
+    ippiResizeGetSize_32f(in.GetSize(), out->GetSize(), ippLanczos, 1, &spec_structure_size, &init_buffer_size);
+    boost::scoped_ptr<Ipp8u> spec_structure_ptr(new Ipp8u(spec_structure_size));
+    boost::scoped_ptr<Ipp8u> init_buffer_ptr(new Ipp8u(init_buffer_size));
 
-  void Dispose() {
-    if (spec_ptr_ != nullptr) {
-      ippsFree(spec_ptr_);
-      spec_ptr_ = nullptr;
-    }
-    if (buffer_ptr_ != nullptr) {
-      ippsFree(buffer_ptr_);
-      buffer_ptr_ = nullptr;
-    }
+    ippiResizeLanczosInit_32f(in.GetSize(), out->GetSize(), 2, reinterpret_cast<IppiResizeSpec_32f*>(spec_structure_ptr.get()), init_buffer_ptr.get());
+
+    IppiSize dst_row_size = {out->GetBounds().GetWidth(), 1};
+    int buffer_size;
+    ippiResizeGetBufferSize_32f(reinterpret_cast<IppiResizeSpec_32f*>(spec_structure_ptr.get()), dst_row_size, 1, &buffer_size);
+    boost::scoped_ptr<Ipp8u> buffer_ptr(new Ipp8u(buffer_size));
+
+    IppiPoint dst_offset = {0, region.y1() - in.GetBounds().y1()};
+    Ipp32f border_value = 0.0f;
+    ippiResizeAntialiasing_32f_C1R(in.GetPtr(region.x1(), region.y1()), in.GetPitch(), out->GetPtr(region.x1(), region.y1()), out->GetPitch(),
+                                   dst_offset, dst_row_size, border_style, &border_value, reinterpret_cast<IppiResizeSpec_32f*>(spec_structure_ptr.get()), buffer_ptr.get());
   }
 
  public:
-  Resize(Image* in, Image* out) : init_buf_ptr_(nullptr), spec_ptr_(nullptr), buffer_ptr_(nullptr) {
-    int x_offset = (in->GetBounds().GetWidth() - out->GetBounds().GetWidth()) >> 1;
-    int y_offset = (in->GetBounds().GetHeight() - out->GetBounds().GetHeight() ) >> 1;
-
-    dest_offset_ = (IppiPoint){x_offset, y_offset};
-
-    // Spec and ippBBuf sizes TODO tile sizes not full image size
-    ippiResizeGetSize_32f(in->GetSize(), out->GetSize(), ippLanczos, 1, &spec_size_, &init_size_);
-    init_buf_ptr_ = reinterpret_cast<Ipp32f*>(ippsMalloc_32f(init_size_));
-    spec_ptr_ = reinterpret_cast<IppiResizeSpec_32f*>(ippsMalloc_32f(spec_size_));
-
-    // Filter initialization TODO tile sizes not full image size
-    ippiResizeLanczosInit_32f(in->GetSize(), out->GetSize(), 2, spec_ptr_, buffer_ptr_);
-    ippiResizeGetBufferSize_32f(spec_ptr_, out->GetSize(), 1, &buf_size_);
-    buffer_ptr_ = reinterpret_cast<Ipp8u*>(ippsMalloc_8u(buf_size_));
-
-    *border_value_ = 0.0f;
-
-//     Threader threader(in->GetBounds());
-//     threader.RunLines(boost::bind(&Resize::ResizeTile_, this, _1, in, out));
+  Resize(const Image& in, Image* out) {
+    afx::Threader threader;
+    threader.ThreadImageRows(in.GetBounds(), boost::bind(&Resize::ResizeTile_, this, _1, boost::cref(in), out));
   }
 };
 
