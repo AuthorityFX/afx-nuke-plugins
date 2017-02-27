@@ -11,8 +11,9 @@
 #define INCLUDE_THREADING_H_
 
 #include <boost/asio.hpp>
-#include <boost/thread.hpp>
+#include <boost/thread/thread.hpp>
 #include <boost/bind.hpp>
+#include <boost/function.hpp>
 #include <boost/scoped_ptr.hpp>
 
 #include "include/settings.h"
@@ -20,7 +21,7 @@
 
 namespace afx {
 
-class Threader {
+class ThreaderBase {
  private:
   boost::asio::io_service io_service_;
   boost::thread_group thread_pool_;
@@ -37,23 +38,23 @@ class Threader {
   void Worker_();
 
  public:
-  Threader();
-  explicit Threader(unsigned int req_num_threads);
-  ~Threader();
-  // This is an exit point for Interupt()
-  // Call this from function sent to Threader via AddWork.
-  bool InteruptionPoint();
+   ThreaderBase();
+   explicit ThreaderBase(unsigned int req_num_threads);
+  ~ThreaderBase();
   // Launch additional threads.
   void AddThreads(unsigned int num_threads);
   // Start asio service. Launch req num of threads. 0 will launch hardware concurency
   void InitializeThreads(unsigned int req_num_threads = 0);
   // Poll until all work is submitted. Stop asio service. Block until threads have completed work. Restart asio service
   void Synchonize();
-  // Exit threads at next boost::this_thread::interruption_point()
-  void Interupt();
   // Synchonize and join all threads.
   void StopAndJoin();
   void AddWork(boost::function<void()> function);
+  unsigned int Threads() const;
+};
+
+class ImageThreader : public ThreaderBase {
+ public:
   // Split bounds into num of rows.
   void ThreadImageRows(const Bounds& region, boost::function<void(Bounds)> function);
   // Split Bounds into num_threads chunks in y axis.

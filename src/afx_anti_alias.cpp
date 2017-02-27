@@ -46,7 +46,7 @@ class ThisClass : public nuke::Iop {
 
   afx::ImageArray out_imgs_;
 
-  afx::Threader threader_;
+  afx::ImageThreader threader_;
 
   void ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
 
@@ -115,6 +115,8 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
   {
     nuke::Guard guard(lock_);
     if (first_time_CPU_) {
+      first_time_CPU_ = false;
+
       afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(50);
       req_pad_bnds.Intersect(afx::InputBounds(input(0)));
 
@@ -129,10 +131,8 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
         out_imgs_.AddImage(req_pad_bnds);
         out_imgs_.GetBackPtr()->AddAttribute("channel", z);
         afx::MorphAA aa;
-        // TODO(rpw): crashing with threader
-        aa.Process(in_img, out_imgs_.GetBackPtr(), k_threshold_, k_max_line_length_);  //, &threader_);
+        aa.Process(in_img, out_imgs_.GetBackPtr(), k_threshold_, k_max_line_length_, &threader_);
       }
-      first_time_CPU_ = false;
     }
   }  // End first time guard
 

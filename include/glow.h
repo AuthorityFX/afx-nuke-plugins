@@ -270,7 +270,7 @@ class Glow : public GlowBase {
   Glow() {}
   ~Glow() {}
 
-  void InitKernel(float exposure, Threader* threader) {
+  void InitKernel(float exposure, afx::ImageThreader* threader) {
     AllocateGaussians_();
     threader->ThreadImageChunks(Bounds(0, 0, iterations_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateGauss_, this, _1));
     kernel_.Create(max_gauss_size_ * 2 - 1, max_gauss_size_ * 2 - 1);

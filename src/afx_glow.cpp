@@ -82,7 +82,7 @@ class ThisClass : public nuke::Iop {
   afx::ImageArray in_imgs_;
   afx::ImageArray out_imgs_;
 
-  afx::Threader threader_;
+  afx::ImageThreader threader_;
 
   void ProcessCUDA(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
   void ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
@@ -322,7 +322,6 @@ void ThisClass::GetInputRGB(const afx::Bounds& region, const nuke::ImagePlane& i
   const float one = 1.0f;
   const float* m_ptr = &one;
   for (int y = region.y1(); y <= region.y2(); ++y) {
-    threader_.InteruptionPoint();
     for (int i = 0; i < 3; ++i) {
       in.SetPtr(&in_plane.readable()[in_plane.chanNo(rgb_chan[i]) * in_plane.chanStride() + in_plane.rowStride() * (plane_bnds.ClampY(y) - plane_bnds.y1()) +
                 plane_bnds.ClampX(region.x1()) - plane_bnds.x1()], i);
@@ -362,7 +361,6 @@ void ThisClass::GetInput(const afx::Bounds& region, const nuke::ImagePlane& in_p
   const float one = 1.0f;
   const float* m_ptr = &one;
   for (int y = region.y1(); y <= region.y2(); ++y) {
-    threader_.InteruptionPoint();
     const float* in_ptr = &in_plane.readable()[in_plane.chanNo(z) * in_plane.chanStride() + in_plane.rowStride() * (plane_bnds.ClampY(y) - plane_bnds.y1()) +
                           plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
     if (input(iMatte) != nullptr) { m_ptr =

@@ -77,7 +77,7 @@ class ThisClass : public nuke::Iop {
   afx::Bounds req_bnds_, format_bnds_, format_f_bnds_;
   float proxy_scale_;
 
-  afx::Threader threader_;
+  afx::ImageThreader threader_;
 
   int maximum_inputs() const { return 4; }
   int minimum_inputs() const { return 4; }

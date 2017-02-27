@@ -305,7 +305,7 @@ void MorphAA::BlendPixels_(const Bounds& region, const Image& input, Image* outp
   }
 }
 
-void MorphAA::Process(const Image& input, Image* output, float threshold, unsigned int max_line_length, afx::Threader* threader) {
+void MorphAA::Process(const Image& input, Image* output, float threshold, unsigned int max_line_length, afx::ImageThreader* threader) {
   threshold_ = threshold;
   info_.Allocate(input.GetBounds());
   max_line_length_ = max_line_length;

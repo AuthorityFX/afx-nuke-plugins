@@ -168,7 +168,7 @@ class Resize {
 
  public:
   Resize(const Image& in, Image* out) {
-    afx::Threader threader;
+    afx::ImageThreader threader;
     threader.ThreadImageRows(in.GetBounds(), boost::bind(&Resize::ResizeTile_, this, _1, boost::cref(in), out));
   }
 };

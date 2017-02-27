@@ -51,7 +51,7 @@ class MorphAA {
   void BlendPixels_(const Bounds& region, const Image& input, Image* output);
 
  public:
-  void Process(const Image& input, Image* output, float threshold, unsigned int max_line_length, afx::Threader* threader);
+  void Process(const Image& input, Image* output, float threshold, unsigned int max_line_length, afx::ImageThreader* threader);
   void Process(const Image& input, Image* output, float threshold, unsigned int max_line_length);
 };
 
