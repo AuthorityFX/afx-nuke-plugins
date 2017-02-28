@@ -7,7 +7,6 @@
 #      Authority FX, Inc.
 #      www.authorityfx.com
 
-
 if(NOT DEFINED NUKE_ROOT)
   file(GLOB _nuke_ROOT_DIRS "/usr/local/Nuke*")
   list(SORT _nuke_ROOT_DIRS)

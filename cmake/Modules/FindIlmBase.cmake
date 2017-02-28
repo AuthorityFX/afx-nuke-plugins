@@ -7,7 +7,6 @@
 #      Authority FX, Inc.
 #      www.authorityfx.com
 
-
 if(NOT DEFINED ILMBASE_ROOT)
   set(ILMBASE_ROOT "/usr/local/IlmBase")
 endif()

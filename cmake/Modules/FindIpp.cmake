@@ -7,7 +7,6 @@
 #      Authority FX, Inc.
 #      www.authorityfx.com
 
-
 if(NOT DEFINED IPP_ROOT)
   set(IPP_ROOT "/opt/intel/ipp")
 endif()
