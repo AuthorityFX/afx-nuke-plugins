@@ -11,9 +11,6 @@
 #define INCLUDE_IMAGE_H_
 
 #include <ipp.h>
-#include <ippcore.h>
-#include <ipptypes.h>
-#include <ippi.h>
 
 #include <boost/ptr_container/ptr_list.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -140,42 +137,6 @@ class ImageArray : public Array<ImageBase<float> > {
  public:
   void Add(const Bounds& region) {
     this->array_.push_back(new Image(region));
-  }
-};
-
-class Resize {
- private:
-  void ResizeTile_(Bounds region, const Image& in, Image* out) {
-    IppiBorderType border_style = ippBorderRepl;
-    if (in.GetBounds().x1() > region.x1()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemRight); }
-    if (in.GetBounds().x2() < region.x2()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemLeft); }
-    if (in.GetBounds().y1() > region.y1()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemBottom); }
-    if (in.GetBounds().y2() < region.y2()) { border_style = static_cast<IppiBorderType>(border_style | ippBorderInMemTop); }
-
-    int spec_structure_size;
-    int init_buffer_size;
-
-    ippiResizeGetSize_32f(in.GetSize(), out->GetSize(), ippLanczos, 1, &spec_structure_size, &init_buffer_size);
-    boost::scoped_ptr<Ipp8u> spec_structure_ptr(new Ipp8u(spec_structure_size));
-    boost::scoped_ptr<Ipp8u> init_buffer_ptr(new Ipp8u(init_buffer_size));
-
-    ippiResizeLanczosInit_32f(in.GetSize(), out->GetSize(), 2, reinterpret_cast<IppiResizeSpec_32f*>(spec_structure_ptr.get()), init_buffer_ptr.get());
-
-    IppiSize dst_row_size = {out->GetBounds().GetWidth(), 1};
-    int buffer_size;
-    ippiResizeGetBufferSize_32f(reinterpret_cast<IppiResizeSpec_32f*>(spec_structure_ptr.get()), dst_row_size, 1, &buffer_size);
-    boost::scoped_ptr<Ipp8u> buffer_ptr(new Ipp8u(buffer_size));
-
-    IppiPoint dst_offset = {0, region.y1() - in.GetBounds().y1()};
-    Ipp32f border_value = 0.0f;
-    ippiResizeAntialiasing_32f_C1R(in.GetPtr(region.x1(), region.y1()), in.GetPitch(), out->GetPtr(region.x1(), region.y1()), out->GetPitch(),
-                                   dst_offset, dst_row_size, border_style, &border_value, reinterpret_cast<IppiResizeSpec_32f*>(spec_structure_ptr.get()), buffer_ptr.get());
-  }
-
- public:
-  Resize(const Image& in, Image* out) {
-    afx::ImageThreader threader;
-    threader.ThreadImageRows(in.GetBounds(), boost::bind(&Resize::ResizeTile_, this, _1, boost::cref(in), out));
   }
 };
 
