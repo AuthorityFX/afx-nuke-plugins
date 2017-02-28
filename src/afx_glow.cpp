@@ -242,9 +242,11 @@ void ThisClass::ProcessCUDA(int y, int x, int r, nuke::ChannelMask channels, nuk
 void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   afx::Bounds row_bnds(x, y, r - 1, y);
 
-  if (first_time_CPU_) {
+  {
     nuke::Guard guard(lock_);
     if (first_time_CPU_) {
+      first_time_CPU_ = false;
+
       glow_.InitKernel(exposure_, &threader_);
 
       afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetKernelPadding());
@@ -272,22 +274,22 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
           if (has_all_rgb) {
             for (int i = 0; i < 3; ++i) {
               done += rgb_chan[i];  // Add channel to done channel set
-              in_imgs_.AddImage(glow_bnds);
+              in_imgs_.Add(glow_bnds);
               in_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
             }
             threader_.ThreadImageChunks(glow_bnds, boost::bind(&ThisClass::GetInputRGB, this, _1, boost::cref(in_plane), boost::cref(matte_plane), boost::cref(rgb_chan)));
             for (int i = 0; i < 3; ++i) {
-              out_imgs_.AddImage(req_bnds_);
+              out_imgs_.Add(req_bnds_);
               out_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
             }
           }
         }
         if (!(done & z)) {  // Handle non color channel
           done += z;
-          in_imgs_.AddImage(glow_bnds);
+          in_imgs_.Add(glow_bnds);
           in_imgs_.GetBackPtr()->AddAttribute("channel", z);
           threader_.ThreadImageChunks(glow_bnds, boost::bind(&ThisClass::GetInput, this, _1, boost::cref(in_plane), boost::cref(matte_plane), z));
-          out_imgs_.AddImage(req_bnds_);
+          out_imgs_.Add(req_bnds_);
           out_imgs_.GetBackPtr()->AddAttribute("channel", z);
         }
       }
@@ -304,7 +306,6 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
         threader_.AddWork(boost::bind(&afx::Glow::Convolve, &glow_, boost::cref(*in_ptr), out_ptr));
       }
       threader_.Synchonize();
-      first_time_CPU_ = false;
     }
   }  // End first time guard
 

@@ -17,11 +17,6 @@
 
 #include <boost/ptr_container/ptr_list.hpp>
 #include <boost/scoped_ptr.hpp>
-#include <boost/functional/hash.hpp>
-#include <boost/any.hpp>
-
-#include <algorithm>
-#include <list>
 
 #include "include/settings.h"
 #include "include/bounds.h"
@@ -30,11 +25,6 @@
 #include "include/attribute.h"
 
 namespace afx {
-
-// Ipp error handling function
-inline void IppSafeCall(IppStatus status) {
-  if (status != ippStsNoErr) { throw status; }
-}
 
 template <class T> class ImageBase : public AttributeBase {
  private:
@@ -48,8 +38,7 @@ template <class T> class ImageBase : public AttributeBase {
     Allocate(region);
   }
   ImageBase<T>(unsigned int width, unsigned int height) : ptr_(nullptr), pitch_(0) {
-    afx::Bounds region(0, 0, width, height);
-    Allocate(region);
+    Allocate(afx::Bounds(0, 0, width - 1, height - 1));
   }
   ImageBase<T>(const ImageBase<T>& other) {
     Copy(other);
@@ -57,23 +46,66 @@ template <class T> class ImageBase : public AttributeBase {
   ImageBase<T>& operator=(const ImageBase<T>& other) {
     Copy(other);
   }
-  virtual ~ImageBase<T>() {
+  ~ImageBase<T>() {
     Dispose();
   }
-  virtual void Allocate(const afx::Bounds& region) {
+  void Allocate(unsigned int width, unsigned int height) {
+    Allocate(afx::Bounds(0, 0, width - 1, height - 1));
+  }
+  void Allocate(const afx::Bounds& region) {
     Dispose();
     region_ = region;
     ptr_ = afx::ImageMalloc<T>(region_.GetWidth(), region_.GetHeight(), &pitch_);
   }
-  virtual void Copy(const ImageBase<T>& other) {
+  void Copy(const ImageBase<T>& other) {
     region_ = other.region_;
     Allocate(region_);
     for (int y = region_.y1(); y <= region_.y2(); ++y) {
       memcpy(GetPtr(region_.x1(), y), other.GetPtr(other.region_.x1(), y), region_.GetWidth() * sizeof(T));
     }
   }
-  virtual void Dispose() {
+  void Dispose() {
     afx::ImageFree(ptr_);
+  }
+  void MemCpyIn(const T* ptr, size_t pitch) {
+    const T* source_ptr = ptr;
+    T* dest_ptr = GetPtr(region_.x1(), region_.y1());
+    size_t size = region_.GetWidth() * sizeof(T);
+    for (int y = region_.y1(); y <= region_.y2(); ++y) {
+      memcpy(dest_ptr, source_ptr, size);
+      source_ptr = reinterpret_cast<const T*>((reinterpret_cast<const char*>(source_ptr) + pitch));
+      dest_ptr = GetNextRow(dest_ptr);
+    }
+  }
+  void MemCpyIn(const T* ptr, size_t pitch, afx::Bounds region) {
+    const T* source_ptr = ptr;
+    T* dest_ptr = GetPtr(region.x1(), region.y1());
+    size_t size = region.GetWidth() * sizeof(T);
+    for (int y = region.y1(); y <= region.y2(); ++y) {
+      memcpy(dest_ptr, source_ptr, size);
+      source_ptr = reinterpret_cast<const T*>((reinterpret_cast<const char*>(source_ptr) + pitch));
+      dest_ptr = GetNextRow(dest_ptr);
+    }
+  }
+  void MemCpyOut(T* ptr, size_t pitch) {
+    T* source_ptr = GetPtr(region_.x1(), region_.y1());
+    T* dest_ptr = ptr;
+    size_t size = region_.GetWidth() * sizeof(T);
+    for (int y = region_.y1(); y <= region_.y2(); ++y) {
+      memcpy(dest_ptr, source_ptr, size);
+      source_ptr = GetNextRow(dest_ptr);
+      dest_ptr = reinterpret_cast<T*>((reinterpret_cast<char*>(dest_ptr) + pitch));
+    }
+  }
+  void MemCpyOut(T* ptr, size_t pitch, afx::Bounds region) {
+    T* source_ptr = GetPtr(region.x1(), region.y1());
+    T* dest_ptr = ptr;
+    size_t size = region.GetWidth() * sizeof(T);
+    for (int y = region.y1(); y <= region.y2(); ++y) {
+      memcpy(dest_ptr, source_ptr, size);
+      source_ptr = GetNextRow(dest_ptr);
+      dest_ptr = reinterpret_cast<T*>((reinterpret_cast<char*>(dest_ptr) + pitch));
+    }
   }
   T* GetPtr() const {
     return ptr_;
@@ -84,10 +116,10 @@ template <class T> class ImageBase : public AttributeBase {
   T* GetPtrBnds(int x, int y) const {
     return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr_) + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(T));
   }
-  T* NextRow(T* ptr) {
+  T* GetNextRow(T* ptr) const {
     return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) + pitch_);
   }
-  T* PreviousRow(T* ptr) {
+  T* GetPreviousRow(T* ptr) const {
     return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) - pitch_);
   }
   size_t GetPitch() const {
@@ -96,45 +128,19 @@ template <class T> class ImageBase : public AttributeBase {
   afx::Bounds GetBounds() const {
     return region_;
   }
+  IppiSize GetSize() const {
+    IppiSize size = {region_.GetWidth(), region_.GetHeight()};
+    return size;
+  }
 };
 
+typedef ImageBase<float> Image;
 
-class Image : public AttributeBase {
- protected:
-  Ipp32f* ptr_;
-  int pitch_;
-  IppiSize image_size_;
-  Bounds region_;
-
+class ImageArray : public Array<ImageBase<float> > {
  public:
-  Image();
-  Image(unsigned int width, unsigned int height);
-  explicit Image(const Bounds& region);
-  Image(const Image& other);
-  Image& operator=(const Image& other);
-  ~Image();
-  void Create(unsigned int width, unsigned int height);
-  virtual void Create(const Bounds& region);
-  virtual void Copy(const Image& other);
-  void Dispose();
-  virtual void MemSet(float value);
-  virtual void MemSet(float value, const Bounds& region);
-  virtual void MemCpyIn(const float* src_ptr, size_t src_pitch, const Bounds& region);
-  virtual void MemCpyOut(float* dst_ptr, size_t dst_pitch, const Bounds& region);
-  Ipp32f* GetPtr() const;
-  Ipp32f* GetPtr(int x, int y) const;
-  Ipp32f* GetPtrBnds(int x, int y) const;
-  Ipp32f GetVal(int x, int y) const;
-  Ipp32f GetValBnds(int x, int y) const;
-  size_t GetPitch() const;
-  IppiSize GetSize() const;
-  Bounds GetBounds() const;
-};
-
-
-class ImageArray : public Array<Image> {
- public:
-  void AddImage(const Bounds& region);
+  void Add(const Bounds& region) {
+    this->array_.push_back(new Image(region));
+  }
 };
 
 class Resize {

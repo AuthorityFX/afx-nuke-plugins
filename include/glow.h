@@ -221,7 +221,6 @@ class Glow : public GlowBase {
   void CreateKernel_(const Bounds& region, boost::atomic<double>* kernel_sum) {
     double kernel_sum_l = 0.0;
     for (int y = region.y1(); y <= region.y2(); ++y) {
-      boost::this_thread::interruption_point();
       int y0 = y - kernel_.GetBounds().y1();
       float* ptr = kernel_.GetPtr(region.x1(), y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
@@ -273,7 +272,7 @@ class Glow : public GlowBase {
   void InitKernel(float exposure, afx::ImageThreader* threader) {
     AllocateGaussians_();
     threader->ThreadImageChunks(Bounds(0, 0, iterations_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateGauss_, this, _1));
-    kernel_.Create(max_gauss_size_ * 2 - 1, max_gauss_size_ * 2 - 1);
+    kernel_.Allocate(max_gauss_size_ * 2 - 1, max_gauss_size_ * 2 - 1);
     threader->Synchonize();
 
     boost::atomic<double> kernel_sum(0.0);

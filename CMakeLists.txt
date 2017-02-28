@@ -39,11 +39,10 @@ if(Boost_FOUND)
 endif()
 find_package(CUDA REQUIRED)
 find_package(IlmBase REQUIRED COMPONENTS Half)
-find_package(Jemalloc REQUIRED)
 
-add_library(core SHARED src/image.cpp src/threading.cpp)
+add_library(core SHARED src/threading.cpp)
 set_target_properties(core PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
-target_link_libraries(core ${Ipp_LIBRARIES} ${Boost_LIBRARIES} ${IlmBase_LIBRARIES} ${Jemalloc_LIBRARIES})
+target_link_libraries(core ${Ipp_LIBRARIES} ${Boost_LIBRARIES} ${IlmBase_LIBRARIES})
 list(APPEND afx_LIBRARIES core)
 
 cuda_add_library(cuda src/cuda_helper.cpp SHARED)

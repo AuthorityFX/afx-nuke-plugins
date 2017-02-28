@@ -110,13 +110,13 @@ void MorphAA::FindYLines_(const Bounds& region, const Image& input) {
           } else {  // End of line
             SetYLine_(info_ptr, length, x, y);
             y--;  // Search for new line form this pixel. Decrement all counters.
-            info_ptr = info_.PreviousRow(info_ptr);
+            info_ptr = info_.GetPreviousRow(info_ptr);
             length = 0;
           }
           break;
         }
       }
-      info_ptr = info_.NextRow(info_ptr);
+      info_ptr = info_.GetNextRow(info_ptr);
     }
   }
 }
@@ -203,7 +203,7 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, int length, int x, int y) {
   //      |[][][][][]|{}             |
   //      ¯¯¯¯¯¯¯¯¯¯¯¯               x
   //          0.0f
-  if (info_.PreviousRow(info_ptr)->flags & afx::kDisPosRight) {  // last pixel in line is greater than right pixel
+  if (info_.GetPreviousRow(info_ptr)->flags & afx::kDisPosRight) {  // last pixel in line is greater than right pixel
     if ((info_ptr->flags & afx::kDisNegDown) && !(info_.GetPtrBnds(x + 1, y)->flags & afx::kDisPosDown)) {
       // _____           ______
       //      |[][][][][]|{a}
@@ -241,7 +241,7 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, int length, int x, int y) {
     int max_pos = (length - 1) / 2;
     int pos = max_pos;
     for ( ; pos >= 0 ; --pos) {
-      l_i = info_.PreviousRow(l_i);
+      l_i = info_.GetPreviousRow(l_i);
       l_i->blend_y = CalcTrapArea_(pos, half_length);
     }
     if (length & 1) {  // Is odd
@@ -250,17 +250,17 @@ void MorphAA::SetYLine_(PixelInfo* info_ptr, int length, int x, int y) {
       pos = 0;
     }
     for ( ; pos <= max_pos; ++pos) {
-      l_i = info_.PreviousRow(l_i);
+      l_i = info_.GetPreviousRow(l_i);
       l_i->blend_y = CalcTrapArea_(pos, half_length);
     }
   } else if (start_blend && !end_blend) {  // Start blends, end does NOT blend
     for (int pos = 0; pos <= length - 1; ++pos) {
-      l_i = info_.PreviousRow(l_i);
+      l_i = info_.GetPreviousRow(l_i);
       l_i->blend_y = CalcTrapArea_(pos, length);
     }
   } else if (!start_blend && end_blend) {  // Start does NOT blend, end does blend
     for (int pos = length - 1; pos >= 0; --pos) {
-      l_i = info_.PreviousRow(l_i);
+      l_i = info_.GetPreviousRow(l_i);
       l_i->blend_y = CalcTrapArea_(pos, length);
     }
   }

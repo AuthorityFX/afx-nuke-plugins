@@ -63,7 +63,7 @@ class Array {
  public:
   typedef typename boost::ptr_list<T>::iterator ptr_list_it;
 
-  void Add() { array_.push_back(new T()); }
+  virtual void Add() { array_.push_back(new T()); }
   void Clear() { array_.clear(); }
   T* GetBackPtr() { return &array_.back(); }
   T* GetPtrByAttribute(const std::string& name, int value) {

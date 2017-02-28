@@ -10,7 +10,7 @@
 #ifndef INCLUDE_MEMORY_H_
 #define INCLUDE_MEMORY_H_
 
-#include <jemalloc/jemalloc.h>
+#include <stdlib.h>
 
 #include "include/bounds.h"
 
@@ -19,14 +19,14 @@ namespace afx {
 template <typename T>
 inline T* ImageMalloc(unsigned int width, unsigned int height, size_t* pitch) {
   *pitch = (((width * sizeof(T) + 63) / 64) * 64);
-  return reinterpret_cast<T*>(je_aligned_alloc(64, *pitch * height));
+  return reinterpret_cast<T*>(aligned_alloc(64, (*pitch) * height));
 }
 
 inline void ImageFree(void* ptr) {
   if (ptr != nullptr) {
-    je_free(ptr);
+    free(ptr);
+    ptr = nullptr;
   }
-  ptr = nullptr;
 }
 
 }  // namespace afx
