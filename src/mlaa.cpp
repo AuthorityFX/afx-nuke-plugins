@@ -311,13 +311,13 @@ void MorphAA::Process(const Image& input, Image* output, float threshold, unsign
   max_line_length_ = max_line_length;
 
   threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::MarkDisc_, this, _1, boost::cref(input)));
-  threader->Synchonize();
+  threader->Wait();
   threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::FindXLines_, this, _1, boost::cref(input)));
-  threader->Synchonize();
+  threader->Wait();
   threader->ThreadImageChunksY(info_.GetBounds(), boost::bind(&MorphAA::FindYLines_, this, _1, boost::cref(input)));
-  threader->Synchonize();
+  threader->Wait();
   threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::BlendPixels_, this, _1, boost::cref(input), output));
-  threader->Synchonize();
+  threader->Wait();
 }
 
 void MorphAA::Process(const Image& input, Image* output, float threshold, unsigned int max_line_length) {

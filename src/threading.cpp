@@ -22,15 +22,15 @@
 
 namespace afx {
 
-ThreaderBase::ThreaderBase() : running_(false) { InitializeThreads(0); }
-ThreaderBase::ThreaderBase(unsigned int req_num_threads) : running_(false) { InitializeThreads(req_num_threads); }
-ThreaderBase::~ThreaderBase() { StopAndJoin(); }
-void ThreaderBase::AddThreads(unsigned int num_threads) {
+Threader::Threader() : running_(false) { InitializeThreads(0); }
+Threader::Threader(unsigned int req_num_threads) : running_(false) { InitializeThreads(req_num_threads); }
+Threader::~Threader() { StopAndJoin(); }
+void Threader::AddThreads(unsigned int num_threads) {
   for (unsigned int t = 0; t < num_threads; ++t) {
-    thread_pool_.create_thread(boost::bind(&ThreaderBase::Worker_, this));
+    thread_pool_.create_thread(boost::bind(&Threader::Worker_, this));
   }
 }
-void ThreaderBase::InitializeThreads(unsigned int req_num_threads) {
+void Threader::InitializeThreads(unsigned int req_num_threads) {
   if (running_) { StopAndJoin(); }  // If running join threads so empty thread pool
   work_ptr_.reset(new boost::asio::io_service::work(io_service_));
   if (io_service_.stopped()) { io_service_.reset(); }
@@ -38,43 +38,44 @@ void ThreaderBase::InitializeThreads(unsigned int req_num_threads) {
   unsigned int avail_threads = boost::thread::hardware_concurrency();
   num_threads_ = req_num_threads > 0 ? std::min<unsigned int>(req_num_threads, avail_threads) : avail_threads;
   for (unsigned int t = 0; t < num_threads_; ++t) {
-    thread_pool_.create_thread(boost::bind(&ThreaderBase::Worker_, this));
+    thread_pool_.create_thread(boost::bind(&Threader::Worker_, this));
   }
 }
-void ThreaderBase::Worker_() {
+void Threader::Worker_() {
   while (running_) {
     io_service_.run();  // Blocks until work is complete
-    synchronized_.notify_one();  // Notify that this thread has exited run()
+    exited_run_.notify_one();  // Notify that this thread has exited run()
     boost::unique_lock<boost::mutex> lock(mutex_);
     while (running_ && io_service_.stopped()) {
-      ready_condition_.wait(lock);  // Wait until io_service_ has been reset
+      io_service_ready_.wait(lock);  // Wait until io_service_ has been reset
     }
   }
 }
-void ThreaderBase::Synchonize() {
+void Threader::Wait() {
   work_ptr_.reset();  // Destroy work object to allow run all handlers to finish normally and for run to return.
   boost::mutex dummy_mutex;
   boost::unique_lock<boost::mutex> dummy_lock(dummy_mutex);
   while (!io_service_.stopped()) {
-    synchronized_.wait(dummy_lock);  // Wait for all threads to exit run() in Worker_.
+    exited_run_.wait(dummy_lock);  // Wait for all threads to exit run() in Worker_.
   }
   if (running_) {
     boost::lock_guard<boost::mutex> lock(mutex_);
     work_ptr_.reset(new boost::asio::io_service::work(io_service_));
     io_service_.reset();
   }
-  ready_condition_.notify_all();  // Allow threads to advance to end of while loop in Worker_
+  io_service_ready_.notify_all();  // Allow threads to advance to end of while loop in Worker_
 }
-void ThreaderBase::StopAndJoin() {
+void Threader::StopAndJoin() {
   {
     boost::lock_guard<boost::mutex> lock(mutex_);
     running_ = false;
   }
-  Synchonize();
+  Wait();
   thread_pool_.join_all();
 }
-void ThreaderBase::AddWork(boost::function<void()> function) { io_service_.post(function); }
-unsigned int ThreaderBase::Threads() const { return num_threads_; }
+void Threader::AddWork(boost::function<void()> function) { io_service_.post(function); }
+bool Threader::IsRunning() const { return running_; }
+unsigned int Threader::Threads() const { return num_threads_; }
 
 
 void ImageThreader::ThreadImageRows(const Bounds& region, boost::function<void(Bounds)> function) {

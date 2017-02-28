@@ -21,39 +21,43 @@
 
 namespace afx {
 
-class ThreaderBase {
+class Threader {
  private:
   boost::asio::io_service io_service_;
   boost::thread_group thread_pool_;
   boost::scoped_ptr<boost::asio::io_service::work> work_ptr_;
   unsigned int num_threads_;
 
-  boost::condition_variable synchronized_;
-  boost::condition_variable ready_condition_;
+  boost::condition_variable exited_run_;
+  boost::condition_variable io_service_ready_;
   bool running_;
 
   boost::mutex mutex_;
 
-  // This is the function that is run in each thread
+  // This function is pased to each thread in thread pool and will block for
+  // work from queue added via AddWork()
   void Worker_();
 
  public:
-   ThreaderBase();
-   explicit ThreaderBase(unsigned int req_num_threads);
-  ~ThreaderBase();
+   Threader();
+   explicit Threader(unsigned int req_num_threads);
+  ~Threader();
   // Launch additional threads.
   void AddThreads(unsigned int num_threads);
-  // Start asio service. Launch req num of threads. 0 will launch hardware concurency
-  void InitializeThreads(unsigned int req_num_threads = 0);
-  // Poll until all work is submitted. Stop asio service. Block until threads have completed work. Restart asio service
-  void Synchonize();
+  // Start asio service. Launch requested number of threads. 0 will launch hardware concurency
+  void InitializeThreads(unsigned int requested_threads = 0);
+  // Block until all work has been completed.
+  void Wait();
   // Synchonize and join all threads.
   void StopAndJoin();
+  // Pass a function pointer to be executed by first available thread in pool
   void AddWork(boost::function<void()> function);
+  // Can be used as an exit point
+  bool IsRunning() const;
   unsigned int Threads() const;
 };
 
-class ImageThreader : public ThreaderBase {
+class ImageThreader : public Threader {
  public:
   // Split bounds into num of rows.
   void ThreadImageRows(const Bounds& region, boost::function<void(Bounds)> function);

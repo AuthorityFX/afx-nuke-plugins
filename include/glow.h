@@ -273,11 +273,11 @@ class Glow : public GlowBase {
     AllocateGaussians_();
     threader->ThreadImageChunks(Bounds(0, 0, iterations_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateGauss_, this, _1));
     kernel_.Allocate(max_gauss_size_ * 2 - 1, max_gauss_size_ * 2 - 1);
-    threader->Synchonize();
+    threader->Wait();
 
     boost::atomic<double> kernel_sum(0.0);
     threader->ThreadImageChunks(Bounds(0, 0, max_gauss_size_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateKernel_, this, _1, &kernel_sum));
-    threader->Synchonize();
+    threader->Wait();
 
     threader->ThreadImageChunks(kernel_.GetBounds(), boost::bind(&Glow::NormalizeKernel_, this, _1, 2.0f * powf(2.0f, exposure) / kernel_sum));
     DisposeGaussians_();

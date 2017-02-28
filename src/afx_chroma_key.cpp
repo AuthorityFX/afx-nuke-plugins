@@ -233,7 +233,7 @@ void ThisClass::engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Ro
       out_pc_.clear();
       in_pc_.clear();
       threader_.ThreadImageChunks(screen_bnds, boost::bind(&ThisClass::Metrics, this, _1, boost::ref(source_plane), boost::ref(out_matte_plane), boost::ref(in_matte_plane)));
-      threader_.Synchonize();
+      threader_.Wait();
 
       out_hull_.clear();
       bg::convex_hull(out_pc_, out_hull_);

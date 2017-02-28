@@ -256,7 +256,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
       nuke::ImagePlane in_plane(afx::BoundsToBox(plane_bnds), false, channels);  // Create plane "false" = non-packed.
       nuke::ImagePlane matte_plane(afx::BoundsToBox(plane_bnds), false, nuke::Mask_Alpha);  // Create plane "false" = non-packed.
       if (aborted()) {
-        threader_.Synchonize();
+        threader_.Wait();
         return;
       }  // Return if render aborted
       input0().fetchPlane(in_plane);  // Fetch plane
@@ -295,17 +295,17 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
       }
 
       if (aborted()) {
-        threader_.Synchonize();
+        threader_.Wait();
         return;
       }  // Return if render aborted
 
-      threader_.Synchonize();
+      threader_.Wait();
       for (afx::ImageArray::ptr_list_it it = in_imgs_.GetBegin(); it != in_imgs_.GetEnd(); ++it) {
         afx::Image* in_ptr = &(*it);
         afx::Image* out_ptr = out_imgs_.GetPtrByAttribute("channel", in_ptr->GetAttribute("channel"));
         threader_.AddWork(boost::bind(&afx::Glow::Convolve, &glow_, boost::cref(*in_ptr), out_ptr));
       }
-      threader_.Synchonize();
+      threader_.Wait();
     }
   }  // End first time guard
 
