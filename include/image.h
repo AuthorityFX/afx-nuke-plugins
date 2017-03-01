@@ -52,7 +52,8 @@ template <class T> class ImageBase : public AttributeBase {
   void Allocate(const afx::Bounds& region) {
     Dispose();
     region_ = region;
-    ptr_ = afx::ImageMalloc<T>(region_.GetWidth(), region_.GetHeight(), &pitch_);
+    pitch_ = (((region_.GetWidth() * sizeof(T) + 63) / 64) * 64);
+    ptr_ = reinterpret_cast<T*>(aligned_alloc(64, pitch_ *  region_.GetHeight()));
   }
   void Copy(const ImageBase<T>& other) {
     region_ = other.region_;
@@ -62,7 +63,10 @@ template <class T> class ImageBase : public AttributeBase {
     }
   }
   void Dispose() {
-    afx::ImageFree(ptr_);
+    if (ptr_ != nullptr) {
+      free(ptr_);
+      ptr_ = nullptr;
+    }
   }
   void MemCpyIn(const T* ptr, size_t pitch) {
     const T* source_ptr = ptr;
@@ -84,7 +88,7 @@ template <class T> class ImageBase : public AttributeBase {
       dest_ptr = GetNextRow(dest_ptr);
     }
   }
-  void MemCpyOut(T* ptr, size_t pitch) {
+  void MemCpyOut(T* ptr, size_t pitch) const {
     T* source_ptr = GetPtr(region_.x1(), region_.y1());
     T* dest_ptr = ptr;
     size_t size = region_.GetWidth() * sizeof(T);
@@ -94,7 +98,7 @@ template <class T> class ImageBase : public AttributeBase {
       dest_ptr = reinterpret_cast<T*>((reinterpret_cast<char*>(dest_ptr) + pitch));
     }
   }
-  void MemCpyOut(T* ptr, size_t pitch, afx::Bounds region) {
+  void MemCpyOut(T* ptr, size_t pitch, afx::Bounds region) const {
     T* source_ptr = GetPtr(region.x1(), region.y1());
     T* dest_ptr = ptr;
     size_t size = region.GetWidth() * sizeof(T);
