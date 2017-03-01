@@ -9,8 +9,8 @@ Requirements
 * Nuke NDK
 * IlmBase
 
-Requirements
-------------
+Optional
+--------
 * Hoard
 
 Build and Install
