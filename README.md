@@ -8,7 +8,10 @@ Requirements
 * BOOST
 * Nuke NDK
 * IlmBase
-* Jemalloc
+
+Requirements
+------------
+* Hoard
 
 Build and Install
 -----------------
@@ -27,8 +30,7 @@ To tell Nuke where to find the plugins, you need to add some python code to an i
 
 I have a custom init.py on my network drive. In my .profile script I added "export NUKE_PATH="path to my nuke folder with the custon init.py".  In the init.py I aded:
 
-if nuke.env['LINUX']:
-        nuke.pluginAddPath(wherever-you-installed/afx-nuke-plugins)
+nuke.pluginAddPath(wherever-you-installed/afx-nuke-plugins)
 
 Plugin Descriptions
 ===================
@@ -47,7 +49,6 @@ AFXDespill — Uses Rodrigues rotation to shift screen hue to either 1/3 or 2/3.
 
 AFXAntiAlias — Morphological anti-aliasing to smooth ‘jaggies’ that are a very common problem with keying. Extremely useful for monitor comps.
 
-
 Redistributable Libraries
 -------------------------
 
@@ -58,6 +59,7 @@ Redistributable Libraries
 * libippcore.so
 * libjemalloc.so
 * libHalf.so
+* libhoard.so
 
 TODO
 --------------------------------------------------
