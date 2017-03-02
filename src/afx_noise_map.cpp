@@ -135,9 +135,9 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
 
         afx::WaveletTransform wt;
         afx::Image wavelet_image(req_pad_bnds);
-        wt.StationaryWaveletTransformDiagonalOnly(in_img, out_imgs_.GetBackPtr(), k_level_);
+        wt.StationaryWaveletTransformDiagonalOnly(in_img, &wavelet_image, k_level_);
         afx::NoiseMap noise_map;
-        //noise_map.MAD(wavelet_image, out_imgs_.GetBackPtr(), k_size_);
+        noise_map.MAD(wavelet_image, out_imgs_.GetBackPtr(), k_size_);
 
       }
     }
