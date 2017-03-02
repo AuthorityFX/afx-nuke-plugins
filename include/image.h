@@ -119,6 +119,9 @@ template <class T> class ImageBase : public AttributeBase {
   T* GetNextRow(T* ptr) const {
     return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) + pitch_);
   }
+  const T* GetNextRow(const T* ptr) const {
+    return reinterpret_cast<const T*>(reinterpret_cast<const char*>(ptr) + pitch_);
+  }
   T* GetPreviousRow(T* ptr) const {
     return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) - pitch_);
   }
