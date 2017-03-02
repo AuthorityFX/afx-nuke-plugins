@@ -11,6 +11,9 @@
 #define INCLUDE_ATTRIBUTE_H_
 
 #include <boost/ptr_container/ptr_list.hpp>
+#include <boost/static_assert.hpp>
+#include <boost/type_traits/is_base_of.hpp>
+
 #include <vector>
 #include <stdexcept>
 #include <string>
@@ -57,6 +60,8 @@ class AttributeBase {
 
 template <typename T>
 class Array {
+ private:
+  BOOST_STATIC_ASSERT_MSG((boost::is_base_of<AttributeBase, T>::value), "T must inherit from AttributeBase");
  protected:
   boost::ptr_list<T> array_;
 
