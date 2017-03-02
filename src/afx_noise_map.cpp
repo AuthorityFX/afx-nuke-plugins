@@ -33,6 +33,7 @@ namespace nuke = DD::Image;
 class ThisClass : public nuke::Iop {
 private:
   // members to store knob values
+  int k_size_;
   // members to store processed knob values
   boost::mutex mutex_;
   bool first_time_CPU_;
@@ -66,9 +67,13 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   first_time_CPU_ = true;
 
   // initialize knobs
+  k_size_ = 3;
 }
 void ThisClass::knobs(nuke::Knob_Callback f) {
-
+  nuke::Int_knob(f, &k_size_, "size", "Size");
+  nuke::Tooltip(f, "Window Size");
+  nuke::SetFlags(f, nuke::Knob::SLIDER);
+  nuke::SetRange(f, 0, 10);
 }
 const char* ThisClass::Class() const { return CLASS; }
 const char* ThisClass::node_help() const { return HELP; }
@@ -123,9 +128,10 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
 
         afx::WaveletTransform wt;
         afx::Image wavelet_image(req_pad_bnds);
-        wt.DiagonalDetail(in_img, &wavelet_image);
+        afx::Image wavelet_image1(req_pad_bnds);
+        wt.StationaryWaveletTransformDiagonalOnly(in_img, &wavelet_image, 0);
         afx::NoiseMap noise_map;
-        noise_map.MAD(wavelet_image, out_imgs_.GetBackPtr());
+        noise_map.MAD(wavelet_image, out_imgs_.GetBackPtr(), k_size_);
         //out_imgs_.GetBackPtr()->MemCpyIn(wavelet_image.GetPtr(), wavelet_image.GetPitch());
 
       }

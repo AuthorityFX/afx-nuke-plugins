@@ -14,9 +14,9 @@ namespace afx {
 
 __host__ __device__
 void Swap(float* a, float* b) {
-  float* temp = a;
-  a = b;
-  b = temp;
+  float temp = *a;
+  *a = *b;
+  *b = temp;
 }
 
 __host__ __device__

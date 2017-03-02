@@ -11,6 +11,7 @@
 #define INCLUDE_NOISE_MAP_H_
 
 #include <vector>
+#include <cmath>
 
 #include "include/image.h"
 #include "include/bounds.h"
@@ -39,57 +40,117 @@ static const float coif3[] = {0.003793512864491014,
                               -3.459977283621256e-05
                               };
 
+static const float bior44[] = {0.0
+                               -0.06453888262869706,
+                               0.04068941760916406,
+                               0.41809227322161724,
+                               -0.7884856164055829,
+                               0.41809227322161724,
+                               0.04068941760916406,
+                               -0.06453888262869706,
+                               0.0,
+                               0.0,
+                              };
+
+
 namespace afx {
 
 class WaveletTransform {
 public:
-  void DiagonalDetail(const afx::Image& in_image, afx::Image* out_image) {
-    std::vector<float> wavelet(coif3, coif3 + 18);
-    afx::Image temp(in_image.GetBounds());
+  void StationaryWaveletTransformDiagonalOnly(const afx::Image& in_image, afx::Image* out_image, unsigned int level = 0) {
+    std::vector<float> wavelet(bior44, bior44 + 10);
+
+    if (in_image.GetBounds() != out_image->GetBounds("StationaryWaveletTransformDiagonalOnly - in_image and out_image bounds must be equal")) {
+      throw std::runtime_error();
+    }
+
+    afx::Bounds region = in_image.GetBounds();
+
+    afx::Image temp1(region);
+    afx::Image temp2();
+    if (level > 0) { // Don't need second temp image is level is 0
+      temp2.Allocate(region);
+    }
+    afx::Image* level_in = in_image;
+    afx::Image* level_out = &temp1;
+
     ImageThreader threader;
-    threader.ThreadImageChunksY(in_image.GetBounds(), boost::bind(&WaveletTransform::ConvolveY_, this, _1, boost::cref(in_image), &temp, boost::cref(wavelet)));
-    threader.Wait();
-    threader.ThreadImageChunks(in_image.GetBounds(), boost::bind(&WaveletTransform::ConvolveX_, this, _1, boost::cref(temp), out_image, boost::cref(wavelet)));
-    threader.Wait();
+    for (int i = 0; i <= level; ++i) {
+      if (i == level) {
+        afx::Image* level_out = out_image;
+      } else {
+        if (level & 1) {
+          afx::Image* level_out = &temp1;
+        } else {
+          afx::Image* level_out = &temp2;
+        }
+      }
+      //     threader.ThreadImageChunksY(region, boost::bind(&WaveletTransform::StationaryConvolve_Y_, this, _1, boost::cref(in_image), &temp, boost::cref(wavelet), level));
+      //     threader.Wait();
+      threader.ThreadImageChunks(region, boost::bind(&WaveletTransform::StationaryConvolve_X_, this, _1, boost::cref(*level_in), level_out, boost::cref(wavelet), level));
+      threader.Wait();
+
+      if (i < level) {
+        afx::Image* level_in = level_out;
+      }
+
+    }
+
+
   }
 private:
-  void ConvolveX_(afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, const std::vector<float>& wavelet) {
+  void StationaryConvolve_X_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, const std::vector<float>& wavelet, unsigned int level) {
+    int increment = std::pow(2.0f, static_cast<int>(level));
+    int size = increment * static_cast<int>(wavelet.size() - 1);
     for (int y = region.y1(); y <= region.y2(); ++y) {
       float* out_ptr = out_image->GetPtr(region.x1(), y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
         float sum = 0.0f;
-        int window_x = x - (wavelet.size() - 1);
+        int window_x = x - size;
         const float* in_ptr = in_image.GetPtrBnds(window_x, y);
         for (std::vector<float>::const_reverse_iterator it = wavelet.rbegin(); it < wavelet.rend(); ++it) {
-          sum += *it * *in_ptr;
-          if (window_x >= in_image.GetBounds().x1()) { in_ptr++; }
-          window_x++;
+          sum += *it * *in_image.GetPtrBnds(window_x, y);
+          window_x += increment;
+//           if (window_x  >= in_image.GetBounds().x1()) {
+//             in_ptr += increment;
+//           }
         }
         for (std::vector<float>::const_iterator it = wavelet.begin() + 1; it < wavelet.end(); ++it) {
-          sum += *it * *in_ptr;
-          if (window_x < in_image.GetBounds().x2()) { in_ptr++; }
-          window_x++;
+          sum += *it * *in_image.GetPtrBnds(window_x, y);
+          window_x += increment;
+//           if (window_x > in_image.GetBounds().x1() && window_x <= in_image.GetBounds().x2()) {
+//             in_ptr += increment;
+//           }
         }
         *out_ptr++ = sum;
       }
     }
   }
-  void ConvolveY_(afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, const std::vector<float>& wavelet) {
+  void StationaryConvolve_Y_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, const std::vector<float>& wavelet, unsigned int level) {
+    int increment = std::pow(2.0f, static_cast<int>(level));
     for (int x = region.x1(); x <= region.x2(); ++x) {
       float* out_ptr = out_image->GetPtr(x, region.y1());
       for (int y = region.y1(); y <= region.y2(); ++y) {
         float sum = 0.0f;
-        int window_y = y - (wavelet.size() - 1);
+        int window_y = y - increment * static_cast<int>(wavelet.size() - 1);
         const float* in_ptr = in_image.GetPtrBnds(x, window_y);
         for (std::vector<float>::const_reverse_iterator it = wavelet.rbegin(); it < wavelet.rend(); ++it) {
           sum += *it * *in_ptr;
-          if (window_y > in_image.GetBounds().y1()) { in_ptr = in_image.GetNextRow(in_ptr); }
-          window_y++;
+          window_y += increment;
+          if (window_y >= in_image.GetBounds().y1()) {
+            for (int i = 0; i < increment; ++i) {
+              in_ptr = in_image.GetNextRow(in_ptr);
+            }
+          }
         }
         for (std::vector<float>::const_iterator it = wavelet.begin() + 1; it < wavelet.end(); ++it) {
           sum += *it * *in_ptr;
-          if (window_y < in_image.GetBounds().y2()) { in_ptr = in_image.GetNextRow(in_ptr); }
-          window_y++;
+          window_y += increment;
+          if (window_y >= in_image.GetBounds().y1() && window_y <= in_image.GetBounds().y2()) {
+            for (int i = 0; i < increment; ++i) {
+              in_ptr = in_image.GetNextRow(in_ptr);
+            }
+          }
         }
         *out_ptr = sum;
         out_ptr = out_image->GetNextRow(out_ptr);
@@ -100,31 +161,33 @@ private:
 
 class NoiseMap {
 public:
-  void MAD(const afx::Image& in_image, afx::Image* out_image) {
+  void MAD(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
     ImageThreader threader;
-    threader.ThreadImageChunks(in_image.GetBounds(), boost::bind(&NoiseMap::MAD_, this, _1, boost::cref(in_image), out_image, 3));
+    threader.ThreadImageChunks(in_image.GetBounds(), boost::bind(&NoiseMap::MAD_, this, _1, boost::cref(in_image), out_image, window_size));
     threader.Wait();
   }
 private:
-  void MAD_(afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned window_size) {
-    std::vector<float> window_values;
-    window_values.reserve(4 * (window_size * window_size + window_size) + 1);
+  void MAD_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
+    unsigned int window_array_size = 4 * (window_size * window_size + window_size) + 1;
+    float window_array[window_array_size];
     for (int y = region.y1(); y <= region.y2(); ++y) {
       float* out_ptr = out_image->GetPtr(region.x1(), y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
-        window_values.clear();
-        for (int window_y = y - window_size; window_y <= y + window_size; ++window_y) {
+        unsigned int index = 0;
+        for (int window_y = y - static_cast<int>(window_size); window_y <= y + static_cast<int>(window_size); ++window_y) {
           const float* in_ptr = in_image.GetPtrBnds(x - window_size, window_y);
-          for (int window_x = x - window_size; window_x <= x + window_size; ++window_x) {
-            window_values.push_back(*in_ptr);
+          for (int window_x = x - static_cast<int>(window_size); window_x <= x + static_cast<int>(window_size); ++window_x) {
+            window_array[index] = *in_ptr;
+            index++;
             if (window_x >= in_image.GetBounds().x1() && window_x < in_image.GetBounds().x2()) { in_ptr++; }
           }
         }
-        float median = MedianQuickSelect(&(*window_values.begin()), window_values.size());
-//         for (std::vector<float>::iterator it = window_values.begin(); it < window_values.end(); ++it) {
-//           *it = fabsf(*it - median);
-//         }
-        *out_ptr++ = 1;//MedianQuickSelect(window_values.data(), window_values.size());
+        float median = MedianQuickSelect(window_array, window_array_size);
+        for (int i = 0; i < window_array_size; ++i) {
+          window_array[i] = fabsf(window_array[i] - median);
+        }
+        // Adapting to Unknown Smoothness via Wavelet Shrinkage David L. Donoho Iain M. Johnstone
+        *out_image->GetPtr(x, y) = MedianQuickSelect(window_array, window_array_size) / 0.6745;
       }
     }
   }
