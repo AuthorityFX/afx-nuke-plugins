@@ -34,7 +34,21 @@ class Bounds {
 
   __host__ __device__
   bool operator==(const Bounds& other) {
-    return Equal(other);
+    if (other.x1_ == x1_ && other.x2_ == x2_ &&
+      other.y1_ == y1_ && other.y2_ == y2_) {
+      return true;
+      } else {
+        return false;
+      }
+  }
+  __host__ __device__
+  bool operator!=(const Bounds& other) {
+    if (other.x1_ != x1_ || other.x2_ != x2_ ||
+        other.y1_ != y1_ || other.y2_ != y2_) {
+      return true;
+    } else {
+      return false;
+    }
   }
   __host__ __device__
   int x1() const { return x1_; }
@@ -108,13 +122,6 @@ class Bounds {
     if (other.y2_ < y1_) { return false; }
     if (other.x1_ > x2_) { return false; }
     if (other.y1_ > y2_) { return false; }
-    return true;
-  }
-  bool Equal(const Bounds& other) {
-    if (other.x2_ != x1_) { return false; }
-    if (other.y2_ != y1_) { return false; }
-    if (other.x1_ != x2_) { return false; }
-    if (other.y1_ != y2_) { return false; }
     return true;
   }
   __host__ __device__

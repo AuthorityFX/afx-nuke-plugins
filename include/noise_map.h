@@ -60,29 +60,29 @@ public:
   void StationaryWaveletTransformDiagonalOnly(const afx::Image& in_image, afx::Image* out_image, unsigned int level = 0) {
     std::vector<float> wavelet(bior44, bior44 + 10);
 
-    if (in_image.GetBounds() != out_image->GetBounds("StationaryWaveletTransformDiagonalOnly - in_image and out_image bounds must be equal")) {
-      throw std::runtime_error();
+    if (in_image.GetBounds() != out_image->GetBounds()) {
+      throw std::runtime_error("StationaryWaveletTransformDiagonalOnly - in_image and out_image bounds must be equal");
     }
 
     afx::Bounds region = in_image.GetBounds();
 
     afx::Image temp1(region);
-    afx::Image temp2();
+    afx::Image temp2;
     if (level > 0) { // Don't need second temp image is level is 0
       temp2.Allocate(region);
     }
-    afx::Image* level_in = in_image;
+    const afx::Image* level_in = &in_image;
     afx::Image* level_out = &temp1;
 
     ImageThreader threader;
     for (int i = 0; i <= level; ++i) {
       if (i == level) {
-        afx::Image* level_out = out_image;
+        level_out = out_image;
       } else {
         if (level & 1) {
-          afx::Image* level_out = &temp1;
+          level_out = &temp1;
         } else {
-          afx::Image* level_out = &temp2;
+          level_out = &temp2;
         }
       }
       //     threader.ThreadImageChunksY(region, boost::bind(&WaveletTransform::StationaryConvolve_Y_, this, _1, boost::cref(in_image), &temp, boost::cref(wavelet), level));
