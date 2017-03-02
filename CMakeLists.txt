@@ -63,6 +63,12 @@ add_library(afx_tone_map SHARED src/afx_tone_map.cpp)
 set_target_properties(afx_tone_map PROPERTIES PREFIX "")
 list(APPEND afx_PLUGINS afx_tone_map)
 
+add_library(afx_noise_map SHARED src/afx_noise_map.cpp)
+set_target_properties(afx_noise_map PROPERTIES PREFIX "")
+target_link_libraries(afx_noise_map core)
+add_dependencies(afx_noise_map core)
+list(APPEND afx_PLUGINS afx_noise_map)
+
 add_library(afx_chroma_key SHARED src/afx_chroma_key.cpp)
 set_target_properties(afx_chroma_key PROPERTIES PREFIX "")
 target_link_libraries(afx_chroma_key core)

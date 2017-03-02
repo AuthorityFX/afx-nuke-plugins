@@ -22,9 +22,12 @@ if os.path.isfile(os.path.join(afx_plugin_path, 'afx_median.so')):
     nuke.knobDefault('AFXMedian.channels', 'alpha')
     nuke.menu('Nodes').addCommand('Authority FX/AFXMedian', lambda: nuke.createNode('AFXMedian'), icon='afx.png')
     nuke.load('afx_median.so')
+if os.path.isfile(os.path.join(afx_plugin_path, 'afx_noise_map.so')):
+    nuke.menu('Nodes').addCommand('Authority FX/AFXNoiseMap', lambda: nuke.createNode('AFXNoiseMap'), icon='afx.png')
+    nuke.load('afx_noise_map.so')
 if os.path.isfile(os.path.join(afx_plugin_path, 'afx_chroma_key.so')):
     nuke.menu('Nodes').addCommand('Authority FX/AFXChromaKey', lambda: nuke.createNode('AFXChromaKey'), icon='afx.png')
-    nuke.load('afx_chroma_key')
+    nuke.load('afx_chroma_key.so')
 if os.path.isfile(os.path.join(afx_plugin_path, 'afx_despill.so')):
     nuke.menu('Nodes').addCommand('Authority FX/AFXDeSpill', lambda: nuke.createNode('AFXDeSpill'), icon='afx.png')
     nuke.load('afx_despill.so')
