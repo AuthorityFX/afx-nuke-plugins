@@ -25,7 +25,7 @@ namespace afx {
 template <class T> class ImageBase : public AttributeBase {
  private:
   T* ptr_;
-  size_t pitch_;
+  std::size_t pitch_;
   afx::Bounds region_;
 
  public:
@@ -67,10 +67,10 @@ template <class T> class ImageBase : public AttributeBase {
       ptr_ = nullptr;
     }
   }
-  void MemCpyIn(const T* ptr, size_t pitch) {
+  void MemCpyIn(const T* ptr, std::size_t pitch) {
     const T* source_ptr = ptr;
     T* dest_ptr = GetPtr(region_.x1(), region_.y1());
-    size_t size = region_.GetWidth() * sizeof(T);
+    std::size_t size = region_.GetWidth() * sizeof(T);
     for (int y = region_.y1(); y <= region_.y2(); ++y) {
       memcpy(dest_ptr, source_ptr, size);
       source_ptr = reinterpret_cast<const T*>((reinterpret_cast<const char*>(source_ptr) + pitch));
@@ -80,32 +80,38 @@ template <class T> class ImageBase : public AttributeBase {
   void MemCpyIn(const T* ptr, size_t pitch, afx::Bounds region) {
     const T* source_ptr = ptr;
     T* dest_ptr = GetPtr(region.x1(), region.y1());
-    size_t size = region.GetWidth() * sizeof(T);
+    std::size_t size = region.GetWidth() * sizeof(T);
     for (int y = region.y1(); y <= region.y2(); ++y) {
       memcpy(dest_ptr, source_ptr, size);
       source_ptr = reinterpret_cast<const T*>((reinterpret_cast<const char*>(source_ptr) + pitch));
       dest_ptr = GetNextRow(dest_ptr);
     }
   }
-  void MemCpyOut(T* ptr, size_t pitch) const {
+  void MemCpyIn(const ImageBase<T>& source_image, afx::Bounds region) {
+    MemCpyIn(source_image.GetPtr(region.x1(), region.y1()), source_image.GetPitch(), region);
+  }
+  void MemCpyOut(T* ptr, std::size_t pitch) const {
     T* source_ptr = GetPtr(region_.x1(), region_.y1());
     T* dest_ptr = ptr;
-    size_t size = region_.GetWidth() * sizeof(T);
+    std::size_t size = region_.GetWidth() * sizeof(T);
     for (int y = region_.y1(); y <= region_.y2(); ++y) {
       memcpy(dest_ptr, source_ptr, size);
       source_ptr = GetNextRow(dest_ptr);
       dest_ptr = reinterpret_cast<T*>((reinterpret_cast<char*>(dest_ptr) + pitch));
     }
   }
-  void MemCpyOut(T* ptr, size_t pitch, afx::Bounds region) const {
+  void MemCpyOut(T* ptr, std::size_t pitch, afx::Bounds region) const {
     T* source_ptr = GetPtr(region.x1(), region.y1());
     T* dest_ptr = ptr;
-    size_t size = region.GetWidth() * sizeof(T);
+    std::size_t size = region.GetWidth() * sizeof(T);
     for (int y = region.y1(); y <= region.y2(); ++y) {
       memcpy(dest_ptr, source_ptr, size);
       source_ptr = GetNextRow(dest_ptr);
       dest_ptr = reinterpret_cast<T*>((reinterpret_cast<char*>(dest_ptr) + pitch));
     }
+  }
+  void MemCpyOut(const ImageBase<T>& dest_image, afx::Bounds region) {
+    MemCpyOut(dest_image.GetPtr(region.x1(), region.y1()), dest_image.GetPitch(), region);
   }
   T* GetPtr() const {
     return ptr_;
