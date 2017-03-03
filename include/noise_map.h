@@ -66,7 +66,7 @@ public:
 
     afx::Bounds region = in_image.GetBounds();
 
-    unsigned int max_level = log2(static_cast<double>(std::min(region.GetWidth(), region.GetHeight())) / static_cast<double>(2 * wavelet.size() - 1)) - 1;
+    unsigned int max_level = log2(static_cast<double>(std::min(region.GetWidth(), region.GetHeight())) / static_cast<double>(wavelet.size() - 1));
     level = std::min(level, max_level);
     float sum = 0.0f;
     for(std::vector<float>::iterator it = wavelet.begin(); it != wavelet.end(); ++it) {
@@ -75,7 +75,6 @@ public:
     for(std::vector<float>::iterator it = wavelet.begin(); it != wavelet.end(); ++it) {
       *it = *it / sum;
     }
-
 
     afx::Image temp_image_1(region);
     afx::Image temp_image_2;
