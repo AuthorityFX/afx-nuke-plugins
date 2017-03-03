@@ -34,10 +34,18 @@ public:
     CalculateBounds_(in_region, out_region, &left_region, &right_region, &bottom_region, &top_region);
 
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(left_region, boost::bind(&ExtendBorder::Constant_, this, _1, in_image, out_image, value));
-    threader.ThreadImageChunks(right_region, boost::bind(&ExtendBorder::Constant_, this, _1, in_image, out_image, value));
-    threader.ThreadImageChunks(bottom_region, boost::bind(&ExtendBorder::Constant_, this, _1, in_image, out_image, value));
-    threader.ThreadImageChunks(top_region, boost::bind(&ExtendBorder::Constant_, this, _1, in_image, out_image, value));
+    if (out_region.x1() < in_region.x1()) {
+      threader.ThreadImageChunks(left_region, boost::bind(&ExtendBorder::Constant_, this, _1, in_image, out_image, value));
+    }
+    if (out_region.x2() > in_region.x2()) {
+      threader.ThreadImageChunks(right_region, boost::bind(&ExtendBorder::Constant_, this, _1, in_image, out_image, value));
+    }
+    if (out_region.y1() < in_region.y1()) {
+      threader.ThreadImageChunks(bottom_region, boost::bind(&ExtendBorder::Constant_, this, _1, in_image, out_image, value));
+    }
+    if (out_region.y2() > in_region.y2()) {
+      threader.ThreadImageChunks(top_region, boost::bind(&ExtendBorder::Constant_, this, _1, in_image, out_image, value));
+    }
     out_image->MemCpyIn(in_image.GetPtr(), in_image.GetPitch(), in_image.GetBounds());
     threader.Wait();
   }
@@ -49,10 +57,18 @@ public:
     CalculateBounds_(in_region, out_region, &left_region, &right_region, &bottom_region, &top_region);
 
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(left_region, boost::bind(&ExtendBorder::RepeatLeft_, this, _1, in_image, out_image));
-    threader.ThreadImageChunks(right_region, boost::bind(&ExtendBorder::RepeatRight_, this, _1, in_image, out_image));
-    threader.ThreadImageChunksY(bottom_region, boost::bind(&ExtendBorder::RepeatBottom_, this, _1, in_image, out_image));
-    threader.ThreadImageChunksY(top_region, boost::bind(&ExtendBorder::RepeatTop_, this, _1, in_image, out_image));
+    if (out_region.x1() < in_region.x1()) {
+      threader.ThreadImageChunks(left_region, boost::bind(&ExtendBorder::RepeatLeft_, this, _1, in_image, out_image));
+    }
+    if (out_region.x2() > in_region.x2()) {
+      threader.ThreadImageChunks(right_region, boost::bind(&ExtendBorder::RepeatRight_, this, _1, in_image, out_image));
+    }
+    if (out_region.y1() < in_region.y1()) {
+      threader.ThreadImageChunksY(bottom_region, boost::bind(&ExtendBorder::RepeatBottom_, this, _1, in_image, out_image));
+    }
+    if (out_region.y2() > in_region.y2()) {
+      threader.ThreadImageChunksY(top_region, boost::bind(&ExtendBorder::RepeatTop_, this, _1, in_image, out_image));
+    }
     out_image->MemCpyIn(in_image.GetPtr(), in_image.GetPitch(), in_image.GetBounds());
     threader.Wait();
   }
@@ -66,10 +82,18 @@ public:
     falloff *= 0.1f; // Falloff between 0 - 1. Scale by 0.1 for distance function
 
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(left_region, boost::bind(&ExtendBorder::RepeatFalloffLeft_, this, _1, in_image, out_image, falloff));
-    threader.ThreadImageChunks(right_region, boost::bind(&ExtendBorder::RepeatFalloffRight_, this, _1, in_image, out_image, falloff));
-    threader.ThreadImageChunksY(bottom_region, boost::bind(&ExtendBorder::RepeatFalloffBottom_, this, _1, in_image, out_image, falloff));
-    threader.ThreadImageChunksY(top_region, boost::bind(&ExtendBorder::RepeatFalloffTop_, this, _1, in_image, out_image, falloff));
+    if (out_region.x1() < in_region.x1()) {
+      threader.ThreadImageChunks(left_region, boost::bind(&ExtendBorder::RepeatFalloffLeft_, this, _1, in_image, out_image, falloff));
+    }
+    if (out_region.x2() > in_region.x2()) {
+      threader.ThreadImageChunks(right_region, boost::bind(&ExtendBorder::RepeatFalloffRight_, this, _1, in_image, out_image, falloff));
+    }
+    if (out_region.y1() < in_region.y1()) {
+      threader.ThreadImageChunksY(bottom_region, boost::bind(&ExtendBorder::RepeatFalloffBottom_, this, _1, in_image, out_image, falloff));
+    }
+    if (out_region.y2() > in_region.y2()) {
+      threader.ThreadImageChunksY(top_region, boost::bind(&ExtendBorder::RepeatFalloffTop_, this, _1, in_image, out_image, falloff));
+    }
     out_image->MemCpyIn(in_image.GetPtr(), in_image.GetPitch(), in_image.GetBounds());
     threader.Wait();
   }
@@ -81,10 +105,18 @@ public:
     CalculateBounds_(in_region, out_region, &left_region, &right_region, &bottom_region, &top_region);
 
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(left_region, boost::bind(&ExtendBorder::MirrorLeft_, this, _1, in_image, out_image));
-    threader.ThreadImageChunks(right_region, boost::bind(&ExtendBorder::MirrorRight_, this, _1, in_image, out_image));
-    threader.ThreadImageChunksY(bottom_region, boost::bind(&ExtendBorder::MirrorBottom_, this, _1, in_image, out_image));
-    threader.ThreadImageChunksY(top_region, boost::bind(&ExtendBorder::MirrorTop_, this, _1, in_image, out_image));
+    if (out_region.x1() < in_region.x1()) {
+      threader.ThreadImageChunks(left_region, boost::bind(&ExtendBorder::MirrorLeft_, this, _1, in_image, out_image));
+    }
+    if (out_region.x2() > in_region.x2()) {
+      threader.ThreadImageChunks(right_region, boost::bind(&ExtendBorder::MirrorRight_, this, _1, in_image, out_image));
+    }
+    if (out_region.y1() < in_region.y1()) {
+      threader.ThreadImageChunksY(bottom_region, boost::bind(&ExtendBorder::MirrorBottom_, this, _1, in_image, out_image));
+    }
+    if (out_region.y2() > in_region.y2()) {
+      threader.ThreadImageChunksY(top_region, boost::bind(&ExtendBorder::MirrorTop_, this, _1, in_image, out_image));
+    }
     out_image->MemCpyIn(in_image.GetPtr(), in_image.GetPitch(), in_image.GetBounds());
     threader.Wait();
   }
@@ -131,7 +163,7 @@ private:
   void RepeatLeft_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image) {
     for (int y = region.y1(); y <= region.y2(); ++y) {
       float* out_ptr = out_image->GetPtr(region.x1(), y);
-      const float* border_ptr = in_image.GetPtr(in_image.GetBounds().x1, y);
+      const float* border_ptr = in_image.GetPtr(in_image.GetBounds().x1(), y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
         *out_ptr++ = *border_ptr;
       }
@@ -140,7 +172,7 @@ private:
   void RepeatRight_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image) {
     for (int y = region.y1(); y <= region.y2(); ++y) {
       float* out_ptr = out_image->GetPtr(region.x1(), y);
-      const float* border_ptr = in_image.GetPtr(in_image.GetBounds().x2, y);
+      const float* border_ptr = in_image.GetPtr(in_image.GetBounds().x2(), y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
         *out_ptr++ = *border_ptr;
       }
@@ -149,7 +181,7 @@ private:
   void RepeatBottom_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image) {
     for (int x = region.x1(); x <= region.x2(); ++x) {
       float* out_ptr = out_image->GetPtr(x, region.y1());
-      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y1);
+      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y1());
       for (int y = region.y1(); y <= region.y2(); ++y) {
         *out_ptr = *border_ptr;
         out_ptr = out_image->GetNextRow(out_ptr);
@@ -159,7 +191,7 @@ private:
   void RepeatTop_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image) {
     for (int x = region.x1(); x <= region.x2(); ++x) {
       float* out_ptr = out_image->GetPtr(x, region.y1());
-      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y2);
+      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y2());
       for (int y = region.y1(); y <= region.y2(); ++y) {
         *out_ptr = *border_ptr;
         out_ptr = out_image->GetNextRow(out_ptr);
@@ -171,9 +203,9 @@ private:
     afx::Bounds in_region = in_image.GetBounds();
     for (int y = region.y1(); y <= region.y2(); ++y) {
       float* out_ptr = out_image->GetPtr(region.x1(), y);
-      const float* border_ptr = in_image.GetPtr(in_region.x1, y);
+      const float* border_ptr = in_image.GetPtr(in_region.x1(), y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
-        float distance = in_region.x1 - x;
+        float distance = in_region.x1() - x;
         float distance_falloff = expf(-distance * falloff);
         if(y > in_region.y2()) {
           float y_distance = y - in_region.y2();
@@ -191,7 +223,7 @@ private:
     afx::Bounds in_region = in_image.GetBounds();
     for (int y = region.y1(); y <= region.y2(); ++y) {
       float* out_ptr = out_image->GetPtr(region.x1(), y);
-      const float* border_ptr = in_image.GetPtr(in_image.GetBounds().x2, y);
+      const float* border_ptr = in_image.GetPtr(in_image.GetBounds().x2(), y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
         float distance = x - in_region.x2();
         float distance_falloff = expf(-distance * falloff);
@@ -210,9 +242,9 @@ private:
   void RepeatFalloffBottom_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, float falloff) {
     for (int x = region.x1(); x <= region.x2(); ++x) {
       float* out_ptr = out_image->GetPtr(x, region.y1());
-      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y1);
+      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y1());
       for (int y = region.y1(); y <= region.y2(); ++y) {
-        float distance = in_image.GetBounds().y1 - y;
+        float distance = in_image.GetBounds().y1() - y;
         *out_ptr++ = *border_ptr * expf(-distance * falloff);
         out_ptr = out_image->GetNextRow(out_ptr);
       }
@@ -221,9 +253,9 @@ private:
   void RepeatFalloffTop_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, float falloff) {
     for (int x = region.x1(); x <= region.x2(); ++x) {
       float* out_ptr = out_image->GetPtr(x, region.y1());
-      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y2);
+      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y2());
       for (int y = region.y1(); y <= region.y2(); ++y) {
-        float distance = y - in_image.GetBounds().y2;
+        float distance = y - in_image.GetBounds().y2();
         *out_ptr++ = *border_ptr * expf(-distance * falloff);
         out_ptr = out_image->GetNextRow(out_ptr);
       }
@@ -236,15 +268,15 @@ private:
       float* out_ptr = out_image->GetPtr(region.x1(), y);
       if(y > in_region.y2()) {
         for (int x = region.x1(); x <= region.x2(); ++x) {
-          *out_ptr++ = in_image.GetPtrBnds(2 * in_region.x1() - x - 1, 2 * in_region.y2() - y + 1);
+          *out_ptr++ = *in_image.GetPtrBnds(2 * in_region.x1() - x - 1, 2 * in_region.y2() - y + 1);
         }
       } else if (y < in_region.y1()) {
         for (int x = region.x1(); x <= region.x2(); ++x) {
-          *out_ptr++ = in_image.GetPtrBnds(2 * in_region.x1() - x - 1, 2 * in_region.y1() - y - 1);
+          *out_ptr++ = *in_image.GetPtrBnds(2 * in_region.x1() - x - 1, 2 * in_region.y1() - y - 1);
         }
       } else {
         for (int x = region.x1(); x <= region.x2(); ++x) {
-          *out_ptr++ = in_image.GetPtrBnds(2 * in_region.x1() - x - 1, y);
+          *out_ptr++ = *in_image.GetPtrBnds(2 * in_region.x1() - x - 1, y);
         }
       }
     }
@@ -255,15 +287,15 @@ private:
       float* out_ptr = out_image->GetPtr(region.x1(), y);
       if(y > in_region.y2()) {
         for (int x = region.x1(); x <= region.x2(); ++x) {
-          *out_ptr++ = in_image.GetPtrBnds(2 * in_region.x1() - x + 1, 2 * in_region.y2() - y + 1);
+          *out_ptr++ = *in_image.GetPtrBnds(2 * in_region.x1() - x + 1, 2 * in_region.y2() - y + 1);
         }
       } else if (y < in_region.y1()) {
         for (int x = region.x1(); x <= region.x2(); ++x) {
-          *out_ptr++ = in_image.GetPtrBnds(2 * in_region.x1() - x + 1, 2 * in_region.y1() - y - 1);
+          *out_ptr++ = *in_image.GetPtrBnds(2 * in_region.x1() - x + 1, 2 * in_region.y1() - y - 1);
         }
       } else {
         for (int x = region.x1(); x <= region.x2(); ++x) {
-          *out_ptr++ = in_image.GetPtrBnds(2 * in_region.x1() - x + 1, y);
+          *out_ptr++ = *in_image.GetPtrBnds(2 * in_region.x1() - x + 1, y);
         }
       }
     }
@@ -272,9 +304,9 @@ private:
     afx::Bounds in_region = in_image.GetBounds();
     for (int x = region.x1(); x <= region.x2(); ++x) {
       float* out_ptr = out_image->GetPtr(x, region.y1());
-      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y1);
+      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y1());
       for (int y = region.y1(); y <= region.y2(); ++y) {
-        *out_ptr = in_image.GetPtrBnds(y, 2 * in_region.y1() - x - 1);
+        *out_ptr = *in_image.GetPtrBnds(y, 2 * in_region.y1() - x - 1);
         out_ptr = out_image->GetNextRow(out_ptr);
       }
     }
@@ -283,9 +315,9 @@ private:
     afx::Bounds in_region = in_image.GetBounds();
     for (int x = region.x1(); x <= region.x2(); ++x) {
       float* out_ptr = out_image->GetPtr(x, region.y1());
-      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y2);
+      const float* border_ptr = in_image.GetPtr(x, in_image.GetBounds().y2());
       for (int y = region.y1(); y <= region.y2(); ++y) {
-        *out_ptr = in_image.GetPtrBnds(y, 2 * in_region.y2() - x + 1);
+        *out_ptr = *in_image.GetPtrBnds(y, 2 * in_region.y2() - x + 1);
         out_ptr = out_image->GetNextRow(out_ptr);
       }
     }
@@ -300,7 +332,7 @@ class Compliment {
   Compliment(afx::Image* image, const afx::Bounds& region) {
     Compute(image, region);
   }
-  void Compliment(afx::Image* image) {
+  void Compute(afx::Image* image) {
     Compute(image, image->GetBounds());
   }
   void Compute(afx::Image* image, const afx::Bounds& region) {

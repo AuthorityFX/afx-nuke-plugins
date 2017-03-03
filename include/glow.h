@@ -16,7 +16,7 @@
 #include <algorithm>
 
 #include "include/settings.h"
-#include "include/cuda_helper.h"
+#include "include/convolution.h"
 #include "include/bounds.h"
 #include "include/image.h"
 
@@ -32,26 +32,25 @@ class GlowBase {
       float lookup = static_cast<float>(i) / static_cast<float>(iterations - 1);
       float mapped_quality = cos(static_cast<float>(M_PI) * 0.5f * lookup) * (1.0f - quality) + quality;
       float sigma = powf(lookup, 1.0f / falloff) * (fmaxf(size, inner_size) - inner_size) + inner_size;
-      unsigned int size  = std::max((static_cast<int>(ceilf(sigma_ptr_[i] * mapped_quality * (6.0f - 1.0f) + 1.0f)) ) | 1, 3) / 2;
+      unsigned int size  = std::max((static_cast<int>(ceilf(sigma * mapped_quality * (6.0f - 1.0f) + 1.0f)) ) | 1, 3) / 2;
       if (last_size > size) { size = last_size; }
       last_size = size;
-      gaussians.push_back(sigma, size);
+      gaussians.push_back(Gaussian(sigma, size));
     }
 
     kernel_.clear();
     kernel_.resize(gaussians.back().size);
-
-    float a_divisor = sqrtf(2.0f * static_cast<float>(M_PI));
+    float sqrt_of_two_pi = sqrtf(2.0f * static_cast<float>(M_PI));
     for(std::vector<Gaussian>::iterator it = gaussians.begin(); it < gaussians.end(); ++it) {
-      unsigned int size = (*it).GetSize();
-      float sigma = (*it).GetSigma();
+      unsigned int size = (*it).size;
+      float sigma = (*it).sigma;
       float two_sigma_squared = 2.0f * sigma * sigma;
-      float a = 1.0f / (sigma * a_divisor);
-      for (int i = 0; i < (*it).GetSize(); ++it) {
-        kernel_[i] += a * expf(-static_cast<float>(i) * static_cast<float>(i) / two_sigma_squared);
+      float a = 1.0f / (sigma * sqrt_of_two_pi);
+      for (int x = 0; x < size; ++x) {
+        kernel_[x] += a * expf(-static_cast<float>(x) * static_cast<float>(x) / two_sigma_squared);
       }
     }
-
+    afx::NormalizeKernel(&kernel_);
   }
   std::vector<float> GetKernel() {
     return kernel_;
@@ -62,10 +61,26 @@ class GlowBase {
 
 private:
   std::vector<float> kernel_;
+
+  struct Gaussian {
+    float sigma;
+    unsigned int size;
+    Gaussian() : sigma(0), size(0) {}
+    Gaussian(float sigma, unsigned int size) : sigma(sigma), size(size) {}
+  };
 };
 
 class Glow : public GlowBase {
+ public:
+  // in_image bounds must atleast out_image padded by kernel size
+  void DoGlow(const afx::Image& in_image, afx::Image* out_image) {
+    if (GetKernel().empty()) {
+      throw std::runtime_error("Kernel is not initialized");
+    }
 
+    afx::Convolution convolver;
+    convolver.Seperable(in_image, out_image, GetKernel());
+  }
 
 };
 

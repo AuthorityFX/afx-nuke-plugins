@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_CONVOLVE_H_
-#define INCLUDE_CONVOLVE_H_
+#ifndef INCLUDE_CONVOLUTION_H_
+#define INCLUDE_CONVOLUTION_H_
 
 #include <vector>
 
@@ -20,10 +20,21 @@
 
 namespace afx {
 
-class Convolve {
+void NormalizeKernel(std::vector<float>* kernel, float scale = 1.0f) {
+  float sum = 0.0f;
+  for(std::vector<float>::iterator it = kernel->begin(); it != kernel->end(); ++it) {
+    sum += fabsf(*it);
+  }
+  float nomalize_scale_factor = scale / sum;
+  for(std::vector<float>::iterator it = kernel->begin(); it != kernel->end(); ++it) {
+    *it = *it * nomalize_scale_factor;
+  }
+}
+
+class Convolution {
 public:
-  void ConvolveValid(const afx::Image& in_image, afx::Image* out_image, const std::vector<float>& kernel) {
-    if (!CheckPadding_(in_image.GetBounds(), out_image->GetBounds()), kernel.size() - 1) {
+  void Seperable(const afx::Image& in_image, afx::Image* out_image, const std::vector<float>& kernel) {
+    if (!CheckPadding_(in_image.GetBounds(), out_image->GetBounds(), kernel.size() - 1)) {
       throw std::runtime_error("in_image must be padded by kernel size - 1");
     }
     if (kernel.size() < 2) {
@@ -37,21 +48,11 @@ public:
 
     ImageThreader threader;
     // Convolve rows y valid for out_regoin, x valid for in_region
-    threader.ThreadImageChunks(temp_region, boost::bind(&Convolve::ConvolveRows_, this, _1, boost::cref(in_image), &temp_image, boost::cref(kernel)));
+    threader.ThreadImageChunks(temp_region, boost::bind(&Convolution::ConvolveRows_, this, _1, boost::cref(in_image), &temp_image, boost::cref(kernel)));
     threader.Wait();
     // Convolve columns y and x valid for out_region
-    threader.ThreadImageChunksY(out_region, boost::bind(&Convolve::ConvolveColumns_, this, _1, boost::cref(temp_image), out_image, boost::cref(kernel)));
+    threader.ThreadImageChunksY(out_region, boost::bind(&Convolution::ConvolveColumns_, this, _1, boost::cref(temp_image), out_image, boost::cref(kernel)));
     threader.Wait();
-  }
-  NormalizeKernel(std::vector<float>* kernel, float scale = 1.0f) {
-    float sum = 0.0f;
-    for(std::vector<float>::iterator it = kernel->begin(); it != kernel->end(); ++it) {
-      sum += fabsf(*it);
-    }
-    float nomalize_scale_factor = scale / sum;
-    for(std::vector<float>::iterator it = kernel->begin(); it != kernel->end(); ++it) {
-      *it = *it * nomalize_scale_factor;
-    }
   }
 private:
   bool CheckPadding_(const afx::Bounds& in_region, const afx::Bounds& out_region, unsigned int size) {
@@ -102,4 +103,4 @@ private:
 
 }  //  namespace afx
 
-#endif  // INCLUDE_CONVOLVE_H_
+#endif  // INCLUDE_CONVOLUTION_H_
