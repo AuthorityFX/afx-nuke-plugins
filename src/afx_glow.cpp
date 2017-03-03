@@ -342,7 +342,7 @@ void ThisClass::GetInputRGB(const afx::Bounds& region, const nuke::ImagePlane& i
       } else {
         for (int i = 0; i < 3; ++i) { out.SetVal(fmaxf(in.GetVal(i) * *m_ptr, 0.0f), i); }
       }
-      if (!plane_bnds.CheckBounds(x, y)) {
+      if (!plane_bnds.WithinBounds(x, y)) {
         if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
             y > plane_bnds.y2() + replicate_depth_) {
           for (int i = 0; i < 3; ++i) { out.SetVal(0.0f, i); }
@@ -375,14 +375,14 @@ void ThisClass::GetInput(const afx::Bounds& region, const nuke::ImagePlane& in_p
       } else {
         *out_ptr = fmaxf(*in_ptr * *m_ptr, 0.0f);
       }
-      if (!plane_bnds.CheckBounds(x, y)) {
+      if (!plane_bnds.WithinBounds(x, y)) {
         if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
             y > plane_bnds.y2() + replicate_depth_) {
           *out_ptr = 0.0f;
         }
       }
       out_ptr++;
-      if (plane_bnds.CheckBoundsX(x)) {
+      if (plane_bnds.WithinBoundsX(x)) {
         in_ptr++;
         if (input(iMatte) != nullptr) { m_ptr++; }
       }

@@ -141,7 +141,7 @@ class Bounds {
   __host__ __device__
   unsigned int GetHeight() const { return y2_ - y1_ + 1; }
   __host__ __device__
-  bool CheckBounds(int x, int y) const {
+  bool WithinBounds(int x, int y) const {
     if (x < x1_ || x > x2_ || y < y1_ || y > y2_) {
       return false;
     } else {
@@ -149,7 +149,15 @@ class Bounds {
     }
   }
   __host__ __device__
-  bool CheckBoundsX(int x) const {
+  bool WithinBounds(const Bounds& other) const {
+    if (other.x1_ < x1_ || other.x2_ > x2_ || other.y1_ < y1_ || other.y2_ > y2_) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  __host__ __device__
+  bool WithinBoundsX(int x) const {
     if (x < x1_ || x > x2_) {
       return false;
     } else {
@@ -157,7 +165,7 @@ class Bounds {
     }
   }
   __host__ __device__
-  bool CheckBoundsY(int y) const {
+  bool WithinBoundsY(int y) const {
     if (y < y1_ || y > y2_) {
       return false;
     } else {
