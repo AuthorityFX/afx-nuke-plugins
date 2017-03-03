@@ -110,14 +110,14 @@ void ThisClass::_validate(bool) {
   format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
   proxy_scale_ = static_cast<float>(format_bnds_.GetWidth()) / static_cast<float>(format_f_bnds_.GetWidth());
 
-  m_lerp_ = fmod(afx::Clamp<float>(proxy_scale_ * k_size_, 0.0f, 25.0f), 1.0f);
+  m_lerp_ = fmod(afx::math::Clamp<float>(proxy_scale_ * k_size_, 0.0f, 25.0f), 1.0f);
   m_i_lerp_ = (1.0f - m_lerp_);
-  med_size_f_ = afx::Clamp<float>(proxy_scale_ * k_size_, 0.0f, 25.0f);
+  med_size_f_ = afx::math::Clamp<float>(proxy_scale_ * k_size_, 0.0f, 25.0f);
   med_size_i_ = static_cast<int>(med_size_f_);
   med_size_o_ = static_cast<int>(std::ceil(med_size_f_));
   med_n_i_ = (med_size_i_ * 2 + 1) * (med_size_i_ * 2 + 1);
   med_n_o_ = (med_size_o_ * 2 + 1) * (med_size_o_ * 2 + 1);
-  sharpness_ = afx::Clamp<float>(k_sharpness_, 0.0f, 3.0f);
+  sharpness_ = afx::math::Clamp<float>(k_sharpness_, 0.0f, 3.0f);
 }
 void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
@@ -254,7 +254,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
         std_dev = m_i_lerp_ * std_dev_i + m_lerp_ * std_dev_o;
       }
       // Multiply std_dev by sharpness_ parameter
-      std_dev = afx::Clamp<float>(sharpness_ * 3.0f * std_dev, 0.0f, 1.0f);
+      std_dev = afx::math::Clamp<float>(sharpness_ * 3.0f * std_dev, 0.0f, 1.0f);
       // Lerp median and input value by std_dev
       *out_ptr = (1.0f - std_dev) * median + std_dev * (*in_ptr);
       in_ptr++;

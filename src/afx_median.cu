@@ -148,7 +148,7 @@ void KernelMedian(cudaTextureObject_t tex, float* row_ptr, size_t row_pitch, int
     std_dev = m_i_lerp * std_dev_i + m_lerp * std_dev_o;
   }
   // Multiply std_dev by sharpness_ parameter
-  std_dev = afx::Clamp(sharpness * 3 * std_dev, 0.0f, 1.0f);
+  std_dev = afx::math::Clamp(sharpness * 3 * std_dev, 0.0f, 1.0f);
   // set output pointers
   float* row_out_ptr = reinterpret_cast<float*>(reinterpret_cast<char*>(row_ptr) + x_cuda * sizeof(float));
   // Lerp median and input value by std_dev

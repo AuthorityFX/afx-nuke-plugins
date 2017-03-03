@@ -16,10 +16,14 @@
 
 namespace afx {
 
+namespace math {
+
 template<typename T>
 __host__ __device__
 T Clamp(T value, T min_v, T max_v) {
   return value >= min_v ? value <= max_v ? value : max_v : min_v;
+}
+
 }
 
 class Bounds {
@@ -101,6 +105,13 @@ class Bounds {
     y1_ -= size;
     x2_ += size;
     y2_ += size;
+  }
+  __host__ __device__
+  void ErodeBounds(unsigned int size) {
+    x1_ += size;
+    y1_ += size;
+    x2_ -= size;
+    y2_ -= size;
   }
   __host__ __device__
   void PadBounds(unsigned int x, unsigned int y) {

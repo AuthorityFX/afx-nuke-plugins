@@ -15,6 +15,13 @@
 #include "include/image.h"
 #include "include/threading.h"
 
+enum BorderStyle {
+  Repeat           = 0x01,
+  RepeatFalloff    = 0x02,
+  Mirror           = 0x04,
+  Constant         = 0x08,
+};
+
 namespace afx {
 
 class ExtendBorder {

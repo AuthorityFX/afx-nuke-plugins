@@ -172,10 +172,10 @@ void ThisClass::_validate(bool) {
     format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
     proxy_scale_ = static_cast<float>(format_bnds_.GetWidth()) / static_cast<float>(format_f_bnds_.GetWidth());
 
-    out_falloff_ = fmaxf(1.0f + (1.0f - afx::Clamp(k_out_falloff_, 0.0f, 1.0f)), 0.008);
-    in_falloff_ = afx::Clamp(1.0f + k_in_falloff_, 0.008f, 125.0f);
-    out_dilate_ = 50.0f * afx::Clamp(k_out_dilate_, 0.0f, 1.0f);
-    in_dilate_ = 50.0f * afx::Clamp(k_in_dilate_, 0.0f, 1.0f);
+    out_falloff_ = fmaxf(1.0f + (1.0f - afx::math::Clamp(k_out_falloff_, 0.0f, 1.0f)), 0.008);
+    in_falloff_ = afx::math::Clamp(1.0f + k_in_falloff_, 0.008f, 125.0f);
+    out_dilate_ = 50.0f * afx::math::Clamp(k_out_dilate_, 0.0f, 1.0f);
+    in_dilate_ = 50.0f * afx::math::Clamp(k_in_dilate_, 0.0f, 1.0f);
 
     nuke::ChannelSet add_channels = channels();
     add_channels += nuke::Mask_RGB;
