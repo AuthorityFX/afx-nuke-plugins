@@ -35,9 +35,8 @@ const float* GetPlanePtr(const nuke::ImagePlane& plane, int x, int y, nuke::Chan
   int channel_offset = plane.chanNo(channel);
   return plane.readable() + (plane.bounds().clampy(y) - plane.bounds().y()) * plane.rowStride() + (plane.bounds().clampx(x) - plane.bounds().x()) * plane.colStride() + channel_offset;
 }
-
-std::size_t* GetPlanePitch(const nuke::ImagePlane& plane) {
-  return plane.colStride();
+std::size_t GetPlanePitch(const nuke::ImagePlane& plane) {
+  return static_cast<std::size_t>(plane.rowStride() * sizeof(float));
 }
 
 }  // namespace afx

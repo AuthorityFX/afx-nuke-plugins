@@ -17,6 +17,8 @@
 #include <boost/bind.hpp>
 #include <math.h>
 
+#include "include/image_tools.h"
+
 #include "include/threading.h"
 #include "include/image.h"
 #include "include/nuke_helper.h"
@@ -132,12 +134,31 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
         in_img.MemCpyIn(&source_plane.readable()[source_plane.chanNo(z) * source_plane.chanStride()], source_plane.rowStride() * sizeof(float), in_img.GetBounds());
         out_imgs_.Add(req_pad_bnds);
         out_imgs_.GetBackPtr()->AddAttribute("channel", z);
-
+/*
         afx::WaveletTransform wt;
         afx::Image wavelet_image(req_pad_bnds);
         wt.StationaryWaveletTransformDiagonalOnly(in_img, &wavelet_image, k_level_);
         afx::NoiseMap noise_map;
-        noise_map.MAD(wavelet_image, out_imgs_.GetBackPtr(), k_size_);
+        noise_map.MAD(wavelet_image, out_imgs_.GetBackPtr(), k_size_);*/
+
+
+        afx::Bounds small_region = req_bnds_;
+        small_region.ErodeBounds(200);
+
+        nuke::ImagePlane small_plane(afx::BoundsToBox(small_region), false, z);
+        input(0)->fetchPlane(small_plane);
+        afx::Image small_image(small_region);
+        small_image.MemCpyIn(small_plane.readable(), afx::GetPlanePitch(small_plane));
+
+        for (int y = req_pad_bnds.y1(); y <= req_pad_bnds.y2(); ++y) {
+          float* out_ptr = out_imgs_.GetBackPtr()->GetPtr(req_pad_bnds.x1(), y);
+          for (int x = req_pad_bnds.x1(); x <= req_pad_bnds.x2(); ++x) {
+            *out_ptr++ = 0.1;
+          }
+        }
+
+        afx::BorderExtender extend_borders;
+        extend_borders.RepeatFalloff(small_image, out_imgs_.GetBackPtr(), 0.5);
 
       }
     }

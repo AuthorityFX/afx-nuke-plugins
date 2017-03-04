@@ -76,25 +76,13 @@ public:
       *it = *it / sum;
     }
 
-    afx::Image temp_image_1(region);
-    afx::Image temp_image_2;
-    if (level > 0) { // Don't need second temp image if level is 0
-      temp_image_2.Allocate(region);
-    }
-    const afx::Image* in_ptr = &in_image;
-    afx::Image* out_ptr = &temp_image_2;
-
+    afx::Image temp_image(region);
     ImageThreader threader;
     for (unsigned int i = 0; i <= level; ++i) {
-      if (i == level) {
-        out_ptr = out_image;
-      }
-      threader.ThreadImageChunks(region, boost::bind(&WaveletTransform::StationaryConvolve_X_, this, _1, boost::cref(*in_ptr), &temp_image_1, boost::cref(wavelet), level));
+      threader.ThreadImageChunks(region, boost::bind(&WaveletTransform::StationaryConvolve_X_, this, _1, boost::cref(i == 0 ? in_image : *out_image), &temp_image, boost::cref(wavelet), level));
       threader.Wait();
-      out_ptr->MemCpyIn(temp_image_1.GetPtr(), temp_image_1.GetPitch());
-      threader.ThreadImageChunksY(region, boost::bind(&WaveletTransform::StationaryConvolve_Y_, this, _1, boost::cref(temp_image_1), out_ptr, boost::cref(wavelet), level));
+      threader.ThreadImageChunksY(region, boost::bind(&WaveletTransform::StationaryConvolve_Y_, this, _1, boost::cref(temp_image), out_image, boost::cref(wavelet), level));
       threader.Wait();
-      in_ptr = out_ptr;
     }
   }
 private:

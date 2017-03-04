@@ -206,14 +206,14 @@ void ThisClass::_validate(bool) {
   replicate_depth_ = static_cast<int>(proxy_scale_ * std::max(k_replicate_depth_, 0));
   expand_box_ = k_expand_box_;
 
-  glow_.ComputeGaussSize(size_, softness_, diffusion_, quality_);
+  glow_.CreateKernel(size_, softness_, diffusion_, quality_);
 
-  if (k_expand_box_) { info_.pad(glow_.GetKernelPadding()); }
+  if (k_expand_box_) { info_.pad(glow_.GetRequiredPadSize()); }
 
   info_.black_outside();
 }
 void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
-  unsigned int pad = glow_.GetKernelPadding();
+  unsigned int pad = glow_.GetRequiredPadSize();
   nuke::Box req_box(x + pad, y + pad, r + pad, t + pad);
   input0().request(req_box, channels, count);
   if (input(iMatte) != nullptr) { input(iMatte)->request(req_box, nuke::Mask_Alpha, count); }
@@ -246,19 +246,15 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
     nuke::Guard guard(lock_);
     if (first_time_CPU_) {
       first_time_CPU_ = false;
-
-      glow_.InitKernel(exposure_, &threader_);
-
-      afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetKernelPadding());
+      afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetRequiredPadSize());
       afx::Bounds plane_bnds = glow_bnds;
       plane_bnds.Intersect(afx::InputBounds(input(0)));
 
-      nuke::ImagePlane in_plane(afx::BoundsToBox(plane_bnds), false, channels);  // Create plane "false" = non-packed.
-      nuke::ImagePlane matte_plane(afx::BoundsToBox(plane_bnds), false, nuke::Mask_Alpha);  // Create plane "false" = non-packed.
-      if (aborted()) {
-        threader_.Wait();
-        return;
-      }  // Return if render aborted
+      if (aborted()) { return; }
+
+      // Return if render aborted
+      nuke::ImagePlane in_plane;
+      nuke::ImagePlane matte_plane;
       input0().fetchPlane(in_plane);  // Fetch plane
       if (input(iMatte) != nullptr ) { input(iMatte)->fetchPlane(matte_plane); }  // Fetch matte plane
 
@@ -277,7 +273,12 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
               in_imgs_.Add(glow_bnds);
               in_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
             }
-            threader_.ThreadImageChunks(glow_bnds, boost::bind(&ThisClass::GetInputRGB, this, _1, boost::cref(in_plane), boost::cref(matte_plane), boost::cref(rgb_chan)));
+
+            // Copy planes to afx::Images
+            // Threshold
+            // Extend Borders
+            // do Glow
+
             for (int i = 0; i < 3; ++i) {
               out_imgs_.Add(req_bnds_);
               out_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
@@ -294,18 +295,6 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
         }
       }
 
-      if (aborted()) {
-        threader_.Wait();
-        return;
-      }  // Return if render aborted
-
-      threader_.Wait();
-      for (afx::ImageArray::ptr_list_it it = in_imgs_.GetBegin(); it != in_imgs_.GetEnd(); ++it) {
-        afx::Image* in_ptr = &(*it);
-        afx::Image* out_ptr = out_imgs_.GetPtrByAttribute("channel", in_ptr->GetAttribute("channel"));
-        threader_.AddWork(boost::bind(&afx::Glow::Convolve, &glow_, boost::cref(*in_ptr), out_ptr));
-      }
-      threader_.Wait();
     }
   }  // End first time guard
 

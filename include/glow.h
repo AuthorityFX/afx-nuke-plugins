@@ -55,6 +55,9 @@ class GlowBase {
   std::vector<float> GetKernel() {
     return kernel_;
   }
+  unsigned int GetRequiredPadSize() {
+    return kernel_.size() - 1;
+  }
   unsigned int GetKernelSize() {
     return kernel_.size();
   }
