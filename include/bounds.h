@@ -12,6 +12,8 @@
 
 #include <cuda_runtime.h>
 
+#include <algorithm>
+
 #include "include/settings.h"
 
 namespace afx {
@@ -108,10 +110,12 @@ class Bounds {
   }
   __host__ __device__
   void ErodeBounds(unsigned int size) {
-    x1_ += size;
-    y1_ += size;
-    x2_ -= size;
-    y2_ -= size;
+    unsigned int max_x_size = (GetWidth() + 1) / 2 - 1;
+    unsigned int max_y_size = (GetHeight() + 1) / 2 - 1;
+    x1_ += std::min(size, max_x_size);
+    y1_ += std::min(size, max_x_size);
+    x2_ -= std::min(size, max_y_size);
+    y2_ -= std::min(size, max_y_size);
   }
   __host__ __device__
   void PadBounds(unsigned int x, unsigned int y) {
