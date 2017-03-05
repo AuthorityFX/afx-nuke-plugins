@@ -13,10 +13,13 @@
 #include <ipp.h>
 
 #include <boost/ptr_container/ptr_list.hpp>
-#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <vector>
 
 #include "include/settings.h"
 #include "include/bounds.h"
+#include "include/pixel.h"
 #include "include/threading.h"
 #include "include/attribute.h"
 
@@ -153,6 +156,49 @@ template <class T> class ImageBase : public AttributeBase {
 
 typedef ImageBase<float> Image;
 
+class ImageLayer {
+public:
+  void AddImage(const Bounds& region) {
+    channels_.push_back(boost::shared_ptr<Image>(new Image(region)));
+  }
+  void AddImage(const boost::shared_ptr<Image>& image_ptr) {
+    channels_.push_back(image_ptr);
+  }
+  void MoveImage(const boost::shared_ptr<Image>& image_ptr) {
+    channels_.push_back(boost::move(image_ptr));
+  }
+  Image* operator[](int channel) const {
+    return GetChannel(channel);
+  }
+  Image* GetChannel(int channel) const {
+    if (channel > channels_.size() - 1) {
+      throw std::runtime_error("Channel does not exist");
+    }
+    return channels_[channel].get();
+  }
+  afx::Pixel<const float> GetPixel(int x, int y) const {
+    afx::Pixel<const float> pixel(channels_.size());
+    for (int i = 0; i < channels_.size(); ++i) {
+      const float* ptr = channels_[i].get()->GetPtr(x, y);
+      pixel.SetPtr(ptr, i);
+    }
+    return pixel;
+  }
+  afx::Pixel<float> GetWritePixel(int x, int y) const {
+    afx::Pixel<float> pixel(channels_.size());
+    for (int i = 0; i < channels_.size(); ++i) {
+      float* ptr = channels_[i].get()->GetPtr(x, y);
+      pixel.SetPtr(ptr, i);
+    }
+    return pixel;
+  }
+  void ChannelCount() const {
+    channels_.size();
+  }
+private:
+  std::vector<boost::shared_ptr<Image> > channels_;
+};
+
 class ImageArray : public Array<ImageBase<float> > {
  public:
   void Add(const Bounds& region) {
@@ -163,3 +209,4 @@ class ImageArray : public Array<ImageBase<float> > {
 }  //  namespace afx
 
 #endif  // INCLUDE_IMAGE_H_
+

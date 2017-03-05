@@ -15,7 +15,9 @@
 #include <stdexcept>
 
 #include "include/image.h"
+#include "include/pixel.h"
 #include "include/threading.h"
+#include "include/color_op.h"
 
 namespace afx {
 
@@ -337,6 +339,35 @@ class Compliment {
       }
     }
   }
+};
+
+class Threshold {
+public:
+  void ThresholdLayer(afx::ImageLayer* layer, const afx::Image& mask, float threshold, float falloff) {
+    afx::Bounds region = layer->GetChannel(0)->GetBounds();
+    afx::ImageThreader threader;
+    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdLayerTile_, this, _1, layer, boost::cref(mask), threshold, falloff));
+    threader.Wait();
+  }
+private:
+  void ThresholdLayerTile_(const afx::Bounds& region, afx::ImageLayer* layer, const afx::Image& mask, float threshold, float falloff) {
+    for (int y = region.y1(); y <= region.y2(); ++y) {
+      afx::Pixel<float> pixel;
+      pixel = layer->GetWritePixel(region.x1(), y);
+      const float* mask_ptr = mask.GetPtr(region.x1(), y);
+      for (int x = region.x1(); x <= region.x2(); ++x) {
+        float rgb[3];
+        for (int i = 0; i < 3; ++i) {
+          rgb[i] = pixel[i];
+        }
+        afx::ThresholdColor(rgb, threshold, falloff);
+        for (int i = 0; i < 3; ++i) {
+          pixel[i] = rgb[i] * *mask_ptr;
+        }
+      }
+    }
+  }
+
 };
 
 }  //  namespace afx

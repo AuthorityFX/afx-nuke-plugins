@@ -47,10 +47,10 @@ public:
     afx::Image temp_image(temp_region);
 
     ImageThreader threader;
-    // Convolve rows y valid for out_regoin, x valid for in_region
+    // Convolve rows - y valid for out_region, x valid for in_region
     threader.ThreadImageChunks(temp_region, boost::bind(&Convolution::ConvolveRows_, this, _1, boost::cref(in_image), &temp_image, boost::cref(kernel)));
     threader.Wait();
-    // Convolve columns y and x valid for out_region
+    // Convolve columns - x and y valid for out_region
     threader.ThreadImageChunksY(out_region, boost::bind(&Convolution::ConvolveColumns_, this, _1, boost::cref(temp_image), out_image, boost::cref(kernel)));
     threader.Wait();
   }

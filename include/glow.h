@@ -52,13 +52,13 @@ class GlowBase {
     }
     afx::NormalizeKernel(&kernel_);
   }
-  std::vector<float> GetKernel() {
+  std::vector<float> GetKernel() const {
     return kernel_;
   }
-  unsigned int GetRequiredPadSize() {
+  unsigned int RequiredPadding() const {
     return kernel_.size() - 1;
   }
-  unsigned int GetKernelSize() {
+  unsigned int GetKernelSize() const {
     return kernel_.size();
   }
 

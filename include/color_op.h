@@ -46,6 +46,21 @@ void RGBtoHSV(const float (&rgb)[3], float* hsv);
 void HSVtoRGB(const float (&hsv)[3], float* rgb);
 float SpillSuppression(const float (&rgb)[3], int algorithm, ScreenColor color);
 
+void ThresholdColor(float* rgb, float threshold, float threshold_falloff) {
+  float luma = 0.3f * rgb[0] + 0.59f * rgb[1] + 0.11f * rgb[2];
+  if (luma < threshold) {
+    float scale = powf((luma / threshold), threshold_falloff);
+    for (int i = 0; i < 3; ++i) {
+     rgb[i] = rgb[i] * scale;
+    }
+  }
+}
+void ThresholdValue(float* value, float threshold, float threshold_falloff) {
+  if (*value < threshold) {
+    *value = *value * powf((*value / threshold), threshold_falloff);
+  }
+}
+
 float SoftClip(float value, float clip, float knee) {
   if (value <= 0.0f) { return value; }
   knee = AfxClamp(knee, 0.008f, 125.0f);

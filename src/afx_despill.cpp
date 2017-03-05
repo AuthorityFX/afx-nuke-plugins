@@ -28,7 +28,7 @@ static const char* HELP = "Remove Spill";
 
 enum inputs {
   iSource = 0,
-  iMatte = 1
+  iMask = 1
 };
 
 const char* algorithm_list[8] = {
@@ -166,7 +166,7 @@ void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels,
   nuke::ChannelSet req_channels = channels;
   req_channels += nuke::Mask_RGB;
   input(iSource)->request(x, y, r, t, req_channels, count);  // Only request RGB
-  if (input(iMatte) != nullptr) { input(iMatte)->request(x, y, r, t, nuke::Mask_Alpha, count); }
+  if (input(iMask) != nullptr) { input(iMask)->request(x, y, r, t, nuke::Mask_Alpha, count); }
 }
 void ThisClass::engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row) {
   callCloseAfter(0);
@@ -182,7 +182,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
   row.copy(row, copy_mask, x, r);
 
   nuke::Row m_row(x, r);
-  if (input(iMatte) != nullptr) { m_row.get(*input(iMatte), y, x, r, nuke::Mask_Alpha); }
+  if (input(iMask) != nullptr) { m_row.get(*input(iMask), y, x, r, nuke::Mask_Alpha); }
 
   float rgb[3] = {0, 0, 0};
   afx::Pixel<const float> in_px(3);
@@ -193,7 +193,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
   }
   float one = 1.0f;
   const float* m_ptr = &one;
-  if (input(iMatte) != nullptr) { m_ptr = m_row[nuke::Chan_Alpha] + x; }
+  if (input(iMask) != nullptr) { m_ptr = m_row[nuke::Chan_Alpha] + x; }
   for (int x0 = x; x0 < r; ++x0) {  // Loop through pixels in row
     for (int i = 0; i < 3; i++) { rgb[i] = in_px.GetVal(i); }
     float suppression_matte = 0.0f;
@@ -230,6 +230,6 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
     foreach(z, k_spill_matte_channel_) { *(row.writable(z) + x0) = suppression_matte; }
     in_px++;
     out_px++;
-    if (input(iMatte) != nullptr) { m_ptr++; }
+    if (input(iMask) != nullptr) { m_ptr++; }
   }
 }
