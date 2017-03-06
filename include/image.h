@@ -80,7 +80,7 @@ template <class T> class ImageBase : public AttributeBase {
       dest_ptr = this->GetNextRow(dest_ptr);
     }
   }
-  void MemCpyIn(const T* ptr, size_t pitch, afx::Bounds region) {
+  void MemCpyIn(const T* ptr, std::size_t pitch, afx::Bounds region) {
     const T* source_ptr = ptr;
     T* dest_ptr = GetPtr(region.x1(), region.y1());
     std::size_t size = region.GetWidth() * sizeof(T);
@@ -142,7 +142,7 @@ template <class T> class ImageBase : public AttributeBase {
   T* GetPreviousRow(T* ptr) const {
     return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) - pitch_);
   }
-  size_t GetPitch() const {
+  std::size_t GetPitch() const {
     return pitch_;
   }
   afx::Bounds GetBounds() const {

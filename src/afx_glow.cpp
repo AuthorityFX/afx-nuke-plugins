@@ -214,7 +214,7 @@ void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels,
   unsigned int pad = glow_.RequiredPadding();
   nuke::Box req_box(x + pad, y + pad, r + pad, t + pad);
   input0().request(req_box, channels, count);
-  if (input(iMask) != nullptr) { input(iMask)->request(req_box, nuke::Mask_Alpha, count); }
+  if (input(iMask) != nullptr) { input(iMask)->request(req_box, nuke::Chan_Alpha, count); }
 
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
@@ -245,40 +245,40 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
     if (first_time_CPU_) {
       first_time_CPU_ = false;
       afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.RequiredPadding());
-      afx::Bounds plane_bnds = glow_bnds;
-      plane_bnds.Intersect(afx::InputBounds(input(0)));
+      afx::Bounds plane_bnds = glow_bnds.GetIntersection(afx::InputBounds(input(iSource)));
 
       if (aborted()) { return; }
 
       afx::Image mask_image;
       if (input(iMask) != nullptr ) {
-        nuke::ImagePlane mask_plane;
-        input(iMask)->fetchPlane(mask_plane);
+        afx::Bounds mask_bnds = plane_bnds.GetIntersection(afx::InputBounds(input(iMask)));
         mask_image.Allocate(plane_bnds);
-        mask_image.MemCpyIn(mask_plane.readable(), afx::GetPlanePitch(mask_plane));
+        afx::FetchImage(&mask_image, input(iMask), nuke::Chan_Alpha, mask_bnds);
+        afx::BorderExtender border_extender;
+        border_extender.Constant(&mask_image, 0.5f, mask_bnds);
       }
 
       // Used as input to convolution for all channels
       afx::Image glow_source(glow_bnds);
 
-      nuke::ChannelSet done;
+      nuke::ChannelSet processed_channels;
       foreach(z, channels) {
-        if (!(done & z) && colourIndex(z) < 3) {  // Handle color channels
+        if (!(processed_channels & z) && colourIndex(z) < 3) {  // Handle color channels
           bool has_all_rgb = true;
           nuke::Channel rgb_chan[3];
           for (int i = 0; i < 3; ++i) {
             rgb_chan[i] = brother(z, i);  // Find brother rgb channel
             if (rgb_chan[i] == nuke::Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; }  // If brother does not exist
           }
-          if (has_all_rgb) {
+          if (has_all_rgb && false) { // TODO force per channel
             // Create image layer
             afx::ImageLayer image_layer;
             for (int i = 0; i < 3; ++i) {
-              done += rgb_chan[i];  // Add channel to done channel set
+              processed_channels += rgb_chan[i];  // Add channel to done channel set
               image_layer.AddImage(plane_bnds);
-              nuke::ImagePlane channel_plane;
+              nuke::ImagePlane channel_plane(afx::BoundsToBox(plane_bnds), false, z);
               input(iSource)->fetchPlane(channel_plane);
-              image_layer[i]->MemCpyIn(channel_plane.readable(), afx::GetPlanePitch(channel_plane));
+              image_layer[i]->MemCpyIn(afx::GetPlanePtr(channel_plane), afx::GetPlanePitch(channel_plane));
             }
 
             afx::Threshold thresholder;
@@ -304,17 +304,34 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
             }
           }
         }
-        if (!(done & z)) {  // Handle non color channel
-          done += z;
+        if (!(processed_channels & z)) {  // Handle non color channel
+          processed_channels += z;
 
-          // Copy planes to afx::Images
-          // Threshold
-          // Extend Borders
-          // do Glow
+          afx::FetchImage(&glow_source, input(iSource), z, plane_bnds);
 
+          afx::Threshold thresholder;
+          if (input(iMask) != nullptr) {
+            thresholder.ThresholdImage(&glow_source, mask_image, threshold_, threshold_falloff_, plane_bnds);
+          } else {
+            thresholder.ThresholdImage(&glow_source, threshold_, threshold_falloff_, plane_bnds);
+          }
+
+          out_imgs_.Add(req_bnds_);
+          afx::Image* out_ptr = out_imgs_.GetBackPtr();
+          out_ptr->AddAttribute("channel", z);
+
+          // Extend boarders from plane_bnds to glow_bnds
+          afx::BorderExtender border_extender;
+          if (replicate_) {
+            border_extender.RepeatFalloff(&glow_source, replicate_falloff_, plane_bnds);
+          } else {
+            border_extender.Constant(&glow_source, 0.0f, plane_bnds);
+          }
+          //out_ptr->MemCpyIn(glow_source, req_bnds_);
+          // Do glow
+          glow_.DoGlow(glow_source, out_ptr);
         }
       }
-
     }
   }  // End first time guard
 

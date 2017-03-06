@@ -78,6 +78,27 @@ public:
     out_image->MemCpyIn(in_image);
     threader.Wait();
   }
+  void Constant(afx::Image* image, float value, afx::Bounds in_region) {
+    afx::Bounds out_region = image->GetBounds();
+
+    afx::Bounds left_region, right_region, bottom_region, top_region;
+    CalculateBounds_(in_region, out_region, &left_region, &right_region, &bottom_region, &top_region);
+
+    afx::ImageThreader threader;
+    if (out_region.x1() < in_region.x1()) {
+      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
+    }
+    if (out_region.x2() > in_region.x2()) {
+      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
+    }
+    if (out_region.y1() < in_region.y1()) {
+      threader.ThreadImageChunks(bottom_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
+    }
+    if (out_region.y2() > in_region.y2()) {
+      threader.ThreadImageChunks(top_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
+    }
+    threader.Wait();
+  }
   void Repeat(const afx::Image& in_image, afx::Image* out_image) {
     afx::Bounds in_region = in_image.GetBounds();
     afx::Bounds out_region = out_image->GetBounds();
@@ -123,6 +144,29 @@ public:
       threader.ThreadImageChunksY(top_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(in_image), out_image, falloff, TopBorder));
     }
     out_image->MemCpyIn(in_image.GetPtr(), in_image.GetPitch(), in_image.GetBounds());
+    threader.Wait();
+  }
+  void RepeatFalloff(afx::Image* image, float falloff, afx::Bounds in_region) {
+    afx::Bounds out_region = image->GetBounds();
+
+    afx::Bounds left_region, right_region, bottom_region, top_region;
+    CalculateBounds_(in_region, out_region, &left_region, &right_region, &bottom_region, &top_region);
+
+    falloff *= 0.1f; // Falloff between 0 - 1. Scale by 0.1 for distance function
+
+    afx::ImageThreader threader;
+    if (out_region.x1() < in_region.x1()) {
+      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(*image), image, falloff, LeftBorder));
+    }
+    if (out_region.x2() > in_region.x2()) {
+      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(*image), image, falloff, RightBorder));
+    }
+    if (out_region.y1() < in_region.y1()) {
+      threader.ThreadImageChunksY(bottom_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(*image), image, falloff, BottomBorder));
+    }
+    if (out_region.y2() > in_region.y2()) {
+      threader.ThreadImageChunksY(top_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(*image), image, falloff, TopBorder));
+    }
     threader.Wait();
   }
   void Mirror(const afx::Image& in_image, afx::Image* out_image) {
@@ -349,6 +393,28 @@ public:
     threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdLayerTile_, this, _1, layer, boost::cref(mask), threshold, falloff));
     threader.Wait();
   }
+  void ThresholdImage(afx::Image* image, float threshold, float falloff) {
+    afx::Bounds region = image->GetBounds();
+    afx::ImageThreader threader;
+    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, threshold, falloff));
+    threader.Wait();
+  }
+  void ThresholdImage(afx::Image* image, const afx::Image& mask, float threshold, float falloff) {
+    afx::Bounds region = image->GetBounds();
+    afx::ImageThreader threader;
+    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, boost::cref(mask), threshold, falloff));
+    threader.Wait();
+  }
+  void ThresholdImage(afx::Image* image, float threshold, float falloff, afx::Bounds region) {
+    afx::ImageThreader threader;
+    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, threshold, falloff));
+    threader.Wait();
+  }
+  void ThresholdImage(afx::Image* image, const afx::Image& mask, float threshold, float falloff, afx::Bounds region) {
+    afx::ImageThreader threader;
+    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, boost::cref(mask), threshold, falloff));
+    threader.Wait();
+  }
 private:
   void ThresholdLayerTile_(const afx::Bounds& region, afx::ImageLayer* layer, const afx::Image& mask, float threshold, float falloff) {
     for (int y = region.y1(); y <= region.y2(); ++y) {
@@ -364,6 +430,41 @@ private:
         for (int i = 0; i < 3; ++i) {
           pixel[i] = rgb[i] * *mask_ptr;
         }
+      }
+    }
+  }
+  void ThresholdLayerTile_(const afx::Bounds& region, afx::ImageLayer* layer, float threshold, float falloff) {
+    for (int y = region.y1(); y <= region.y2(); ++y) {
+      afx::Pixel<float> pixel;
+      pixel = layer->GetWritePixel(region.x1(), y);
+      for (int x = region.x1(); x <= region.x2(); ++x) {
+        float rgb[3];
+        for (int i = 0; i < 3; ++i) {
+          rgb[i] = pixel[i];
+        }
+        afx::ThresholdColor(rgb, threshold, falloff);
+        for (int i = 0; i < 3; ++i) {
+          pixel[i] = rgb[i];
+        }
+      }
+    }
+  }
+  void ThresholdImageTile_(const afx::Bounds& region, afx::Image* image, const afx::Image& mask, float threshold, float falloff) {
+    for (int y = region.y1(); y <= region.y2(); ++y) {
+      float* in_ptr = image->GetPtr(region.x1(), y);
+      const float* mask_ptr = mask.GetPtr(region.x1(), y);
+      for (int x = region.x1(); x <= region.x2(); ++x) {
+        afx::ThresholdValue(in_ptr, threshold, falloff);
+        *in_ptr++ *= *mask_ptr++;
+      }
+    }
+  }
+  void ThresholdImageTile_(const afx::Bounds& region, afx::Image* image, float threshold, float falloff) {
+    for (int y = region.y1(); y <= region.y2(); ++y) {
+      float* in_ptr = image->GetPtr(region.x1(), y);
+      for (int x = region.x1(); x <= region.x2(); ++x) {
+        afx::ThresholdValue(in_ptr, threshold, falloff);
+        in_ptr++;
       }
     }
   }

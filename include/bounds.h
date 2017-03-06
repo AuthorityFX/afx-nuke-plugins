@@ -140,6 +140,12 @@ class Bounds {
     return true;
   }
   __host__ __device__
+  Bounds GetIntersection(const Bounds& other) const {
+    afx::Bounds new_bounds = *this;
+    new_bounds.Intersect(other);
+    return new_bounds;
+  }
+  __host__ __device__
   Bounds GetPadBounds(unsigned int size) const {
     Bounds padded = *this;
     padded.PadBounds(size);

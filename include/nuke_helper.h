@@ -15,6 +15,7 @@
 #include <DDImage/ImagePlane.h>
 
 #include "include/bounds.h"
+#include "include/image.h"
 
 namespace nuke = DD::Image;
 
@@ -26,11 +27,23 @@ afx::Bounds BoxToBounds(nuke::Box box) {
 nuke::Box BoundsToBox(afx::Bounds bnds) {
   return nuke::Box(bnds.x1(), bnds.y1(), bnds.x2() + 1, bnds.y2() + 1);
 }
-
 afx::Bounds InputBounds(nuke::Iop* input) {
   return afx::BoxToBounds(input->info().box());
 }
-
+void FetchImage(afx::Image* image, nuke::Iop* input, nuke::Channel channel) {
+  nuke::ImagePlane channel_plane(afx::BoundsToBox(image->GetBounds()), false, channel);
+  input->fetchPlane(channel_plane);
+  image->MemCpyIn(channel_plane.readable(), channel_plane.rowStride() * sizeof(float));
+}
+void FetchImage(afx::Image* image, nuke::Iop* input, nuke::Channel channel, afx::Bounds plane_bounds) {
+  nuke::ImagePlane channel_plane(afx::BoundsToBox(plane_bounds), false, channel);
+  input->fetchPlane(channel_plane);
+  image->MemCpyIn(channel_plane.readable(), channel_plane.rowStride() * sizeof(float), plane_bounds);
+}
+const float* GetPlanePtr(const nuke::ImagePlane& plane, nuke::Channel channel = nuke::Chan_Black) {
+  int channel_offset = plane.chanNo(channel);
+  return plane.readable() + channel_offset;
+}
 const float* GetPlanePtr(const nuke::ImagePlane& plane, int x, int y, nuke::Channel channel = nuke::Chan_Black) {
   int channel_offset = plane.chanNo(channel);
   return plane.readable() + (plane.bounds().clampy(y) - plane.bounds().y()) * plane.rowStride() + (plane.bounds().clampx(x) - plane.bounds().x()) * plane.colStride() + channel_offset;

@@ -43,7 +43,7 @@ public:
     afx::Bounds in_region = in_image.GetBounds();
     afx::Bounds out_region = out_image->GetBounds();
     afx::Bounds temp_region = in_region;
-    temp_region.SetX(in_region.x1(), in_region.x2());
+    temp_region.SetX(out_region.x1(), out_region.x2());
     afx::Image temp_image(temp_region);
 
     ImageThreader threader;
