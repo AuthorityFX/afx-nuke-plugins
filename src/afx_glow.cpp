@@ -206,14 +206,14 @@ void ThisClass::_validate(bool) {
   replicate_depth_ = static_cast<int>(proxy_scale_ * std::max(k_replicate_depth_, 0));
   expand_box_ = k_expand_box_;
 
-  glow_.ComputeGaussSize(size_, softness_, diffusion_, quality_);
+  glow_.CreateKernel(size_, softness_, diffusion_, quality_);
 
-  if (k_expand_box_) { info_.pad(glow_.GetKernelPadding()); }
+  if (k_expand_box_) { info_.pad(glow_.GetRequiredPadding()); }
 
   info_.black_outside();
 }
 void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
-  unsigned int pad = glow_.GetKernelPadding();
+  unsigned int pad = glow_.GetRequiredPadding();
   nuke::Box req_box(x + pad, y + pad, r + pad, t + pad);
   input0().request(req_box, channels, count);
   if (input(iMatte) != nullptr) { input(iMatte)->request(req_box, nuke::Mask_Alpha, count); }
@@ -249,7 +249,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
 
       glow_.CreateKerneImage(exposure_, &threader_);
 
-      afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetKernelPadding());
+      afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetRequiredPadding());
       afx::Bounds plane_bnds = glow_bnds;
       plane_bnds.Intersect(afx::InputBounds(input(0)));
 
@@ -303,6 +303,12 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
       for (afx::ImageArray::ptr_list_it it = in_imgs_.GetBegin(); it != in_imgs_.GetEnd(); ++it) {
         afx::Image* in_ptr = &(*it);
         afx::Image* out_ptr = out_imgs_.GetPtrByAttribute("channel", in_ptr->GetAttribute("channel"));
+        for (int y = out_ptr->GetBounds().y1(); y <= out_ptr->GetBounds().y2(); ++y) {
+          float* ptr = out_ptr->GetPtr(out_ptr->GetBounds().x1(), y);
+          for (int x = out_ptr->GetBounds().x1(); x <= out_ptr->GetBounds().x2(); ++x) {
+            *ptr++ = 0.5;
+          }
+        }
         threader_.AddWork(boost::bind(&afx::Glow::Convolve, &glow_, boost::cref(*in_ptr), out_ptr));
       }
       threader_.Wait();
@@ -342,7 +348,7 @@ void ThisClass::GetInputRGB(const afx::Bounds& region, const nuke::ImagePlane& i
       } else {
         for (int i = 0; i < 3; ++i) { out.SetVal(fmaxf(in.GetVal(i) * *m_ptr, 0.0f), i); }
       }
-      if (!plane_bnds.CheckBounds(x, y)) {
+      if (!plane_bnds.WithinBounds(x, y)) {
         if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
             y > plane_bnds.y2() + replicate_depth_) {
           for (int i = 0; i < 3; ++i) { out.SetVal(0.0f, i); }
@@ -375,14 +381,14 @@ void ThisClass::GetInput(const afx::Bounds& region, const nuke::ImagePlane& in_p
       } else {
         *out_ptr = fmaxf(*in_ptr * *m_ptr, 0.0f);
       }
-      if (!plane_bnds.CheckBounds(x, y)) {
+      if (!plane_bnds.WithinBounds(x, y)) {
         if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
             y > plane_bnds.y2() + replicate_depth_) {
           *out_ptr = 0.0f;
         }
       }
       out_ptr++;
-      if (plane_bnds.CheckBoundsX(x)) {
+      if (plane_bnds.WithinBoundsX(x)) {
         in_ptr++;
         if (input(iMatte) != nullptr) { m_ptr++; }
       }

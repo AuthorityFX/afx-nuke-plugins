@@ -25,6 +25,7 @@
 #include <algorithm>
 
 #include "include/settings.h"
+#include "include/convolution.h"
 #include "include/cuda_helper.h"
 #include "include/bounds.h"
 #include "include/image.h"
@@ -169,7 +170,7 @@ class GlowBase {
   std::vector<float> GetKernel() const {
     return kernel_;
   }
-  unsigned int RequiredPadding() const {
+  unsigned int GetRequiredPadding() const {
     return kernel_.size() - 1;
   }
   unsigned int GetKernelSize() const {
@@ -192,7 +193,7 @@ class Glow : public GlowBase {
  private:
   Image kernel_image_;
 
-  void CreateKernelTile_(const Bounds& region) {
+  void CreateKernelTile_(const Bounds& region, float gain) {
     int kernel_size_minus_1 = GetKernelSize() - 1;
     for (int y = region.y1(); y <= region.y2(); ++y) {
       int kernel_y = kernel_size_minus_1 - y;
@@ -202,7 +203,7 @@ class Glow : public GlowBase {
       float* up_right_ptr = kernel_image_.GetPtr(kernel_image_.GetBounds().x2() - region.x1(), kernel_image_.GetBounds().y2() - y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
         int kernel_x = kernel_size_minus_1 - x;
-        float value = kernel_[kernel_x] * kernel_[kernel_y];
+        float value = gain * kernel_[kernel_x] * kernel_[kernel_y];
         // Write to all quadrants of the kernel image
         // Increment pointer for quads left of middle. Decrement for quads right of middle
         *low_left_ptr++ = value;
@@ -226,7 +227,14 @@ class Glow : public GlowBase {
     afx::Bounds kernel_region(0, 0, 2 * GetKernelSize() - 1, 2 * GetKernelSize() - 1);
     afx::Bounds lower_left_quad_region(0, 0, GetKernelSize() - 1, GetKernelSize() - 1);
     kernel_image_.Allocate(kernel_region);
-    threader->ThreadImageChunks(lower_left_quad_region, boost::bind(&Glow::CreateKernelTile_, this, _1));
+    float gain = 2.0f * powf(2.0f, exposure);
+    for (int y = kernel_region.y1(); y <= kernel_region.y2(); ++y) {
+      float* ptr = kernel_image_.GetPtr(kernel_region.x1(), y);
+      for (int x = kernel_region.x1(); x <= kernel_region.x2(); ++x) {
+        *ptr++ = 0;
+      }
+    }
+    threader->ThreadImageChunks(lower_left_quad_region, boost::bind(&Glow::CreateKernelTile_, this, _1, gain));
     threader->Wait();
   }
 
@@ -245,7 +253,6 @@ class Glow : public GlowBase {
       buffer_ptr_ = nullptr;
     }
   }
-  int GetKernelPadding() const { return max_gauss_size_ - 1; }
 
 private:
   Ipp8u* buffer_ptr_;
