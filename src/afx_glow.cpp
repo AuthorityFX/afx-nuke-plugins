@@ -42,7 +42,7 @@ static const char* HELP = "Glow";
 
 enum inputs {
   iSource = 0,
-  iMask = 1
+  iMatte = 1
 };
 
 class ThisClass : public nuke::Iop {
@@ -56,13 +56,13 @@ class ThisClass : public nuke::Iop {
   float k_diffusion_;
   float k_quality_;
   bool k_replicate_;
-  float k_replicate_falloff_;
+  int k_replicate_depth_;
   bool k_expand_box_;
 
   // members to store processed knob values
   float exposure_, threshold_, threshold_falloff_, size_, softness_, diffusion_, quality_;
   bool replicate_, expand_box_;
-  float replicate_falloff_;
+  int replicate_depth_;
 
   afx::Glow glow_;
 
@@ -86,6 +86,9 @@ class ThisClass : public nuke::Iop {
 
   void ProcessCUDA(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
   void ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke::Row& row);
+
+  void GetInputRGB(const afx::Bounds& region, const nuke::ImagePlane& in_plane, const nuke::ImagePlane& matte_plane, const nuke::Channel (&chan_ref)[3]);
+  void GetInput(const afx::Bounds& region, const nuke::ImagePlane& in_plane, const nuke::ImagePlane& matte_plane, nuke::Channel z);
 
  public:
   explicit ThisClass(Node* node);
@@ -118,7 +121,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
   k_diffusion_ = 0.5f;
   k_quality_ = 0.5f;
   k_replicate_ = false;
-  k_replicate_falloff_ = 0.5;
+  k_replicate_depth_ = 5;
   k_expand_box_ = false;
 }
 void ThisClass::knobs(nuke::Knob_Callback f) {
@@ -154,10 +157,9 @@ void ThisClass::knobs(nuke::Knob_Callback f) {
   nuke::Tooltip(f, "Replicate borders");
   nuke::SetFlags(f, nuke::Knob::STARTLINE);
 
-  nuke::Float_knob(f, &k_replicate_falloff_, "replicate_falloff", "Replicate Falloff");
-  nuke::Tooltip(f, "Replicate Falloff");
-  nuke::ClearFlags(f, nuke::Knob::STARTLINE);
-  nuke::SetRange(f, 0, 1);
+  nuke::Int_knob(f, &k_replicate_depth_, "replicate_depth", "Replicate Depth");
+  nuke::Tooltip(f, "Replicate depth");
+  nuke::SetRange(f, 0, 25);
 
   nuke::Bool_knob(f, &k_expand_box_, "expand_box", "Expand Box");
   nuke::Tooltip(f, "Expand box");
@@ -201,20 +203,20 @@ void ThisClass::_validate(bool) {
   diffusion_ = afx::AfxClamp<float>(k_diffusion_, 0.0, 1.0f);
   quality_ = afx::AfxClamp<float>(k_quality_, 0.0f, 1.0f);
   replicate_ = k_replicate_;
-  replicate_falloff_ = k_replicate_falloff_;
+  replicate_depth_ = static_cast<int>(proxy_scale_ * std::max(k_replicate_depth_, 0));
   expand_box_ = k_expand_box_;
 
-  glow_.CreateKernel(size_, softness_, diffusion_, quality_);
+  glow_.ComputeGaussSize(size_, softness_, diffusion_, quality_);
 
-  if (k_expand_box_) { info_.pad(glow_.RequiredPadding()); }
+  if (k_expand_box_) { info_.pad(glow_.GetKernelPadding()); }
 
   info_.black_outside();
 }
 void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
-  unsigned int pad = glow_.RequiredPadding();
+  unsigned int pad = glow_.GetKernelPadding();
   nuke::Box req_box(x + pad, y + pad, r + pad, t + pad);
   input0().request(req_box, channels, count);
-  if (input(iMask) != nullptr) { input(iMask)->request(req_box, nuke::Chan_Alpha, count); }
+  if (input(iMatte) != nullptr) { input(iMatte)->request(req_box, nuke::Mask_Alpha, count); }
 
   req_bnds_.SetBounds(x, y, r - 1, t - 1);
 }
@@ -244,94 +246,66 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
     nuke::Guard guard(lock_);
     if (first_time_CPU_) {
       first_time_CPU_ = false;
-      afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.RequiredPadding());
-      afx::Bounds plane_bnds = glow_bnds.GetIntersection(afx::InputBounds(input(iSource)));
 
-      if (aborted()) { return; }
+      glow_.CreateKerneImage(exposure_, &threader_);
 
-      afx::Image mask_image;
-      if (input(iMask) != nullptr ) {
-        afx::Bounds mask_bnds = plane_bnds.GetIntersection(afx::InputBounds(input(iMask)));
-        mask_image.Allocate(plane_bnds);
-        afx::FetchImage(&mask_image, input(iMask), nuke::Chan_Alpha, mask_bnds);
-        afx::BorderExtender border_extender;
-        border_extender.Constant(&mask_image, 0.5f, mask_bnds);
-      }
+      afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetKernelPadding());
+      afx::Bounds plane_bnds = glow_bnds;
+      plane_bnds.Intersect(afx::InputBounds(input(0)));
 
-      // Used as input to convolution for all channels
-      afx::Image glow_source(glow_bnds);
+      nuke::ImagePlane in_plane(afx::BoundsToBox(plane_bnds), false, channels);  // Create plane "false" = non-packed.
+      nuke::ImagePlane matte_plane(afx::BoundsToBox(plane_bnds), false, nuke::Mask_Alpha);  // Create plane "false" = non-packed.
+      if (aborted()) {
+        threader_.Wait();
+        return;
+      }  // Return if render aborted
+      input0().fetchPlane(in_plane);  // Fetch plane
+      if (input(iMatte) != nullptr ) { input(iMatte)->fetchPlane(matte_plane); }  // Fetch matte plane
 
-      nuke::ChannelSet processed_channels;
-      foreach(z, channels) {
-        if (!(processed_channels & z) && colourIndex(z) < 3) {  // Handle color channels
+      nuke::ChannelSet done;
+      foreach(z, in_plane.channels()) {
+        if (!(done & z) && colourIndex(z) < 3) {  // Handle color channels
           bool has_all_rgb = true;
           nuke::Channel rgb_chan[3];
           for (int i = 0; i < 3; ++i) {
             rgb_chan[i] = brother(z, i);  // Find brother rgb channel
             if (rgb_chan[i] == nuke::Chan_Black || !(channels & rgb_chan[i])) { has_all_rgb = false; }  // If brother does not exist
           }
-          if (has_all_rgb && false) { // TODO force per channel
-            // Create image layer
-            afx::ImageLayer image_layer;
+          if (has_all_rgb) {
             for (int i = 0; i < 3; ++i) {
-              processed_channels += rgb_chan[i];  // Add channel to done channel set
-              image_layer.AddImage(plane_bnds);
-              nuke::ImagePlane channel_plane(afx::BoundsToBox(plane_bnds), false, z);
-              input(iSource)->fetchPlane(channel_plane);
-              image_layer[i]->MemCpyIn(afx::GetPlanePtr(channel_plane), afx::GetPlanePitch(channel_plane));
+              done += rgb_chan[i];  // Add channel to done channel set
+              in_imgs_.Add(glow_bnds);
+              in_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
             }
-
-            afx::Threshold thresholder;
-            thresholder.ThresholdLayer(&image_layer, mask_image, threshold_, threshold_falloff_);
-
+            threader_.ThreadImageChunks(glow_bnds, boost::bind(&ThisClass::GetInputRGB, this, _1, boost::cref(in_plane), boost::cref(matte_plane), boost::cref(rgb_chan)));
             for (int i = 0; i < 3; ++i) {
-              afx::Image* image_ptr = image_layer[i];
-
-              // Add output image for channel
               out_imgs_.Add(req_bnds_);
-              afx::Image* out_ptr = out_imgs_.GetBackPtr();
-              out_ptr->AddAttribute("channel", rgb_chan[i]);
-
-              // Extend boarders from plane_bnds to glow_bnds
-              afx::BorderExtender border_extender;
-              if (replicate_) {
-                border_extender.RepeatFalloff(*image_ptr, &glow_source, replicate_falloff_);
-              } else {
-                border_extender.Constant(*image_ptr, &glow_source, 0.0f);
-              }
-              // Do glow
-              glow_.DoGlow(glow_source, out_ptr);
+              out_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
             }
           }
         }
-        if (!(processed_channels & z)) {  // Handle non color channel
-          processed_channels += z;
-
-          afx::FetchImage(&glow_source, input(iSource), z, plane_bnds);
-
-          afx::Threshold thresholder;
-          if (input(iMask) != nullptr) {
-            thresholder.ThresholdImage(&glow_source, mask_image, threshold_, threshold_falloff_, plane_bnds);
-          } else {
-            thresholder.ThresholdImage(&glow_source, threshold_, threshold_falloff_, plane_bnds);
-          }
-
+        if (!(done & z)) {  // Handle non color channel
+          done += z;
+          in_imgs_.Add(glow_bnds);
+          in_imgs_.GetBackPtr()->AddAttribute("channel", z);
+          threader_.ThreadImageChunks(glow_bnds, boost::bind(&ThisClass::GetInput, this, _1, boost::cref(in_plane), boost::cref(matte_plane), z));
           out_imgs_.Add(req_bnds_);
-          afx::Image* out_ptr = out_imgs_.GetBackPtr();
-          out_ptr->AddAttribute("channel", z);
-
-          // Extend boarders from plane_bnds to glow_bnds
-          afx::BorderExtender border_extender;
-          if (replicate_) {
-            border_extender.RepeatFalloff(&glow_source, replicate_falloff_, plane_bnds);
-          } else {
-            border_extender.Constant(&glow_source, 0.0f, plane_bnds);
-          }
-          //out_ptr->MemCpyIn(glow_source, req_bnds_);
-          // Do glow
-          glow_.DoGlow(glow_source, out_ptr);
+          out_imgs_.GetBackPtr()->AddAttribute("channel", z);
         }
       }
+
+      if (aborted()) {
+        threader_.Wait();
+        return;
+      }  // Return if render aborted
+
+      threader_.Wait();
+      for (afx::ImageArray::ptr_list_it it = in_imgs_.GetBegin(); it != in_imgs_.GetEnd(); ++it) {
+        afx::Image* in_ptr = &(*it);
+        afx::Image* out_ptr = out_imgs_.GetPtrByAttribute("channel", in_ptr->GetAttribute("channel"));
+        threader_.AddWork(boost::bind(&afx::Glow::Convolve, &glow_, boost::cref(*in_ptr), out_ptr));
+      }
+      threader_.Wait();
     }
   }  // End first time guard
 
@@ -339,5 +313,79 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
 
   foreach(z, channels) {
     out_imgs_.GetPtrByAttribute("channel", z)->MemCpyOut(row.writable(z) + x, row_bnds.GetWidth() * sizeof(float), row_bnds);
+  }
+}
+
+void ThisClass::GetInputRGB(const afx::Bounds& region, const nuke::ImagePlane& in_plane, const nuke::ImagePlane& matte_plane, const nuke::Channel (&rgb_chan)[3]) {
+  afx::Bounds plane_bnds = afx::BoxToBounds(in_plane.bounds());
+  afx::Pixel<const float> in(3);
+  afx::Pixel<float> out(3);
+  const float one = 1.0f;
+  const float* m_ptr = &one;
+  for (int y = region.y1(); y <= region.y2(); ++y) {
+    for (int i = 0; i < 3; ++i) {
+      in.SetPtr(&in_plane.readable()[in_plane.chanNo(rgb_chan[i]) * in_plane.chanStride() + in_plane.rowStride() * (plane_bnds.ClampY(y) - plane_bnds.y1()) +
+                plane_bnds.ClampX(region.x1()) - plane_bnds.x1()], i);
+      out.SetPtr(in_imgs_.GetPtrByAttribute("channel", rgb_chan[i])->GetPtr(region.x1(), y), i);
+    }
+    if (input(iMatte) != nullptr) { m_ptr =
+                                            &matte_plane.readable()[matte_plane.chanNo(nuke::Chan_Alpha) * matte_plane.chanStride() + matte_plane.rowStride() *
+                                            (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
+                                  }
+    for (int x = region.x1(); x <= region.x2(); ++x) {
+      float luma = 0.3f * in.GetVal(0) + 0.59f * in.GetVal(1) + 0.11f * in.GetVal(2);
+      if (luma < threshold_) {
+        float scale = powf((luma / threshold_), threshold_falloff_);
+        for (int i = 0; i < 3; ++i) {
+          out.SetVal(fmaxf(in.GetVal(i) * scale * *m_ptr, 0.0f), i);
+        }
+      } else {
+        for (int i = 0; i < 3; ++i) { out.SetVal(fmaxf(in.GetVal(i) * *m_ptr, 0.0f), i); }
+      }
+      if (!plane_bnds.CheckBounds(x, y)) {
+        if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
+            y > plane_bnds.y2() + replicate_depth_) {
+          for (int i = 0; i < 3; ++i) { out.SetVal(0.0f, i); }
+        }
+      }
+      out++;
+      if (x >= plane_bnds.x1() && x < plane_bnds.x2()) {
+        in++;
+        if (input(iMatte) != nullptr) { m_ptr++; }
+      }
+    }
+  }
+}
+
+void ThisClass::GetInput(const afx::Bounds& region, const nuke::ImagePlane& in_plane, const nuke::ImagePlane& matte_plane, nuke::Channel z) {
+  afx::Bounds plane_bnds = afx::BoxToBounds(in_plane.bounds());
+  const float one = 1.0f;
+  const float* m_ptr = &one;
+  for (int y = region.y1(); y <= region.y2(); ++y) {
+    const float* in_ptr = &in_plane.readable()[in_plane.chanNo(z) * in_plane.chanStride() + in_plane.rowStride() * (plane_bnds.ClampY(y) - plane_bnds.y1()) +
+                          plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
+    if (input(iMatte) != nullptr) { m_ptr =
+                                            &matte_plane.readable()[matte_plane.chanNo(nuke::Chan_Alpha) * matte_plane.chanStride() + matte_plane.rowStride() *
+                                            (plane_bnds.ClampY(y) - plane_bnds.y1()) + plane_bnds.ClampX(region.x1()) - plane_bnds.x1()];
+                                  }
+    float* out_ptr = in_imgs_.GetPtrByAttribute("channel", z)->GetPtr(region.x1(), y);
+    for (int x = region.x1(); x <= region.x2(); ++x) {
+      if (*in_ptr < threshold_) {
+        *out_ptr = fmaxf(*in_ptr * powf((*in_ptr / threshold_), threshold_falloff_) * *m_ptr, 0.0f);
+      } else {
+        *out_ptr = fmaxf(*in_ptr * *m_ptr, 0.0f);
+      }
+      if (!plane_bnds.CheckBounds(x, y)) {
+        if (!replicate_ || x < plane_bnds.x1() - replicate_depth_ || x > plane_bnds.x2() + replicate_depth_ || y < plane_bnds.y1() - replicate_depth_ ||
+            y > plane_bnds.y2() + replicate_depth_) {
+          *out_ptr = 0.0f;
+        }
+      }
+      out_ptr++;
+      if (plane_bnds.CheckBoundsX(x)) {
+        in_ptr++;
+        if (input(iMatte) != nullptr) { m_ptr++; }
+      }
+    }
   }
 }
