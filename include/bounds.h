@@ -37,6 +37,13 @@ class Bounds {
   Bounds() : x1_(0), y1_(0), x2_(0), y2_(0) {}
   __host__ __device__
   Bounds(int x1, int y1, int x2, int y2) :  x1_(x1), y1_(y1), x2_(x2), y2_(y2) {}
+  __host__ __device__
+  Bounds(unsigned int width, unsigned int height) {
+    x1_ = 0;
+    y1_ = 0;
+    x2_ = width > 0 ? width - 1 : 0;
+    y2_ = height > 0 ? height - 1 : 0;
+  }
 
   __host__ __device__
   bool operator==(const Bounds& other) {

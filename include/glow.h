@@ -18,6 +18,7 @@
 #include <ippi.h>
 
 #include <boost/atomic.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <cuda.h>
 #include <cufft.h>
 
@@ -25,7 +26,6 @@
 #include <algorithm>
 
 #include "include/settings.h"
-#include "include/convolution.h"
 #include "include/cuda_helper.h"
 #include "include/bounds.h"
 #include "include/image.h"
@@ -138,124 +138,172 @@ class FindFFTSize {
 
 
 class GlowBase {
- public:
-  void CreateKernel(float size, float softness, float falloff, float quality, unsigned int iterations = 200) {
-    std::vector<Gaussian> gaussians;
-    const float inner_size = (1.0f + 5.0f * softness) / 6.0f;
-    unsigned int last_size = 0;
-    for (int i = 0; i < iterations; ++i) {
-      float lookup = static_cast<float>(i) / static_cast<float>(iterations - 1);
-      float mapped_quality = cos(static_cast<float>(M_PI) * 0.5f * lookup) * (1.0f - quality) + quality;
-      float sigma = powf(lookup, 1.0f / falloff) * (fmaxf(size, inner_size) - inner_size) + inner_size;
-      unsigned int size  = std::max((static_cast<int>(ceilf(sigma * mapped_quality * (6.0f - 1.0f) + 1.0f)) ) | 1, 3) / 2;
-      if (last_size > size) { size = last_size; }
-      last_size = size;
-      gaussians.push_back(Gaussian(sigma, size));
-    }
+ protected:
+  static const int iterations_ = 200;
+  float** gauss_ptr_ptr_;
+  float* sigma_ptr_;  // Glow size
+  int* gauss_size_ptr_;  // Size of half gauss + 1
 
-    kernel_.clear();
-    kernel_.resize(gaussians.back().size);
-    float sqrt_of_two_pi = sqrtf(2.0f * static_cast<float>(M_PI));
-    for(std::vector<Gaussian>::iterator it = gaussians.begin(); it < gaussians.end(); ++it) {
-      unsigned int size = (*it).size;
-      float sigma = (*it).sigma;
-      float two_sigma_squared = 2.0f * sigma * sigma;
-      float a = 1.0f / (sigma * sqrt_of_two_pi);
-      for (int x = 0; x < size; ++x) {
-        kernel_[x] += a * expf(-static_cast<float>(x) * static_cast<float>(x) / two_sigma_squared);
+  int max_gauss_size_;  // Max size of guass_size_
+
+  void AllocateGaussians_() {
+    DisposeGaussians_();
+    for (int i = 0; i < iterations_; ++i) {
+      gauss_ptr_ptr_[i] = reinterpret_cast<float*>(ippMalloc(gauss_size_ptr_[i] * sizeof(float)));
+    }
+  }
+  void DisposeGaussians_() {
+    if (gauss_ptr_ptr_ != nullptr) {
+      for (int i = 0; i < iterations_; ++i) {
+        if (gauss_ptr_ptr_[i] != nullptr) {
+          ippFree(gauss_ptr_ptr_[i]);
+          gauss_ptr_ptr_[i] = nullptr;
+        }
       }
     }
-    afx::NormalizeKernel(&kernel_);
   }
-  std::vector<float> GetKernel() const {
-    return kernel_;
-  }
-  unsigned int GetRequiredPadding() const {
-    return kernel_.size() - 1;
-  }
-  unsigned int GetKernelSize() const {
-    return kernel_.size();
+  void CreateGauss_(const Bounds& region) {
+    float sqrt_of_two_pi = sqrtf(2.0f * static_cast<float>(M_PI));
+    for (int size = region.y2(); size >= region.y1(); --size) {
+      for (int i = region.x2(); i >= region.x1(); --i) {
+        if (size > gauss_size_ptr_[i] - 1) { break; }
+        float sigma = sigma_ptr_[i];
+        float one_over_two_sigma_squared = 1.0f / (2.0f * sigma * sigma);
+        float a = 1.0f / (sigma * sqrt_of_two_pi);
+        gauss_ptr_ptr_[i][size] = a * expf(-powf(static_cast<float>(gauss_size_ptr_[i] - 1 - size), 2.0f) * one_over_two_sigma_squared);
+      }
+    }
   }
 
-protected:
-  std::vector<float> kernel_;
-
-  struct Gaussian {
-    float sigma;
-    unsigned int size;
-    Gaussian() : sigma(0), size(0) {}
-    Gaussian(float sigma, unsigned int size) : sigma(sigma), size(size) {}
-  };
+ public:
+  GlowBase() : gauss_ptr_ptr_(nullptr), gauss_size_ptr_(nullptr), sigma_ptr_(nullptr) {
+    gauss_ptr_ptr_ = reinterpret_cast<float**>(ippMalloc(iterations_ * sizeof(float*)));
+    for (int i = 0; i < iterations_; ++i) { gauss_ptr_ptr_[i] = nullptr; }
+    gauss_size_ptr_ = reinterpret_cast<int*>(ippMalloc(iterations_ * sizeof(int)));
+    sigma_ptr_ = reinterpret_cast<float*>(ippMalloc(iterations_ * sizeof(float)));
+  }
+  ~GlowBase() { DisposeGlowBase(); }
+  void ComputeGaussSize(float size, float softness, float falloff, float quality) {
+    const float inner_size = (1.0f + 5.0f * softness) / 6.0f;
+    int last_size = 3;
+    for (int i = 0; i < iterations_; ++i) {
+      float lookup = static_cast<float>(i) / static_cast<float>(iterations_ - 1);
+      float mapped_quality = cos(static_cast<float>(M_PI) * 0.5f * lookup) * (1.0f - quality) + quality;
+      sigma_ptr_[i] = powf(lookup, 1.0f / falloff) * (fmaxf(size, inner_size) - inner_size) + inner_size;
+      gauss_size_ptr_[i] = std::max((static_cast<int>(ceilf(sigma_ptr_[i] * mapped_quality * (5.0f) + 1.0f))) | 1, 3) / 2 + 1;
+      // Make current glow larger than last glow size
+      if (last_size > gauss_size_ptr_[i]) { gauss_size_ptr_[i] = last_size; }
+      last_size = gauss_size_ptr_[i];
+    }
+    max_gauss_size_ = last_size;  // Set max gauss size
+  }
+  void DisposeGlowBase() {
+    DisposeGaussians_();
+    if (gauss_ptr_ptr_ != nullptr) {
+      ippFree(gauss_ptr_ptr_);
+      gauss_ptr_ptr_ = nullptr;
+    }
+    if (gauss_size_ptr_ != nullptr) {
+      ippFree(gauss_size_ptr_);
+      gauss_size_ptr_ = nullptr;
+    }
+    if (sigma_ptr_ != nullptr) {
+      ippFree(sigma_ptr_);
+      sigma_ptr_ = nullptr;
+    }
+  }
 };
 
 
 class Glow : public GlowBase {
  private:
-  Image kernel_image_;
+  Image kernel_;
 
-  void CreateKernelTile_(const Bounds& region, float gain) {
-    int kernel_size_minus_1 = GetKernelSize() - 1;
+  void CreateKernel_(const Bounds& region, boost::atomic<double>* kernel_sum) {
+    double kernel_sum_l = 0.0;
     for (int y = region.y1(); y <= region.y2(); ++y) {
-      int kernel_y = kernel_size_minus_1 - y;
-      float* low_left_ptr = kernel_image_.GetPtr(region.x1(), y);
-      float* low_right_ptr = kernel_image_.GetPtr(kernel_image_.GetBounds().x2() - region.x1(), y);
-      float* up_left_ptr = kernel_image_.GetPtr(region.x1(), kernel_image_.GetBounds().y2() - y);
-      float* up_right_ptr = kernel_image_.GetPtr(kernel_image_.GetBounds().x2() - region.x1(), kernel_image_.GetBounds().y2() - y);
+      int y0 = y - kernel_.GetBounds().y1();
+
+      float* low_left_ptr = kernel_.GetPtr(region.x1(), y);
+      float* low_right_ptr = kernel_.GetPtr(kernel_.GetBounds().x2() - region.x1(), y);
+      float* up_left_ptr = kernel_.GetPtr(region.x1(), kernel_.GetBounds().y2() - y);
+      float* up_right_ptr = kernel_.GetPtr(kernel_.GetBounds().x2() - region.x1(), kernel_.GetBounds().y2() - y);
+
       for (int x = region.x1(); x <= region.x2(); ++x) {
-        int kernel_x = kernel_size_minus_1 - x;
-        float value = gain * kernel_[kernel_x] * kernel_[kernel_y];
+        int x0 = x - kernel_.GetBounds().x1();
+        float sum = 0.0f;
+        for (int i = iterations_ - 1; i >= 0; --i) {
+          // Offset of largest gauss and current gauss
+          int gauss_offset = max_gauss_size_ - gauss_size_ptr_[i];
+          if (x0 >= gauss_offset && y0 >= gauss_offset) {
+            sum += gauss_ptr_ptr_[i][x0 - gauss_offset] * gauss_ptr_ptr_[i][y0 - gauss_offset];
+          } else {
+            break;
+          }
+        }
         // Write to all quadrants of the kernel image
-        // Increment pointer for quads left of middle. Decrement for quads right of middle
-        *low_left_ptr++ = value;
-        *low_right_ptr-- = value;
-        *up_left_ptr++ = value;
-        *up_right_ptr-- = value;
+        *low_left_ptr = sum;
+        kernel_sum_l += sum;
+        if (x0 < max_gauss_size_ - 1) {
+          *low_right_ptr = sum;
+          kernel_sum_l += sum;
+        }
+        if (y0 < max_gauss_size_ - 1) {
+          *up_left_ptr = sum;
+          kernel_sum_l += sum;
+        }
+        if (x0 < max_gauss_size_ - 1 && y0 < max_gauss_size_ - 1) {
+          *up_right_ptr = sum;
+          kernel_sum_l += sum;
+        }
+        low_left_ptr++;
+        low_right_ptr--;
+        up_left_ptr++;
+        up_right_ptr--;
+      }
+    }
+    *kernel_sum = *kernel_sum + kernel_sum_l;
+  }
+  void NormalizeKernel_(const Bounds& region, float n_factor) {
+    for (int y = region.y1(); y <= region.y2(); ++y) {
+      boost::this_thread::interruption_point();
+      float* ptr = kernel_.GetPtr(region.x1(), y);
+      for (int x = region.x1(); x <= region.x2(); ++x) {
+        *ptr = *ptr * n_factor;  // normalize
+        ptr++;
       }
     }
   }
 
  public:
-  Glow() : buffer_ptr_(nullptr) {}
-  ~Glow() {
-    if (buffer_ptr_ != nullptr) {
-      ippFree(buffer_ptr_);
-      buffer_ptr_ = nullptr;
-    }
-  }
+  Glow() {}
+  ~Glow() {}
 
-  void CreateKerneImage(float exposure, afx::ImageThreader* threader) {
-    afx::Bounds kernel_region(0, 0, 2 * GetKernelSize() - 1, 2 * GetKernelSize() - 1);
-    afx::Bounds lower_left_quad_region(0, 0, GetKernelSize() - 1, GetKernelSize() - 1);
-    kernel_image_.Allocate(kernel_region);
-    float gain = 2.0f * powf(2.0f, exposure);
-    for (int y = kernel_region.y1(); y <= kernel_region.y2(); ++y) {
-      float* ptr = kernel_image_.GetPtr(kernel_region.x1(), y);
-      for (int x = kernel_region.x1(); x <= kernel_region.x2(); ++x) {
-        *ptr++ = 0;
-      }
-    }
-    threader->ThreadImageChunks(lower_left_quad_region, boost::bind(&Glow::CreateKernelTile_, this, _1, gain));
+  void InitKernel(float exposure, afx::ImageThreader* threader) {
+    AllocateGaussians_();
+    threader->ThreadImageChunks(Bounds(0, 0, iterations_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateGauss_, this, _1));
+    kernel_.Allocate(max_gauss_size_ * 2 - 1, max_gauss_size_ * 2 - 1);
     threader->Wait();
+
+    boost::atomic<double> kernel_sum(0.0);
+    threader->ThreadImageChunks(Bounds(0, 0, max_gauss_size_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateKernel_, this, _1, &kernel_sum));
+    threader->Wait();
+
+    threader->ThreadImageChunks(kernel_.GetBounds(), boost::bind(&Glow::NormalizeKernel_, this, _1, 2.0f * powf(2.0f, exposure) / kernel_sum));
+    DisposeGaussians_();
   }
 
   void Convolve(const Image& in_padded, Image* out) {
     int buffer_size;
+    Ipp8u* buffer_ptr = nullptr;
     ippiConvGetBufferSize(in_padded.GetSize(), in_padded.GetSize(), ipp32f, 1, ippiROIValid, &buffer_size);
-    if (buffer_ptr_ != nullptr) {
-      ippFree(buffer_ptr_);
-      buffer_ptr_ = nullptr;
-    }
-    buffer_ptr_ = static_cast<Ipp8u*>(ippMalloc(buffer_size));
+    boost::scoped_ptr<Ipp8u> buffer(new Ipp8u[buffer_size]);
     ippiConv_32f_C1R(in_padded.GetPtr(), in_padded.GetPitch(), in_padded.GetSize(),
-                     kernel_image_.GetPtr(), kernel_image_.GetPitch(), kernel_image_.GetSize(), out->GetPtr(), out->GetPitch(), ippiROIValid, buffer_ptr_);
-    if (buffer_ptr_ != nullptr) {
-      ippFree(buffer_ptr_);
-      buffer_ptr_ = nullptr;
-    }
-  }
+                     kernel_.GetPtr(), kernel_.GetPitch(), kernel_.GetSize(),
+                     out->GetPtr(), out->GetPitch(), ippiROIValid, buffer.get());
 
-private:
-  Ipp8u* buffer_ptr_;
+  }
+  int GetKernelPadding() const { return max_gauss_size_ - 1; }
 };
 
 }  // namespace afx

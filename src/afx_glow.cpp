@@ -206,14 +206,14 @@ void ThisClass::_validate(bool) {
   replicate_depth_ = static_cast<int>(proxy_scale_ * std::max(k_replicate_depth_, 0));
   expand_box_ = k_expand_box_;
 
-  glow_.CreateKernel(size_, softness_, diffusion_, quality_);
+  glow_.ComputeGaussSize(size_, softness_, diffusion_, quality_);
 
-  if (k_expand_box_) { info_.pad(glow_.GetRequiredPadding()); }
+  if (k_expand_box_) { info_.pad(glow_.GetKernelPadding()); }
 
   info_.black_outside();
 }
 void ThisClass::_request(int x, int y, int r, int t, nuke::ChannelMask channels, int count) {
-  unsigned int pad = glow_.GetRequiredPadding();
+  unsigned int pad = glow_.GetKernelPadding();
   nuke::Box req_box(x + pad, y + pad, r + pad, t + pad);
   input0().request(req_box, channels, count);
   if (input(iMatte) != nullptr) { input(iMatte)->request(req_box, nuke::Mask_Alpha, count); }
@@ -247,9 +247,9 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
     if (first_time_CPU_) {
       first_time_CPU_ = false;
 
-      glow_.CreateKerneImage(exposure_, &threader_);
+      glow_.InitKernel(exposure_, &threader_);
 
-      afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetRequiredPadding());
+      afx::Bounds glow_bnds = req_bnds_.GetPadBounds(glow_.GetKernelPadding());
       afx::Bounds plane_bnds = glow_bnds;
       plane_bnds.Intersect(afx::InputBounds(input(0)));
 
@@ -303,12 +303,6 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
       for (afx::ImageArray::ptr_list_it it = in_imgs_.GetBegin(); it != in_imgs_.GetEnd(); ++it) {
         afx::Image* in_ptr = &(*it);
         afx::Image* out_ptr = out_imgs_.GetPtrByAttribute("channel", in_ptr->GetAttribute("channel"));
-        for (int y = out_ptr->GetBounds().y1(); y <= out_ptr->GetBounds().y2(); ++y) {
-          float* ptr = out_ptr->GetPtr(out_ptr->GetBounds().x1(), y);
-          for (int x = out_ptr->GetBounds().x1(); x <= out_ptr->GetBounds().x2(); ++x) {
-            *ptr++ = 0.5;
-          }
-        }
         threader_.AddWork(boost::bind(&afx::Glow::Convolve, &glow_, boost::cref(*in_ptr), out_ptr));
       }
       threader_.Wait();
