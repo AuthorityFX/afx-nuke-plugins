@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_IMAGE_H_
-#define INCLUDE_IMAGE_H_
+#ifndef AFX_IMAGE_H_
+#define AFX_IMAGE_H_
 
 #include <ipp.h>
 
@@ -234,5 +234,5 @@ class ImageArray : public Array<ImageBase<float> > {
 
 }  //  namespace afx
 
-#endif  // INCLUDE_IMAGE_H_
+#endif  // AFX_IMAGE_H_
 

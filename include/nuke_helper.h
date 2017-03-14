@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_NUKE_HELPER_H_
-#define INCLUDE_NUKE_HELPER_H_
+#ifndef AFX_NUKE_HELPER_H_
+#define AFX_NUKE_HELPER_H_
 
 #include <DDImage/Box.h>
 #include <DDImage/Iop.h>
@@ -54,4 +54,4 @@ std::size_t GetPlanePitch(const nuke::ImagePlane& plane) {
 
 }  // namespace afx
 
-#endif  // INCLUDE_NUKE_HELPER_H_
+#endif  // AFX_NUKE_HELPER_H_

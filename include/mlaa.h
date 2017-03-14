@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_MLAA_H_
-#define INCLUDE_MLAA_H_
+#ifndef AFX_MLAA_H_
+#define AFX_MLAA_H_
 
 #include <OpenEXR/half.h>
 
@@ -56,7 +56,7 @@ class MorphAA {
 
 }  // namespace afx
 
-#endif  // INCLUDE_MLAA_H_
+#endif  // AFX_MLAA_H_
 
 
 

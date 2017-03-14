@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_CONVOLUTION_H_
-#define INCLUDE_CONVOLUTION_H_
+#ifndef AFX_CONVOLUTION_H_
+#define AFX_CONVOLUTION_H_
 
 #include <vector>
 
@@ -105,4 +105,4 @@ class Convolution {
 
 }  //  namespace afx
 
-#endif  // INCLUDE_CONVOLUTION_H_
+#endif  // AFX_CONVOLUTION_H_

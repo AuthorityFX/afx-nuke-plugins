@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_MEDIAN_H_
-#define INCLUDE_MEDIAN_H_
+#ifndef AFX_MEDIAN_H_
+#define AFX_MEDIAN_H_
 
 namespace afx {
 
@@ -131,4 +131,4 @@ float MedianQuickSelect(float* list, int n) {
 
 }  // namespace afx
 
-#endif  // INCLUDE_MEDIAN_H_
+#endif  // AFX_MEDIAN_H_

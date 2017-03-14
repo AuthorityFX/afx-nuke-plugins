@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_IMAGE_TOOLS_H_
-#define INCLUDE_IMAGE_TOOLS_H_
+#ifndef AFX_IMAGE_TOOLS_H_
+#define AFX_IMAGE_TOOLS_H_
 
 #include "math.h"
 
@@ -497,4 +497,4 @@ private:
 
 }  //  namespace afx
 
-#endif  // INCLUDE_IMAGE_TOOLS_H_
+#endif  // AFX_IMAGE_TOOLS_H_

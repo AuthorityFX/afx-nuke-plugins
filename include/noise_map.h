@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_NOISE_MAP_H_
-#define INCLUDE_NOISE_MAP_H_
+#ifndef AFX_NOISE_MAP_H_
+#define AFX_NOISE_MAP_H_
 
 #include <vector>
 #include <cmath>
@@ -20,7 +20,7 @@
 
 #include "include/convolution.h"
 
-static const float bior44[] = {
+static const std::vector<float> bior44 = {
   0.0,
   -0.06453888262869706,
   0.04068941760916406,
@@ -38,10 +38,9 @@ namespace afx {
 class NoiseMap {
  public:
   void Calculate(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
-    std::vector<float> wavelet(bior44, bior44 + 10);
     afx::Image temp(out_image->GetBounds());
     afx::Convolution cv;
-    cv.Seperable(in_image, &temp, wavelet);
+    cv.Seperable(in_image, &temp, bior44);
     MAD(temp, out_image, window_size);
   }
 
@@ -80,5 +79,5 @@ class NoiseMap {
 
 }  // namespace afx
 
-#endif  // INCLUDE_NOISE_MAP_H_
+#endif  // AFX_NOISE_MAP_H_
 

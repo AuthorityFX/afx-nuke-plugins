@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_PIXEL_H_
-#define INCLUDE_PIXEL_H_
+#ifndef AFX_PIXEL_H_
+#define AFX_PIXEL_H_
 
 namespace afx {
 
@@ -110,4 +110,4 @@ template <class T> class Pixel {
 
 }  //  namespace afx
 
-#endif  // INCLUDE_PIXEL_H_
+#endif  // AFX_PIXEL_H_

@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_COLOR_OP_H_
-#define INCLUDE_COLOR_OP_H_
+#ifndef AFX_COLOR_OP_H_
+#define AFX_COLOR_OP_H_
 
 #include <math.h>
 
@@ -311,4 +311,4 @@ float SpillSuppression(const float (&rgb)[3], int algorithm, ScreenColor color) 
 
 }  // namespace afx
 
-#endif  // INCLUDE_COLOR_OP_H_
+#endif  // AFX_COLOR_OP_H_

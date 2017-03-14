@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_BOUNDS_H_
-#define INCLUDE_BOUNDS_H_
+#ifndef AFX_BOUNDS_H_
+#define AFX_BOUNDS_H_
 
 #include <cuda_runtime.h>
 
@@ -214,4 +214,4 @@ class Bounds {
 
 }  // namespace afx
 
-#endif  // INCLUDE_BOUNDS_H_
+#endif  // AFX_BOUNDS_H_

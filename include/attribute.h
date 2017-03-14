@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_ATTRIBUTE_H_
-#define INCLUDE_ATTRIBUTE_H_
+#ifndef AFX_ATTRIBUTE_H_
+#define AFX_ATTRIBUTE_H_
 
 #include <boost/ptr_container/ptr_list.hpp>
 
@@ -130,4 +130,4 @@ protected:
 
 }  // namespace afx
 
-#endif  // INCLUDE_ATTRIBUTE_H_
+#endif  // AFX_ATTRIBUTE_H_

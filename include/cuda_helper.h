@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_CUDA_HELPER_H_
-#define INCLUDE_CUDA_HELPER_H_
+#ifndef AFX_CUDA_HELPER_H_
+#define AFX_CUDA_HELPER_H_
 
 #include <cuda_runtime_api.h>
 #include <cuda_runtime.h>
@@ -162,4 +162,4 @@ class CudaStreamArray : public Array<CudaStream> {};
 
 }  // namespace afx
 
-#endif  // INCLUDE_CUDA_HELPER_H_
+#endif  // AFX_CUDA_HELPER_H_

@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_GLOW_H_
-#define INCLUDE_GLOW_H_
+#ifndef AFX_GLOW_H_
+#define AFX_GLOW_H_
 
 #include <math.h>
 
@@ -307,4 +307,4 @@ class Glow : public GlowBase {
 
 }  // namespace afx
 
-#endif  // INCLUDE_GLOW_H_
+#endif  // AFX_GLOW_H_

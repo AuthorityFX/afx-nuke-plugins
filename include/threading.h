@@ -7,8 +7,8 @@
 //      Authority FX, Inc.
 //      www.authorityfx.com
 
-#ifndef INCLUDE_THREADING_H_
-#define INCLUDE_THREADING_H_
+#ifndef AFX_THREADING_H_
+#define AFX_THREADING_H_
 
 #include <boost/asio.hpp>
 #include <boost/thread/thread.hpp>
@@ -68,4 +68,4 @@ class ImageThreader : public Threader {
 
 }  // namespace afx
 
-#endif  // INCLUDE_THREADING_H_
+#endif  // AFX_THREADING_H_
