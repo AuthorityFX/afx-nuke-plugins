@@ -58,8 +58,10 @@ class Threader {
 
 class ImageThreader : public Threader {
  public:
-  // Split bounds into num of rows.
+  // Split bounds into rows.
   void ThreadImageRows(const Bounds& region, boost::function<void(Bounds)> function);
+  // Split bounds into columns.
+  void ThreadImageColumns(const Bounds& region, boost::function<void(Bounds)> function);
   // Split Bounds into num_threads chunks in y axis.
   void ThreadImageChunks(const Bounds& region, boost::function<void(Bounds)> function);
   // Split Bounds into num_threads chunks in y axis.

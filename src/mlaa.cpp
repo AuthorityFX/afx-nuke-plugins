@@ -311,9 +311,9 @@ void MorphAA::Process(const Image& input, Image* output, float threshold, unsign
 
   threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::MarkDisc_, this, _1, boost::cref(input)));
   threader->Wait();
-  threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::FindXLines_, this, _1, boost::cref(input)));
+  threader->ThreadImageRows(info_.GetBounds(), boost::bind(&MorphAA::FindXLines_, this, _1, boost::cref(input)));
   threader->Wait();
-  threader->ThreadImageChunksY(info_.GetBounds(), boost::bind(&MorphAA::FindYLines_, this, _1, boost::cref(input)));
+  threader->ThreadImageColumns(info_.GetBounds(), boost::bind(&MorphAA::FindYLines_, this, _1, boost::cref(input)));
   threader->Wait();
   threader->ThreadImageChunks(info_.GetBounds(), boost::bind(&MorphAA::BlendPixels_, this, _1, boost::cref(input), output));
   threader->Wait();

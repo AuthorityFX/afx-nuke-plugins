@@ -75,11 +75,17 @@ void Threader::AddWork(boost::function<void()> function) { io_service_.post(func
 bool Threader::IsRunning() const { return running_; }
 unsigned int Threader::Threads() const { return num_threads_; }
 
-
 void ImageThreader::ThreadImageRows(const Bounds& region, boost::function<void(Bounds)> function) {
   Bounds thread_region = region;
   for (int row = region.y1(); row <= region.y2(); ++row) {
     thread_region.SetY(row, row);
+    AddWork(boost::bind(function, thread_region));
+  }
+}
+void ImageThreader::ThreadImageColumns(const Bounds& region, boost::function<void(Bounds)> function) {
+  Bounds thread_region = region;
+  for (int column = region.x1(); column <= region.x2(); ++column) {
+    thread_region.SetX(column, column);
     AddWork(boost::bind(function, thread_region));
   }
 }
