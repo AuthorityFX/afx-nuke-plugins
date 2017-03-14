@@ -25,7 +25,6 @@
 #include <vector>
 #include <algorithm>
 
-#include "include/settings.h"
 #include "include/cuda_helper.h"
 #include "include/bounds.h"
 #include "include/image.h"

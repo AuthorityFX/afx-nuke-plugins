@@ -10,6 +10,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(afx-nuke-plugins)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O3 -DNDEBUG")
@@ -38,6 +40,8 @@ if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
 find_package(CUDA REQUIRED)
+list(APPEND CUDA_NVCC_FLAGS "-std=c++11;-O3")
+SET(CUDA_PROPAGATE_HOST_FLAGS ON)
 find_package(IlmBase REQUIRED COMPONENTS Half)
 find_package(Hoard)
 if(Hoard_FOUND)

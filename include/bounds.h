@@ -14,8 +14,6 @@
 
 #include <algorithm>
 
-#include "include/settings.h"
-
 namespace afx {
 
 namespace math {

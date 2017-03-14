@@ -14,7 +14,6 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 
-#include "include/settings.h"
 #include "include/bounds.h"
 #include "include/attribute.h"
 

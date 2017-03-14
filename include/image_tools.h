@@ -55,6 +55,8 @@ private:
 
 class BorderExtender {
 public:
+  // out_image must be larger than in_image. The difference between the bounding
+  // regions will be extended with constant value
   void Constant(const afx::Image& in_image, afx::Image* out_image, float value) {
     afx::Bounds in_region = in_image.GetBounds();
     afx::Bounds out_region = out_image->GetBounds();
@@ -78,6 +80,7 @@ public:
     out_image->MemCpyIn(in_image);
     threader.Wait();
   }
+  // in_place borded extend. in_region will remain unchanged.
   void Constant(afx::Image* image, float value, afx::Bounds in_region) {
     afx::Bounds out_region = image->GetBounds();
 
@@ -190,6 +193,27 @@ public:
       threader.ThreadImageChunksY(top_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(in_image), out_image, TopBorder));
     }
     out_image->MemCpyIn(in_image.GetPtr(), in_image.GetPitch(), in_image.GetBounds());
+    threader.Wait();
+  }
+  void Mirror(afx::Image* image, const afx::Bounds& in_region) {
+    afx::Bounds out_region = image->GetBounds();
+
+    afx::Bounds left_region, right_region, bottom_region, top_region;
+    CalculateBounds_(in_region, out_region, &left_region, &right_region, &bottom_region, &top_region);
+
+    afx::ImageThreader threader;
+    if (out_region.x1() < in_region.x1()) {
+      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(*image), image, LeftBorder));
+    }
+    if (out_region.x2() > in_region.x2()) {
+      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(*image), image, RightBorder));
+    }
+    if (out_region.y1() < in_region.y1()) {
+      threader.ThreadImageChunksY(bottom_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(*image), image, BottomBorder));
+    }
+    if (out_region.y2() > in_region.y2()) {
+      threader.ThreadImageChunksY(top_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(*image), image, TopBorder));
+    }
     threader.Wait();
   }
 private:

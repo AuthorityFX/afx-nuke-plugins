@@ -10,15 +10,9 @@
 #ifndef INCLUDE_PIXEL_H_
 #define INCLUDE_PIXEL_H_
 
-#include "include/settings.h"
-
 namespace afx {
 
 template <class T> class PackedPixel {
- private:
-  T* ptr_;
-  size_t stride_;
-
  public:
   explicit PackedPixel(T* ptr) : ptr_(ptr), stride_(0) {}
   PackedPixel(T* ptr, size_t stride) : ptr_(ptr), stride_(stride) {}
@@ -57,31 +51,13 @@ template <class T> class PackedPixel {
     ptr_ -= stride_;
     return old;
   }
+
+private:
+  T* ptr_;
+  size_t stride_;
 };
 
 template <class T> class Pixel {
- private:
-  T** pointers_;
-  unsigned int size_;
-  void Allocate_(unsigned int size) {
-    Dispose_();
-    size_ = size;
-    pointers_ = new T*[size_];
-    for (unsigned int x = 0; x < size_; ++x) { pointers_[x] = nullptr; }
-  }
-  void CopyPixel_(const Pixel& other) {
-    Allocate_(other.size_);
-    for (unsigned int i = 0; i < size_; ++i) {
-      pointers_[i] = other.pointers_[i];
-    }
-  }
-  void Dispose_() {
-    if (pointers_ != nullptr) {
-      delete[] pointers_;
-      pointers_ = nullptr;
-    }
-  }
-
  public:
   Pixel() : pointers_(nullptr) { Allocate_(3); }
   explicit Pixel(unsigned int size) : pointers_(nullptr) { Allocate_(size); }
@@ -108,6 +84,28 @@ template <class T> class Pixel {
   T* GetPtr(unsigned int index) const { return pointers_[index]; }
   T GetVal(unsigned int index) const { return *pointers_[index]; }
   unsigned int GetSize() const {return size_; }
+
+ private:
+  T** pointers_;
+  unsigned int size_;
+  void Allocate_(unsigned int size) {
+    Dispose_();
+    size_ = size;
+    pointers_ = new T*[size_];
+    for (unsigned int x = 0; x < size_; ++x) { pointers_[x] = nullptr; }
+  }
+  void CopyPixel_(const Pixel& other) {
+    Allocate_(other.size_);
+    for (unsigned int i = 0; i < size_; ++i) {
+      pointers_[i] = other.pointers_[i];
+    }
+  }
+  void Dispose_() {
+    if (pointers_ != nullptr) {
+      delete[] pointers_;
+      pointers_ = nullptr;
+    }
+  }
 };
 
 }  //  namespace afx

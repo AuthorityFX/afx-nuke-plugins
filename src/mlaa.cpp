@@ -12,7 +12,6 @@
 #include <math.h>
 #include <boost/bind.hpp>
 
-#include "include/settings.h"
 #include "include/image.h"
 #include "include/threading.h"
 

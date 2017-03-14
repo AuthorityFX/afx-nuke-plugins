@@ -13,11 +13,10 @@
 #include <ipp.h>
 
 #include <boost/ptr_container/ptr_list.hpp>
-#include <boost/shared_ptr.hpp>
 
 #include <vector>
+#include <memory>
 
-#include "include/settings.h"
 #include "include/bounds.h"
 #include "include/pixel.h"
 #include "include/threading.h"
@@ -39,11 +38,31 @@ template <class T> class ImageBase : public AttributeBase {
   ImageBase<T>(unsigned int width, unsigned int height) : ptr_(nullptr), pitch_(0) {
     Allocate(afx::Bounds(0, 0, width - 1, height - 1));
   }
-  ImageBase<T>(const ImageBase<T>& other) {
+  ImageBase<T>(const ImageBase<T>& other) : ptr_(nullptr), pitch_(0) {
     Copy(other);
+  }
+  ImageBase<T>(const ImageBase<T>&& other) : ptr_(other.ptr_),
+                                             pitch_(other.pitch_),
+                                             region_(other.region) {
+    other.ptr_ = nullptr;
+    other.pitch_ = 0;
+    other.region_ = afx::Bounds();
   }
   ImageBase<T>& operator=(const ImageBase<T>& other) {
     Copy(other);
+    return *this;
+  }
+  ImageBase<T>& operator=(const ImageBase<T>&& other) {
+    if (this != &other) {
+      Dispose();
+      ptr_ = other.ptr_;
+      pitch_ = other.pitch_;
+      region_ = other.region_;
+      other.ptr_ = nullptr;
+      other.pitch_ = 0;
+      other.region_ = afx::Bounds();
+    }
+    return *this;
   }
   ~ImageBase<T>() {
     Dispose();
@@ -94,7 +113,7 @@ template <class T> class ImageBase : public AttributeBase {
     MemCpyIn(source_image.GetPtr(region.x1(), region.y1()), source_image.GetPitch(), region);
   }
   void MemCpyIn(const ImageBase<T>& source_image) {
-    afx::Bounds region = source_image.GetBounds();
+    afx::Bounds region = source_image.GetBounds().GetIntersection(region_);
     MemCpyIn(source_image.GetPtr(region.x1(), region.y1()), source_image.GetPitch(), region);
   }
   void MemCpyOut(T* ptr, std::size_t pitch) const {
@@ -117,10 +136,10 @@ template <class T> class ImageBase : public AttributeBase {
       dest_ptr = reinterpret_cast<T*>((reinterpret_cast<char*>(dest_ptr) + pitch));
     }
   }
-  void MemCpyOut(const ImageBase<T>& dest_image, afx::Bounds region) {
+  void MemCpyOut(const ImageBase<T>& dest_image, afx::Bounds region) const {
     MemCpyOut(dest_image.GetPtr(region.x1(), region.y1()), dest_image.GetPitch(), region);
   }
-  void MemCpyOut(const ImageBase<T>& dest_image) {
+  void MemCpyOut(const ImageBase<T>& dest_image) const {
     afx::Bounds region = dest_image.GetBounds();
     MemCpyOut(dest_image.GetPtr(region.x1(), region.y1()), dest_image.GetPitch(), region);
   }
@@ -148,8 +167,15 @@ template <class T> class ImageBase : public AttributeBase {
   afx::Bounds GetBounds() const {
     return region_;
   }
+  bool IsAllocated() const {
+    if (ptr_ != nullptr) {
+      return true;
+    } else {
+      return false;
+    }
+  }
   IppiSize GetSize() const {
-    IppiSize size = {region_.GetWidth(), region_.GetHeight()};
+    IppiSize size = {static_cast<int>(region_.GetWidth()), static_cast<int>(region_.GetHeight())};
     return size;
   }
 };
@@ -159,12 +185,12 @@ typedef ImageBase<float> Image;
 class ImageLayer {
 public:
   void AddImage(const Bounds& region) {
-    channels_.push_back(boost::shared_ptr<Image>(new Image(region)));
+    channels_.push_back(std::shared_ptr<Image>(new Image(region)));
   }
-  void AddImage(const boost::shared_ptr<Image>& image_ptr) {
+  void AddImage(const std::shared_ptr<Image>& image_ptr) {
     channels_.push_back(image_ptr);
   }
-  void MoveImage(const boost::shared_ptr<Image>& image_ptr) {
+  void MoveImage(const std::shared_ptr<Image>& image_ptr) {
     channels_.push_back(boost::move(image_ptr));
   }
   Image* operator[](int channel) const {
@@ -172,7 +198,7 @@ public:
   }
   Image* GetChannel(int channel) const {
     if (channel > channels_.size() - 1) {
-      throw std::runtime_error("Channel does not exist");
+      throw std::runtime_error("afx::Image - channel does not exist");
     }
     return channels_[channel].get();
   }
@@ -196,7 +222,7 @@ public:
     channels_.size();
   }
 private:
-  std::vector<boost::shared_ptr<Image> > channels_;
+  std::vector<std::shared_ptr<Image> > channels_;
 };
 
 class ImageArray : public Array<ImageBase<float> > {

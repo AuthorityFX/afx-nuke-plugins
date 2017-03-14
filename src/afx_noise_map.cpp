@@ -122,43 +122,24 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
       first_time_CPU_ = false;
 
       afx::Bounds req_pad_bnds = req_bnds_.GetPadBounds(50);
-      req_pad_bnds.Intersect(afx::InputBounds(input(0)));
+      afx::Bounds req_pad_bnds_clamped = req_pad_bnds;
+      req_pad_bnds_clamped.Intersect(afx::InputBounds(input(0)));
 
-      nuke::ImagePlane source_plane(afx::BoundsToBox(req_pad_bnds), false, channels);  // Create plane "false" = non-packed.
-      input0().fetchPlane(source_plane);  // Fetch plane
       out_imgs_.Clear();
       afx::Image in_img(req_pad_bnds);
-      foreach(z, source_plane.channels()) {  // For each channel in plane
+      foreach(z, channels) {
         if (aborted()) { return; }
 
-        in_img.MemCpyIn(&source_plane.readable()[source_plane.chanNo(z) * source_plane.chanStride()], source_plane.rowStride() * sizeof(float), in_img.GetBounds());
-        out_imgs_.Add(req_pad_bnds);
-        out_imgs_.GetBackPtr()->AddAttribute("channel", z);
-/*
-        afx::WaveletTransform wt;
-        afx::Image wavelet_image(req_pad_bnds);
-        wt.StationaryWaveletTransformDiagonalOnly(in_img, &wavelet_image, k_level_);
-        afx::NoiseMap noise_map;
-        noise_map.MAD(wavelet_image, out_imgs_.GetBackPtr(), k_size_);*/
+        afx::FetchImage(&in_img, input(0), z, req_pad_bnds_clamped);
+        out_imgs_.Add(req_bnds_);
+        afx::Image* out_img = out_imgs_.GetBackPtr();
+        out_img->AddAttribute("channel", z);
 
+        afx::BorderExtender be;
+        be.Mirror(&in_img, req_pad_bnds_clamped);
 
-        afx::Bounds small_region = req_bnds_;
-        small_region.ErodeBounds(200);
-
-        nuke::ImagePlane small_plane(afx::BoundsToBox(small_region), false, z);
-        input(0)->fetchPlane(small_plane);
-        afx::Image small_image(small_region);
-        small_image.MemCpyIn(small_plane.readable(), afx::GetPlanePitch(small_plane));
-
-        for (int y = req_pad_bnds.y1(); y <= req_pad_bnds.y2(); ++y) {
-          float* out_ptr = out_imgs_.GetBackPtr()->GetPtr(req_pad_bnds.x1(), y);
-          for (int x = req_pad_bnds.x1(); x <= req_pad_bnds.x2(); ++x) {
-            *out_ptr++ = 0.1;
-          }
-        }
-
-        afx::BorderExtender extend_borders;
-        extend_borders.RepeatFalloff(small_image, out_imgs_.GetBackPtr(), 0.5);
+        afx::NoiseMap nm;
+        nm.Calculate(in_img, out_img, k_size_);
 
       }
     }

@@ -11,15 +11,15 @@
 #define INCLUDE_ATTRIBUTE_H_
 
 #include <boost/ptr_container/ptr_list.hpp>
-#include <boost/static_assert.hpp>
-#include <boost/type_traits/is_base_of.hpp>
+
+#include <assert.h>
+
+#include <type_traits>
 
 #include <vector>
 #include <stdexcept>
 #include <string>
 #include <sstream>
-
-#include "include/settings.h"
 
 namespace afx {
 
@@ -29,42 +29,29 @@ struct Attribute {
   int value;
   Attribute(std::string name, int value) : name(name), value(value) {}
 };
-// Predicate to match attribute name
-struct CompareAttributeName {
-  std::string cp_name;
-  explicit CompareAttributeName(const std::string& name) : cp_name(name) {}
-  bool operator() (const Attribute& attr) { return attr.name.compare(cp_name) == 0; }
-};
 
 class AttributeBase {
- protected:
-  std::vector<Attribute> attributes_;
-
  public:
   void AddAttribute(const std::string& name, int value) { attributes_.push_back(Attribute(name, value)); }
   void AddAttributes(std::vector<Attribute> attributes) {
-    for (std::vector<Attribute>::iterator it = attributes.begin(); it != attributes.end(); ++it) {
-      attributes_.insert(attributes_.end(), attributes.begin(), attributes.end());
-    }
+    attributes_.insert(attributes_.end(), attributes.begin(), attributes.end());
   }
   int GetAttribute(const std::string& name) const {
     std::vector<Attribute>::const_iterator it;
-    it = std::find_if(attributes_.begin(), attributes_.end(), CompareAttributeName(name));
+    it = std::find_if(attributes_.begin(), attributes_.end(), [name](const Attribute& attr) { return attr.name.compare(name) == 0; });
     if (it != attributes_.end()) {
       return it->value;
     } else {
       throw std::out_of_range(std::string("No attribute named ") + name);
     }
   }
+
+protected:
+  std::vector<Attribute> attributes_;
 };
 
 template <typename T>
 class Array {
- private:
-  BOOST_STATIC_ASSERT_MSG((boost::is_base_of<AttributeBase, T>::value), "T must inherit from AttributeBase");
- protected:
-  boost::ptr_list<T> array_;
-
  public:
   typedef typename boost::ptr_list<T>::iterator ptr_list_it;
 
@@ -80,7 +67,7 @@ class Array {
       return &(*it);
     } else {
       std::stringstream ss;
-      ss << "No pointer with attribute " << name << " = " << value << std::endl;
+      ss << "afx::Array - no image with attribute '" << name << "' = " << value;
       throw std::out_of_range(ss.str());
     }
   }
@@ -88,7 +75,7 @@ class Array {
     ptr_list_it it;
     for (it = array_.begin(); it != array_.end(); ++it) {
       unsigned int num_found = 0;
-      for (std::vector<Attribute>::iterator a_it = list.begin(); a_it != list.end(); ++a_it) {
+      for (auto a_it = list.begin(); a_it != list.end(); ++a_it) {
         if (it->GetAttribute(a_it->name) == a_it->value ) { num_found++; }
       }
       if (num_found == list.size()) { break; }
@@ -97,9 +84,10 @@ class Array {
       return &(*it);
     } else {
       std::stringstream ss;
-      ss << "No pointer with attributes:" << std::endl;
-      for (std::vector<Attribute>::iterator a_it = list.begin(); a_it != list.end(); ++a_it) {
-        ss << a_it->name << " = " << a_it->value << std::endl;
+      ss << "afx::Array - No image with attributes: ";
+      for (auto a_it = list.begin(); a_it != list.end(); ++a_it) {
+        ss << "'" << a_it->name << "'' = " << a_it->value << "'";
+        if (a_it + 1 != list.end()) { ss << ", "; }
       }
       throw std::out_of_range(ss.str());
     }
@@ -119,7 +107,7 @@ class Array {
     bool found = false;
     for (ptr_list_it it = array_.begin(); it != array_.end(); ++it) {
       unsigned int num_found = 0;
-      for (std::vector<Attribute>::iterator a_it = list.begin(); a_it != list.end(); ++a_it) {
+      for (auto a_it = list.begin(); a_it != list.end(); ++a_it) {
         if (it->GetAttribute(a_it->name) == a_it->value ) { num_found++; }
       }
       if (num_found == list.size()) {
@@ -133,6 +121,11 @@ class Array {
   ptr_list_it GetEnd() { return array_.end(); }
   ptr_list_it GetRBegin() { return array_.rbegin(); }
   ptr_list_it GetREnd() { return array_.rend(); }
+
+private:
+  static_assert(std::is_base_of<AttributeBase, T>::value, "T must inherit from AttributeBase");
+protected:
+  boost::ptr_list<T> array_;
 };
 
 }  // namespace afx

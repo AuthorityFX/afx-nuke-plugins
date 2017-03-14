@@ -18,8 +18,6 @@
 
 #include <algorithm>
 
-#include "include/settings.h"
-
 namespace afx {
 
 Threader::Threader() : running_(false) { InitializeThreads(0); }

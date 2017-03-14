@@ -18,144 +18,40 @@
 #include "include/threading.h"
 #include "include/median.h"
 
-#include "include/settings.h"
+#include "include/convolution.h"
 
-static const float coif3[] = {0.003793512864491014,
-                              0.007782596427325418,
-                              -0.023452696141836267,
-                              -0.0657719112818555,
-                              0.06112339000267287,
-                              0.4051769024096169,
-                              -0.7937772226256206,
-                              0.42848347637761874,
-                              0.07179982161931202,
-                              -0.08230192710688598,
-                              -0.03455502757306163,
-                              0.015880544863615904,
-                              0.00900797613666158,
-                              0.0025745176887502236,
-                              -0.0011175187708906016,
-                              0.0004662169601128863,
-                              7.098330313814125e-05,
-                              -3.459977283621256e-05
-                              };
-
-static const float bior44[] = {0.0
-                               -0.06453888262869706,
-                               0.04068941760916406,
-                               0.41809227322161724,
-                               -0.7884856164055829,
-                               0.41809227322161724,
-                               0.04068941760916406,
-                               -0.06453888262869706,
-                               0.0,
-                               0.0,
-                              };
-
+static const float bior44[] = {
+  0.0,
+  -0.06453888262869706,
+  0.04068941760916406,
+  0.41809227322161724,
+  -0.7884856164055829,
+  0.41809227322161724,
+  0.04068941760916406,
+  -0.06453888262869706,
+  0.0,
+  0.0,
+};
 
 namespace afx {
 
-class WaveletTransform {
-public:
-  void StationaryWaveletTransformDiagonalOnly(const afx::Image& in_image, afx::Image* out_image, unsigned int level = 0) {
-    std::vector<float> wavelet(bior44, bior44 + 10);
-
-    if (in_image.GetBounds() != out_image->GetBounds()) {
-      throw std::runtime_error("StationaryWaveletTransformDiagonalOnly - in_image and out_image bounds must be equal");
-    }
-
-    afx::Bounds region = in_image.GetBounds();
-
-    unsigned int max_level = log2(static_cast<double>(std::min(region.GetWidth(), region.GetHeight())) / static_cast<double>(wavelet.size() - 1));
-    level = std::min(level, max_level);
-    float sum = 0.0f;
-    for(std::vector<float>::iterator it = wavelet.begin(); it != wavelet.end(); ++it) {
-      sum += fabsf(*it);
-    }
-    for(std::vector<float>::iterator it = wavelet.begin(); it != wavelet.end(); ++it) {
-      *it = *it / sum;
-    }
-
-    afx::Image temp_image(region);
-    ImageThreader threader;
-    for (unsigned int i = 0; i <= level; ++i) {
-      threader.ThreadImageChunks(region, boost::bind(&WaveletTransform::StationaryConvolve_X_, this, _1, boost::cref(i == 0 ? in_image : *out_image), &temp_image, boost::cref(wavelet), level));
-      threader.Wait();
-      threader.ThreadImageChunksY(region, boost::bind(&WaveletTransform::StationaryConvolve_Y_, this, _1, boost::cref(temp_image), out_image, boost::cref(wavelet), level));
-      threader.Wait();
-    }
-  }
-private:
-  void StationaryConvolve_X_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, const std::vector<float>& wavelet, unsigned int level) {
-    int increment = std::pow(2.0f, static_cast<int>(level));
-    int size = increment * static_cast<int>(wavelet.size() - 1);
-    for (int y = region.y1(); y <= region.y2(); ++y) {
-      float* out_ptr = out_image->GetPtr(region.x1(), y);
-      for (int x = region.x1(); x <= region.x2(); ++x) {
-        float sum = 0.0f;
-        int window_x = x - size;
-        const float* in_ptr = in_image.GetPtrBnds(window_x, y);
-        for (std::vector<float>::const_reverse_iterator it = wavelet.rbegin(); it < wavelet.rend(); ++it) {
-          sum += *it * *in_image.GetPtrBnds(window_x, y);
-          window_x += increment;
-          // TODO(rpw): This is not working right.
-//           if (window_x  >= in_image.GetBounds().x1()) {
-//             in_ptr += increment;
-//           }
-        }
-        for (std::vector<float>::const_iterator it = wavelet.begin() + 1; it < wavelet.end(); ++it) {
-          sum += *it * *in_image.GetPtrBnds(window_x, y);
-          window_x += increment;
-          // TODO(rpw): This is not working right.
-//           if (window_x >= in_image.GetBounds().x1() && window_x <= in_image.GetBounds().x2()) {
-//             in_ptr += increment;
-//           }
-        }
-        *out_ptr++ = sum;
-      }
-    }
-  }
-  void StationaryConvolve_Y_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, const std::vector<float>& wavelet, unsigned int level) {
-    int increment = std::pow(2.0f, static_cast<int>(level));
-    for (int x = region.x1(); x <= region.x2(); ++x) {
-      float* out_ptr = out_image->GetPtr(x, region.y1());
-      for (int y = region.y1(); y <= region.y2(); ++y) {
-        float sum = 0.0f;
-        int window_y = y - increment * static_cast<int>(wavelet.size() - 1);
-        const float* in_ptr = in_image.GetPtrBnds(x, window_y);
-        for (std::vector<float>::const_reverse_iterator it = wavelet.rbegin(); it < wavelet.rend(); ++it) {
-          sum += *it * *in_image.GetPtrBnds(x, window_y);
-          window_y += increment;
-          if (window_y >= in_image.GetBounds().y1()) {
-//             for (int i = 0; i < increment; ++i) {
-//               in_ptr = in_image.GetNextRow(in_ptr);
-//             }
-          }
-        }
-        for (std::vector<float>::const_iterator it = wavelet.begin() + 1; it < wavelet.end(); ++it) {
-          sum += *it * *in_image.GetPtrBnds(x, window_y);
-          window_y += increment;
-          if (window_y >= in_image.GetBounds().y1() && window_y <= in_image.GetBounds().y2()) {
-//             for (int i = 0; i < increment; ++i) {
-//               in_ptr = in_image.GetNextRow(in_ptr);
-//             }
-          }
-        }
-        *out_ptr = sum;
-        out_ptr = out_image->GetNextRow(out_ptr);
-      }
-    }
-  }
-};
-
 class NoiseMap {
-public:
+ public:
+  void Calculate(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
+    std::vector<float> wavelet(bior44, bior44 + 10);
+    afx::Image temp(out_image->GetBounds());
+    afx::Convolution cv;
+    cv.Seperable(in_image, &temp, wavelet);
+    MAD(temp, out_image, window_size);
+  }
+
   void MAD(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
     ImageThreader threader;
     threader.ThreadImageChunks(in_image.GetBounds(), boost::bind(&NoiseMap::MAD_, this, _1, boost::cref(in_image), out_image, window_size));
     threader.Wait();
   }
-private:
+
+ private:
   void MAD_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
     unsigned int window_array_size = 4 * (window_size * window_size + window_size) + 1;
     float window_array[window_array_size];
@@ -180,13 +76,7 @@ private:
       }
     }
   }
-
-public:
-
-
-
 };
-
 
 }  // namespace afx
 
