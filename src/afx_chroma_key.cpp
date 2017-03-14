@@ -178,7 +178,7 @@ void ThisClass::_validate(bool) {
     in_dilate_ = 50.0f * afx::math::Clamp(k_in_dilate_, 0.0f, 1.0f);
 
     nuke::ChannelSet add_channels = channels();
-    add_channels += nuke::Mask_RGB;
+    add_channels += nuke::Mask_RGBA;
     set_out_channels(add_channels);
     info_.turn_on(add_channels);
 
