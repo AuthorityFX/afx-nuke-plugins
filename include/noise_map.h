@@ -38,10 +38,13 @@ namespace afx {
 class NoiseMap {
  public:
   void Calculate(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
-    afx::Image temp(out_image->GetBounds());
+    afx::Image temp1(out_image->GetBounds());
+    afx::Image temp2(out_image->GetBounds());
     afx::Convolution cv;
-    cv.Seperable(in_image, &temp, bior44);
-    MAD(temp, out_image, window_size);
+    cv.Seperable(in_image, &temp1, bior44);
+    MAD(temp1, &temp2, window_size);
+    afx::Morphology morph;
+    morph.Dilate(temp2, out_image, 3);
   }
 
   void MAD(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {

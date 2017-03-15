@@ -53,6 +53,62 @@ private:
   int y_;
 };
 
+
+class Morphology {
+ public:
+  void Dilate(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
+    ImageThreader threader;
+    threader.ThreadImageChunks(in_image.GetBounds(), boost::bind(&Morphology::Dilate_, this, _1, boost::cref(in_image), out_image, window_size));
+    threader.Wait();
+  }
+   void Erode(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
+    ImageThreader threader;
+    threader.ThreadImageChunks(in_image.GetBounds(), boost::bind(&Morphology::Erode_, this, _1, boost::cref(in_image), out_image, window_size));
+    threader.Wait();
+  }
+
+ private:
+  void Dilate_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
+    unsigned int window_array_size = 4 * (window_size * window_size + window_size) + 1;
+    float window_array[window_array_size];
+    for (int y = region.y1(); y <= region.y2(); ++y) {
+      float* in_ptr = in_image.GetPtr(region.x1(), y);
+      float* out_ptr = out_image->GetPtr(region.x1(), y);
+      for (int x = region.x1(); x <= region.x2(); ++x) {
+        float max_value = *in_ptr++;
+        for (int window_y = y - static_cast<int>(window_size); window_y <= y + static_cast<int>(window_size); ++window_y) {
+          const float* window_ptr = in_image.GetPtrBnds(x - window_size, window_y);
+          for (int window_x = x - static_cast<int>(window_size); window_x <= x + static_cast<int>(window_size); ++window_x) {
+            if (*window_ptr > max_value) { max_value = *window_ptr; }
+            if (window_x >= in_image.GetBounds().x1() && window_x < in_image.GetBounds().x2()) { window_ptr++; }
+          }
+        }
+      *out_ptr++ = max_value;
+      }
+    }
+  }
+
+  void Erode_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
+    unsigned int window_array_size = 4 * (window_size * window_size + window_size) + 1;
+    float window_array[window_array_size];
+    for (int y = region.y1(); y <= region.y2(); ++y) {
+      float* in_ptr = in_image.GetPtr(region.x1(), y);
+      float* out_ptr = out_image->GetPtr(region.x1(), y);
+      for (int x = region.x1(); x <= region.x2(); ++x) {
+        float min_value = *in_ptr++;
+        for (int window_y = y - static_cast<int>(window_size); window_y <= y + static_cast<int>(window_size); ++window_y) {
+          const float* window_ptr = in_image.GetPtrBnds(x - window_size, window_y);
+          for (int window_x = x - static_cast<int>(window_size); window_x <= x + static_cast<int>(window_size); ++window_x) {
+            if (*window_ptr < min_value) { min_value = *window_ptr; }
+            if (window_x >= in_image.GetBounds().x1() && window_x < in_image.GetBounds().x2()) { window_ptr++; }
+          }
+        }
+        *out_ptr++ = min_value;
+      }
+    }
+  }
+};
+
 class BorderExtender {
 public:
   // out_image must be larger than in_image. The difference between the bounding
