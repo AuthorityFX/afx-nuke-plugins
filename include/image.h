@@ -41,7 +41,7 @@ template <class T> class ImageBase : public AttributeBase {
   ImageBase<T>(const ImageBase<T>& other) : ptr_(nullptr), pitch_(0) {
     Copy(other);
   }
-  ImageBase<T>(const ImageBase<T>&& other) : ptr_(other.ptr_),
+  ImageBase<T>(ImageBase<T>&& other) : ptr_(other.ptr_),
                                              pitch_(other.pitch_),
                                              region_(other.region) {
     other.ptr_ = nullptr;
@@ -52,7 +52,7 @@ template <class T> class ImageBase : public AttributeBase {
     Copy(other);
     return *this;
   }
-  ImageBase<T>& operator=(const ImageBase<T>&& other) {
+  ImageBase<T>& operator=(ImageBase<T>&& other) {
     if (this != &other) {
       Dispose();
       ptr_ = other.ptr_;
