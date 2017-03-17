@@ -13,6 +13,8 @@
 #include <cuda_runtime.h>
 #include <cufft.h>
 
+#include <cstdint>
+
 #include <algorithm>
 #include <list>
 
@@ -211,7 +213,7 @@ void CudaImage::MemCpyFromDevice(float* h_ptr, size_t h_pitch, cudaStream_t stre
 }
 float* CudaImage::GetPtr() const { return ptr_; }
 float* CudaImage::GetPtr(int x, int y) const {
-  float* ptr = reinterpret_cast<float*>(reinterpret_cast<char*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(float));
+  float* ptr = reinterpret_cast<float*>(reinterpret_cast<std::uint8_t*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(float));
   return ptr;
 }
 size_t CudaImage::GetPitch() const { return pitch_; }
@@ -255,7 +257,7 @@ void CudaComplex::Dispose() {
 }
 cufftComplex* CudaComplex::GetPtr() const { return ptr_; }
 cufftComplex* CudaComplex::GetPtr(int x, int y) const {
-  cufftComplex* ptr = reinterpret_cast<cufftComplex*>(reinterpret_cast<char*>(ptr_) + y * pitch_ + x * sizeof(cufftComplex));
+  cufftComplex* ptr = reinterpret_cast<cufftComplex*>(reinterpret_cast<std::uint8_t*>(ptr_) + y * pitch_ + x * sizeof(cufftComplex));
   return ptr;
 }
 size_t CudaComplex::GetPitch() const {return pitch_; }

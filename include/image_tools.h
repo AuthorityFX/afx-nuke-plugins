@@ -13,6 +13,7 @@
 #include "math.h"
 
 #include <stdexcept>
+#include <cstdint>
 
 #include "include/image.h"
 #include "include/pixel.h"
@@ -312,7 +313,7 @@ private:
     }
   }
 
-  void RepeatX_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned char side) {
+  void RepeatX_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, std::uint8_t side) {
     afx::Bounds in_region = in_image.GetBounds();
     int border_pixel_x;
     if (side & LeftBorder) {
@@ -328,7 +329,7 @@ private:
       }
     }
   }
-  void RepeatY_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned char side) {
+  void RepeatY_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, std::uint8_t side) {
     afx::Bounds in_region = in_image.GetBounds();
     int border_pixel_y;
     if (side & BottomBorder) {
@@ -346,7 +347,7 @@ private:
     }
   }
 
-  void RepeatFalloffX_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, float falloff, unsigned char side) {
+  void RepeatFalloffX_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, float falloff, std::uint8_t side) {
     afx::Bounds in_region = in_image.GetBounds();
     int border_pixel_x;
     if (side & LeftBorder) {
@@ -372,7 +373,7 @@ private:
       }
     }
   }
-  void RepeatFalloffY_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, float falloff, unsigned char side) {
+  void RepeatFalloffY_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, float falloff, std::uint8_t side) {
     afx::Bounds in_region = in_image.GetBounds();
     int border_pixel_y;
     if (side & BottomBorder) {
@@ -391,7 +392,7 @@ private:
     }
   }
 
-  void MirrorX_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned char side) {
+  void MirrorX_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, std::uint8_t side) {
     afx::Bounds in_region = in_image.GetBounds();
     int x_offset;
     if (side & LeftBorder) {
@@ -418,7 +419,7 @@ private:
       }
     }
   }
-  void MirrorY_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned char side) {
+  void MirrorY_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, std::uint8_t side) {
     afx::Bounds in_region = in_image.GetBounds();
     int y_offset;
     if (side & BottomBorder) {

@@ -16,6 +16,7 @@
 
 #include <vector>
 #include <memory>
+#include <cstdint>
 
 #include "include/bounds.h"
 #include "include/pixel.h"
@@ -42,8 +43,8 @@ template <class T> class ImageBase : public AttributeBase {
     Copy(other);
   }
   ImageBase<T>(ImageBase<T>&& other) : ptr_(other.ptr_),
-                                             pitch_(other.pitch_),
-                                             region_(other.region) {
+                                       pitch_(other.pitch_),
+                                       region_(other.region) {
     other.ptr_ = nullptr;
     other.pitch_ = 0;
     other.region_ = afx::Bounds();
@@ -54,7 +55,7 @@ template <class T> class ImageBase : public AttributeBase {
   }
   ImageBase<T>& operator=(ImageBase<T>&& other) {
     if (this != &other) {
-      Dispose();
+      Deallocate();
       ptr_ = other.ptr_;
       pitch_ = other.pitch_;
       region_ = other.region_;
@@ -65,13 +66,13 @@ template <class T> class ImageBase : public AttributeBase {
     return *this;
   }
   ~ImageBase<T>() {
-    Dispose();
+    Deallocate();
   }
   void Allocate(unsigned int width, unsigned int height) {
     Allocate(afx::Bounds(0, 0, width - 1, height - 1));
   }
   void Allocate(const afx::Bounds& region) {
-    Dispose();
+    Deallocate();
     region_ = region;
     pitch_ = (((region_.GetWidth() * sizeof(T) + 63) / 64) * 64);
     ptr_ = reinterpret_cast<T*>(aligned_alloc(64, pitch_ *  region_.GetHeight()));
@@ -83,7 +84,7 @@ template <class T> class ImageBase : public AttributeBase {
       memcpy(GetPtr(region_.x1(), y), other.GetPtr(other.region_.x1(), y), region_.GetWidth() * sizeof(T));
     }
   }
-  void Dispose() {
+  void Deallocate() {
     if (ptr_ != nullptr) {
       free(ptr_);
       ptr_ = nullptr;
@@ -95,7 +96,7 @@ template <class T> class ImageBase : public AttributeBase {
     std::size_t size = region_.GetWidth() * sizeof(T);
     for (int y = region_.y1(); y <= region_.y2(); ++y) {
       memcpy(dest_ptr, source_ptr, size);
-      source_ptr = reinterpret_cast<const T*>((reinterpret_cast<const char*>(source_ptr) + pitch));
+      source_ptr = reinterpret_cast<const T*>((reinterpret_cast<const std::uint8_t*>(source_ptr) + pitch));
       dest_ptr = this->GetNextRow(dest_ptr);
     }
   }
@@ -105,7 +106,7 @@ template <class T> class ImageBase : public AttributeBase {
     std::size_t size = region.GetWidth() * sizeof(T);
     for (int y = region.y1(); y <= region.y2(); ++y) {
       memcpy(dest_ptr, source_ptr, size);
-      source_ptr = reinterpret_cast<const T*>((reinterpret_cast<const char*>(source_ptr) + pitch));
+      source_ptr = reinterpret_cast<const T*>((reinterpret_cast<const std::uint8_t*>(source_ptr) + pitch));
       dest_ptr = this->GetNextRow(dest_ptr);
     }
   }
@@ -123,7 +124,7 @@ template <class T> class ImageBase : public AttributeBase {
     for (int y = region_.y1(); y <= region_.y2(); ++y) {
       memcpy(dest_ptr, source_ptr, size);
       source_ptr = this->GetNextRow(dest_ptr);
-      dest_ptr = reinterpret_cast<T*>((reinterpret_cast<char*>(dest_ptr) + pitch));
+      dest_ptr = reinterpret_cast<T*>((reinterpret_cast<std::uint8_t*>(dest_ptr) + pitch));
     }
   }
   void MemCpyOut(T* ptr, std::size_t pitch, afx::Bounds region) const {
@@ -133,7 +134,7 @@ template <class T> class ImageBase : public AttributeBase {
     for (int y = region.y1(); y <= region.y2(); ++y) {
       memcpy(dest_ptr, source_ptr, size);
       source_ptr = this->GetNextRow(dest_ptr);
-      dest_ptr = reinterpret_cast<T*>((reinterpret_cast<char*>(dest_ptr) + pitch));
+      dest_ptr = reinterpret_cast<T*>((reinterpret_cast<std::uint8_t*>(dest_ptr) + pitch));
     }
   }
   void MemCpyOut(const ImageBase<T>& dest_image, afx::Bounds region) const {
@@ -147,19 +148,19 @@ template <class T> class ImageBase : public AttributeBase {
     return ptr_;
   }
   T* GetPtr(int x, int y) const {
-    return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(T));
+    return reinterpret_cast<T*>(reinterpret_cast<std::uint8_t*>(ptr_) + (y - region_.y1()) * pitch_ + (x - region_.x1()) * sizeof(T));
   }
   T* GetPtrBnds(int x, int y) const {
-    return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr_) + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(T));
+    return reinterpret_cast<T*>(reinterpret_cast<std::uint8_t*>(ptr_) + (region_.ClampY(y) - region_.y1()) * pitch_ + (region_.ClampX(x) - region_.x1()) * sizeof(T));
   }
   T* GetNextRow(T* ptr) const {
-    return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) + pitch_);
+    return reinterpret_cast<T*>(reinterpret_cast<std::uint8_t*>(ptr) + pitch_);
   }
   const T* GetNextRow(const T* ptr) const {
-    return reinterpret_cast<const T*>(reinterpret_cast<const char*>(ptr) + pitch_);
+    return reinterpret_cast<const T*>(reinterpret_cast<const std::uint8_t*>(ptr) + pitch_);
   }
   T* GetPreviousRow(T* ptr) const {
-    return reinterpret_cast<T*>(reinterpret_cast<char*>(ptr) - pitch_);
+    return reinterpret_cast<T*>(reinterpret_cast<std::uint8_t*>(ptr) - pitch_);
   }
   std::size_t GetPitch() const {
     return pitch_;

@@ -12,6 +12,8 @@
 #include <math.h>
 #include <boost/bind.hpp>
 
+#include <cstdint>
+
 #include "include/image.h"
 #include "include/threading.h"
 
@@ -65,7 +67,7 @@ void MorphAA::FindXLines_(const Bounds& region, const Image& input) {
   for (int y = region.y1(); y <= region.y2(); ++y) {
     info_ptr = info_.GetPtr(region.x1(), y);
     int length = 0;  // Length of line, also used to determine if looking for new line or end of line.
-    unsigned char start_flag_x;
+    std::uint8_t start_flag_x;
     for (int x = region.x1(); x <= region.x2(); ++x) {
       switch (length) {  // if new line found
         case 0: {
@@ -95,7 +97,7 @@ void MorphAA::FindYLines_(const Bounds& region, const Image& input) {
   for (int x = region.x1(); x <= region.x2(); ++x) {
     info_ptr = info_.GetPtr(x, region.y1());
     int length = 0;  // Length of line, also used to determine if looking for new line or end of line.
-    unsigned char start_flag_y;
+    std::uint8_t start_flag_y;
     for (int y = region.y1(); y <= region.y2(); ++y) {
       switch (length) {  // if new line found
         case 0: {

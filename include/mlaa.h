@@ -12,6 +12,8 @@
 
 #include <OpenEXR/half.h>
 
+#include <cstdint>
+
 #include "include/bounds.h"
 #include "include/image.h"
 #include "include/threading.h"
@@ -28,7 +30,7 @@ enum DisFlags {
 struct PixelInfo {
   half blend_x;
   half blend_y;
-  unsigned char flags;
+  std::uint8_t flags;
   PixelInfo() : blend_x(0.0f), blend_y(0.0f), flags(0) {}
 };
 
