@@ -21,41 +21,49 @@
 namespace afx {
 
 enum DiscontinuityFlags {
-  kDownPositive   = 0x01,  // pixel - bottom pixel is less than 0
-  kDownNegative   = 0x02,  // pixel - bottom pixel is greater than 0
-  kRightPositive  = 0x04,  // pixel - right pixel less than 0
-  kRightNegative  = 0x08,  // pixel - right pixel greater than 0
+  kDownPositive   = 0x01,  // (pixel - bottom pixel) < 0
+  kDownNegative   = 0x02,  // (pixel - bottom pixel) > 0
+  kRightPositive  = 0x04,  // (pixel - right pixel) < 0
+  kRightNegative  = 0x08,  // (pixel - right pixel) > 0
   kDown           = kDownPositive | kDownNegative,
   kRight          = kRightPositive | kRightNegative,
 };
 
-struct PixelInfo {
+struct Discontinuity {
   half blend_x;
   half blend_y;
   std::uint8_t disc;
-  PixelInfo() : blend_x(0.0f), blend_y(0.0f), disc(0) {}
+  Discontinuity() : blend_x(0.0f), blend_y(0.0f), disc(0) {}
 };
 
-class ImageInfo : public ImageBase<PixelInfo> {};
+class ImageInfo : public ImageBase<Discontinuity> {};
 
 class MorphAA {
- private:
-  ImageInfo info_;
-  float threshold_;
-  unsigned int max_line_length_;
-
-  float RelativeDifference_(float a, float b);
-  float CalcTrapArea_(int pos, float length);
-  void MarkDisc_(const Bounds& region, const Image& input);
-  void FindRowLines_(const Bounds& region, const Image& input);
-  void FindColumnLines_(const Bounds& region, const Image& input);
-  void SetXLine_(PixelInfo* info_ptr, int length, int x, int y);
-  void SetYLine_(PixelInfo* info_ptr, int length, int x, int y);
-  void BlendPixels_(const Bounds& region, const Image& input, Image* output);
-
  public:
   void Process(const Image& input, Image* output, float threshold, unsigned int max_line_length, afx::ImageThreader* threader);
   void Process(const Image& input, Image* output, float threshold, unsigned int max_line_length);
+
+ private:
+  ImageInfo disc_image_;
+  float threshold_;
+
+  unsigned int max_line_length_;
+  // Relative difference between two pixels
+  float RelativeDifference_(float a, float b);
+  // Trapezoid area of pixel dissected by jaggie line
+  float BlendWeight_(unsigned int pos, float length);
+  // Set bitflags for vertical and horizontal discontinuities
+  void MarkDisc_(const Bounds& region, const Image& input);
+  // March row continuous discontinuities to determine line legnth
+  void FindRowLines_(const Bounds& region, const Image& input);
+  // March columm continuous discontinuities to determine line legnth
+  void FindColumnLines_(const Bounds& region, const Image& input);
+  // Loop back through row line and calculate trapezoid weights
+  void RowBlendWeights_(Discontinuity* disc_ptr, int length, int x, int y);
+  // Loop back through column line and calculate trapezoid weights
+  void ColumnBlendWeights_(Discontinuity* disc_ptr, int length, int x, int y);
+  // Perform anti-aliasing by blending neighbor pixels with trapezoid weights
+  void BlendPixels_(const Bounds& region, const Image& input, Image* output);
 };
 
 }  // namespace afx
