@@ -21,6 +21,7 @@
 namespace afx {
 
 enum DiscontinuityFlags {
+  kNone           = 0,
   kDownPositive   = 0x01,  // (pixel - bottom pixel) < 0
   kDownNegative   = 0x02,  // (pixel - bottom pixel) > 0
   kRightPositive  = 0x04,  // (pixel - right pixel) < 0
@@ -30,10 +31,10 @@ enum DiscontinuityFlags {
 };
 
 struct Discontinuity {
-  half blend_x;
-  half blend_y;
-  std::uint8_t disc;
-  Discontinuity() : blend_x(0.0f), blend_y(0.0f), disc(0) {}
+  half vert_weight;
+  half horiz_weight;
+  std::uint8_t disc_dir;
+  Discontinuity() : vert_weight(0.0f), horiz_weight(0.0f), disc_dir(kNone) {}
 };
 
 class ImageInfo : public ImageBase<Discontinuity> {};
