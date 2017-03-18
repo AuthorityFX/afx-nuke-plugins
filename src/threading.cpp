@@ -75,21 +75,21 @@ void Threader::AddWork(boost::function<void()> function) { io_service_.post(func
 bool Threader::IsRunning() const { return running_; }
 unsigned int Threader::Threads() const { return num_threads_; }
 
-void ImageThreader::ThreadImageRows(const Bounds& region, boost::function<void(Bounds)> function) {
+void ImageThreader::ThreadRows(const Bounds& region, boost::function<void(Bounds)> function) {
   Bounds thread_region = region;
   for (int row = region.y1(); row <= region.y2(); ++row) {
     thread_region.SetY(row, row);
     AddWork(boost::bind(function, thread_region));
   }
 }
-void ImageThreader::ThreadImageColumns(const Bounds& region, boost::function<void(Bounds)> function) {
+void ImageThreader::ThreadColumns(const Bounds& region, boost::function<void(Bounds)> function) {
   Bounds thread_region = region;
   for (int column = region.x1(); column <= region.x2(); ++column) {
     thread_region.SetX(column, column);
     AddWork(boost::bind(function, thread_region));
   }
 }
-void ImageThreader::ThreadImageChunks(const Bounds& region, boost::function<void(Bounds)> function) {
+void ImageThreader::ThreadRowChunks(const Bounds& region, boost::function<void(Bounds)> function) {
   unsigned int num_chunks = Threads();
   num_chunks = std::min(num_chunks, region.GetHeight());
   Bounds thread_region = region;
@@ -99,7 +99,7 @@ void ImageThreader::ThreadImageChunks(const Bounds& region, boost::function<void
     AddWork(boost::bind(function, thread_region));
   }
 }
-void ImageThreader::ThreadImageChunksY(const Bounds& region, boost::function<void(Bounds)> function) {
+void ImageThreader::ThreadColumnChunks(const Bounds& region, boost::function<void(Bounds)> function) {
   unsigned int num_chunks = Threads();
   num_chunks = std::min(num_chunks, region.GetWidth());
   Bounds thread_region = region;

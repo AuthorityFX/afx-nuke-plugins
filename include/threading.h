@@ -59,13 +59,13 @@ class Threader {
 class ImageThreader : public Threader {
  public:
   // Split bounds into rows.
-  void ThreadImageRows(const Bounds& region, boost::function<void(Bounds)> function);
+  void ThreadRows(const Bounds& region, boost::function<void(Bounds)> function);
   // Split bounds into columns.
-  void ThreadImageColumns(const Bounds& region, boost::function<void(Bounds)> function);
+  void ThreadColumns(const Bounds& region, boost::function<void(Bounds)> function);
   // Split Bounds into num_threads chunks in y axis.
-  void ThreadImageChunks(const Bounds& region, boost::function<void(Bounds)> function);
+  void ThreadRowChunks(const Bounds& region, boost::function<void(Bounds)> function);
   // Split Bounds into num_threads chunks in y axis.
-  void ThreadImageChunksY(const Bounds& region, boost::function<void(Bounds)> function);
+  void ThreadColumnChunks(const Bounds& region, boost::function<void(Bounds)> function);
 };
 
 }  // namespace afx
