@@ -33,8 +33,8 @@ enum DiscontinuityFlags {
 struct Discontinuity {
   half vert_weight;
   half horiz_weight;
-  std::uint8_t disc_dir;
-  Discontinuity() : vert_weight(0.0f), horiz_weight(0.0f), disc_dir(kNone) {}
+  std::uint8_t direction;
+  Discontinuity() : vert_weight(0.0f), horiz_weight(0.0f), direction(kNone) {}
 };
 
 class ImageInfo : public ImageBase<Discontinuity> {};

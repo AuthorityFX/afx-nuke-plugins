@@ -39,18 +39,18 @@ void MorphAA::MarkDisc_(const Bounds& region, const Image& input) {
       if (y > disc_image_.GetBounds().y1()) {
         float dif = RelativeDifference_(*in_ptr, *in_bot_ptr);
         if (dif > threshold_) {
-          disc_ptr->disc_dir |= afx::kDownPositive;
+          disc_ptr->direction |= afx::kDownPositive;
         } else if (dif < -threshold_) {
-          disc_ptr->disc_dir |= afx::kDownNegative;
+          disc_ptr->direction |= afx::kDownNegative;
         }
         in_bot_ptr++;
       }
       if (x < disc_image_.GetBounds().x2()) {
         float dif = RelativeDifference_(*in_ptr, *in_right_ptr);
         if (dif > threshold_) {
-          disc_ptr->disc_dir |= afx::kRightPositive;
+          disc_ptr->direction |= afx::kRightPositive;
         } else if (dif < -threshold_) {
-          disc_ptr->disc_dir |= afx::kRightNegative;
+          disc_ptr->direction |= afx::kRightNegative;
         }
         in_right_ptr++;
       }
@@ -69,12 +69,12 @@ void MorphAA::FindRowLines_(const Bounds& region, const Image& input) {
     for (int x = region.x1(); x <= region.x2(); ++x) {
       switch (length) {  // if new line found
         case 0: {
-          start_disc = disc_ptr->disc_dir & afx::kDown;
+          start_disc = disc_ptr->direction & afx::kDown;
           if (start_disc) { length++; }  // New line found
           break;
         }
         default: {  // looking for end of line
-          if ((disc_ptr->disc_dir & start_disc) && x < disc_image_.GetBounds().x2() && length <= max_line_length_) {
+          if ((disc_ptr->direction & start_disc) && x < disc_image_.GetBounds().x2() && length <= max_line_length_) {
             length++;
           } else {  // End of line, loop back through and set blend weights for all pixels in line
             RowBlendWeights_(disc_ptr, length, x, y);
@@ -99,12 +99,12 @@ void MorphAA::FindColumnLines_(const Bounds& region, const Image& input) {
     for (int y = region.y1(); y <= region.y2(); ++y) {
       switch (length) {  // if new line found
         case 0: {
-          start_disc = disc_ptr->disc_dir & afx::kRight;
+          start_disc = disc_ptr->direction & afx::kRight;
           if (start_disc) { length++; }  // New line found
           break;
         }
         default: {  // Looking for end of line
-          if ((disc_ptr->disc_dir & start_disc) && y < disc_image_.GetBounds().y2() && length <= max_line_length_) {  // Line continues
+          if ((disc_ptr->direction & start_disc) && y < disc_image_.GetBounds().y2() && length <= max_line_length_) {  // Line continues
             length++;
           } else {  // End of line, loop back through and set blend weights for all pixels in line
             ColumnBlendWeights_(disc_ptr, length, x, y);
@@ -129,14 +129,14 @@ void MorphAA::RowBlendWeights_(Discontinuity* disc_ptr, int length, int x, int y
   //      |[][][][][]|{}             |
   //      ¯¯¯¯¯¯¯¯¯¯¯¯               |______x
   //          0.0f
-  if ((disc_ptr - 1)->disc_dir & afx::kDownPositive) {  // last pixel in line is greater than bottom pixel
-    if ((disc_ptr - 1)->disc_dir & afx::kRightPositive && !(disc_image_.GetPtrBnds(x - 1, y - 1)->disc_dir & kRightNegative)) {
+  if ((disc_ptr - 1)->direction & afx::kDownPositive) {  // last pixel in line is greater than bottom pixel
+    if ((disc_ptr - 1)->direction & afx::kRightPositive && !(disc_image_.GetPtrBnds(x - 1, y - 1)->direction & kRightNegative)) {
       // _____            ______
       //      |[][][][][a]|{}
       //      ¯¯¯¯¯¯¯¯¯¯b¯¯
       end_blend = true;
     }
-    if (disc_image_.GetPtrBnds(x - length - 1, y)->disc_dir & afx::kRightNegative && !(disc_image_.GetPtrBnds(x - length - 1, y - 1)->disc_dir & afx::kRightPositive)) {
+    if (disc_image_.GetPtrBnds(x - length - 1, y)->direction & afx::kRightNegative && !(disc_image_.GetPtrBnds(x - length - 1, y - 1)->direction & afx::kRightPositive)) {
       // _____            ______
       //     a|[][][][][]|{}
       //     b¯¯¯¯¯¯¯¯¯¯¯¯
@@ -147,12 +147,12 @@ void MorphAA::RowBlendWeights_(Discontinuity* disc_ptr, int length, int x, int y
     // _____|¯¯¯¯¯¯¯¯¯¯|______
     //          1.0f
   } else {  // last pixel in line is less than bottom pixel
-    if (disc_image_.GetPtrBnds(x - 1, y - 1)->disc_dir & afx::kRightPositive && !((disc_ptr - 1)->disc_dir & afx::kRightNegative)) {
+    if (disc_image_.GetPtrBnds(x - 1, y - 1)->direction & afx::kRightPositive && !((disc_ptr - 1)->direction & afx::kRightNegative)) {
       //       [][][][][b]{}
       // _____|¯¯¯¯¯¯¯¯¯a|_____
       end_blend = true;
     }
-    if (disc_image_.GetPtrBnds(x - length - 1, y - 1)->disc_dir & afx::kRightNegative && !(disc_image_.GetPtrBnds(x - length - 1, y)->disc_dir & afx::kRightPositive)) {
+    if (disc_image_.GetPtrBnds(x - length - 1, y - 1)->direction & afx::kRightNegative && !(disc_image_.GetPtrBnds(x - length - 1, y)->direction & afx::kRightPositive)) {
       // if Diff(a, b) > thresh
       //
       //     b [][][][][]{}
@@ -164,14 +164,14 @@ void MorphAA::RowBlendWeights_(Discontinuity* disc_ptr, int length, int x, int y
   Discontinuity* line_disc_ptr = disc_ptr;
   if (start_blend && end_blend) {  // Both ends blend
     float half_length = length / 2.0f + 0.5;
-    int max_pos = (length - 1) / 2;
-    std::vector<float> weights;
+    int max_pos = static_cast<int>(half_length) - 1;
+    std::vector<float> weights(static_cast<int>(half_length));
     for (int pos = max_pos; pos >= 0; --pos) {
       line_disc_ptr--;
       line_disc_ptr->vert_weight = BlendWeight_(pos, half_length);
-      weights.push_back(line_disc_ptr->vert_weight);
+      weights[pos] = line_disc_ptr->vert_weight;
     }
-    for (auto it = (length & 1) ? (weights.rbegin() + 1) : weights.rbegin(); it != weights.rend(); ++it) {
+    for (auto it = (length & 1) ? (weights.begin() + 1) : weights.begin(); it != weights.end(); ++it) {
       line_disc_ptr--;
       line_disc_ptr->vert_weight = *it;
     }
@@ -197,14 +197,14 @@ void MorphAA::ColumnBlendWeights_(Discontinuity* disc_ptr, int length, int x, in
   //      |[][][][][]|{}             |
   //      ¯¯¯¯¯¯¯¯¯¯¯¯               x
   //          0.0f
-  if (disc_image_.GetPreviousRow(disc_ptr)->disc_dir & afx::kRightPositive) {  // last pixel in line is greater than right pixel
-    if ((disc_ptr->disc_dir & afx::kDownNegative) && !(disc_image_.GetPtrBnds(x + 1, y)->disc_dir & afx::kDownPositive)) {
+  if (disc_image_.GetPreviousRow(disc_ptr)->direction & afx::kRightPositive) {  // last pixel in line is greater than right pixel
+    if ((disc_ptr->direction & afx::kDownNegative) && !(disc_image_.GetPtrBnds(x + 1, y)->direction & afx::kDownPositive)) {
       // _____           ______
       //      |[][][][][]|{a}
       //      ¯¯¯¯¯¯¯¯¯¯¯¯ b
       end_blend = true;
     }
-    if (disc_image_.GetPtrBnds(x, y - length)->disc_dir & afx::kDownPositive && !(disc_image_.GetPtrBnds(x + 1, y - length)->disc_dir & afx::kDownNegative)) {
+    if (disc_image_.GetPtrBnds(x, y - length)->direction & afx::kDownPositive && !(disc_image_.GetPtrBnds(x + 1, y - length)->direction & afx::kDownNegative)) {
       // if Diff(a, b) > thresh
       // _____            ______
       //      |[a][][][][]|{}
@@ -216,12 +216,12 @@ void MorphAA::ColumnBlendWeights_(Discontinuity* disc_ptr, int length, int x, in
     // _____|¯¯¯¯¯¯¯¯¯¯|______
     //          1.0f
   } else {  // last pixel in line is less than right pixel
-    if ((disc_image_.GetPtrBnds(x + 1, y)->disc_dir & afx::kDownNegative) && !(disc_ptr->disc_dir & afx::kDownPositive)) {
+    if ((disc_image_.GetPtrBnds(x + 1, y)->direction & afx::kDownNegative) && !(disc_ptr->direction & afx::kDownPositive)) {
       //       [][][][][]{b}
       // _____|¯¯¯¯¯¯¯¯¯¯|a_____
       end_blend = true;
     }
-    if (disc_image_.GetPtrBnds(x + 1, y - length)->disc_dir & afx::kDownPositive && !(disc_image_.GetPtrBnds(x, y - length)->disc_dir & afx::kDownNegative)) {
+    if (disc_image_.GetPtrBnds(x + 1, y - length)->direction & afx::kDownPositive && !(disc_image_.GetPtrBnds(x, y - length)->direction & afx::kDownNegative)) {
       //
       //      [b][][][][]{}
       // _____|a¯¯¯¯¯¯¯¯¯|_____
@@ -232,14 +232,14 @@ void MorphAA::ColumnBlendWeights_(Discontinuity* disc_ptr, int length, int x, in
   Discontinuity* line_disc_ptr = disc_ptr;
   if (start_blend && end_blend) {  // Both ends blend
     float half_length = length / 2.0f + 0.5;
-    int max_pos = (length - 1) / 2;
-    std::vector<float> weights;
+    int max_pos = static_cast<int>(half_length) - 1;
+    std::vector<float> weights(static_cast<int>(half_length));
     for (int pos = max_pos; pos >= 0; --pos) {
       line_disc_ptr = disc_image_.GetPreviousRow(line_disc_ptr);
       line_disc_ptr->horiz_weight = BlendWeight_(pos, half_length);
-      weights.push_back(line_disc_ptr->horiz_weight);
+      weights[pos] = line_disc_ptr->horiz_weight;
     }
-    for (auto it = (length & 1) ? (weights.rbegin() + 1) : weights.rbegin(); it != weights.rend(); ++it) {
+    for (auto it = (length & 1) ? (weights.begin() + 1) : weights.begin(); it != weights.end(); ++it) {
       line_disc_ptr = disc_image_.GetPreviousRow(line_disc_ptr);
       line_disc_ptr->horiz_weight = *it;
     }
@@ -271,17 +271,17 @@ void MorphAA::BlendPixels_(const Bounds& region, const Image& input, Image* outp
     for (int x = region.x1(); x <= region.x2(); ++x) {
       *out_ptr = *in_ptr;
 
-      if (disc_ptr->disc_dir & afx::kDownPositive) {
+      if (disc_ptr->direction & afx::kDownPositive) {
         const float* b_ptr = y > disc_image_.GetBounds().y1() ? in_ptr - input.GetPitch() : in_ptr;
         *out_ptr = disc_ptr->vert_weight * *b_ptr +  (1.0f - disc_ptr->vert_weight) * *out_ptr;
-      } else if (t_disc_ptr->disc_dir & afx::kDownNegative) {
+      } else if (t_disc_ptr->direction & afx::kDownNegative) {
         const float* t_ptr = y < disc_image_.GetBounds().y2() ? in_ptr + input.GetPitch() : in_ptr;
         *out_ptr = t_disc_ptr->vert_weight * *t_ptr + (1.0f - t_disc_ptr->vert_weight) * *out_ptr;
       }
-      if (disc_ptr->disc_dir & afx::kRightPositive) {
+      if (disc_ptr->direction & afx::kRightPositive) {
         const float* r_ptr = x < disc_image_.GetBounds().x2() ? in_ptr + 1 : in_ptr;
         *out_ptr = disc_ptr->horiz_weight * *r_ptr + (1.0f - disc_ptr->horiz_weight) * *out_ptr;
-      } else if (l_disc_ptr->disc_dir & afx::kRightNegative) {
+      } else if (l_disc_ptr->direction & afx::kRightNegative) {
         const float* l_ptr = x > disc_image_.GetBounds().x1() ? in_ptr - 1 : in_ptr;
         *out_ptr = l_disc_ptr->horiz_weight * *l_ptr + (1.0f - l_disc_ptr->horiz_weight) * *out_ptr;
       }
