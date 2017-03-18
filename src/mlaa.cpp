@@ -23,8 +23,8 @@ float MorphAA::CalcTrapArea_(int pos, float length) {
   // Will never be called when length is 0
   return static_cast<float>(pos) / length + (0.5f / length);
 }
-float MorphAA::Diff_(float a, float b) {
-  return (a - b) / (a + b);
+float MorphAA::RelativeDifference_(float a, float b) {
+  return (a - b) / ((a + b) / 2.0f);
 }
 void MorphAA::MarkDisc_(const Bounds& region, const Image& input) {
   for (int y = region.y1(); y <= region.y2(); ++y) {
@@ -35,7 +35,7 @@ void MorphAA::MarkDisc_(const Bounds& region, const Image& input) {
     for (int x = region.x1(); x <= region.x2(); ++x) {
       *info_ptr = PixelInfo();  // Initialize PixelInfo
       if (y > info_.GetBounds().y1()) {
-        float dif = Diff_(*in_ptr, *in_bot_ptr);  // Compare current pixel to bottom neighbour
+        float dif = RelativeDifference_(*in_ptr, *in_bot_ptr);  // Compare current pixel to bottom neighbour
         if (fabsf(dif) >= threshold_) {
           if (dif > 0) {
             info_ptr->disc |= afx::kDownPositive;
@@ -46,7 +46,7 @@ void MorphAA::MarkDisc_(const Bounds& region, const Image& input) {
         in_bot_ptr++;
       }
       if (x < info_.GetBounds().x2()) {
-        float dif = Diff_(*in_ptr, *in_right_ptr);  // Compare current pixel to right neighbour
+        float dif = RelativeDifference_(*in_ptr, *in_right_ptr);  // Compare current pixel to right neighbour
         if (fabsf(dif) >= threshold_) {
           if (dif > 0) {
             info_ptr->disc |= afx::kRightPositive;

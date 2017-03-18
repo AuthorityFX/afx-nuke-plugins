@@ -44,7 +44,7 @@ class MorphAA {
   float threshold_;
   unsigned int max_line_length_;
 
-  float Diff_(float a, float b);
+  float RelativeDifference_(float a, float b);
   float CalcTrapArea_(int pos, float length);
   void MarkDisc_(const Bounds& region, const Image& input);
   void FindRowLines_(const Bounds& region, const Image& input);
