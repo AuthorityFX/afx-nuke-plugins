@@ -59,12 +59,12 @@ class Morphology {
  public:
   void Dilate(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
     ImageThreader threader;
-    threader.ThreadImageChunks(in_image.GetBounds(), boost::bind(&Morphology::Dilate_, this, _1, boost::cref(in_image), out_image, window_size));
+    threader.ThreadRowChunks(in_image.GetBounds(), boost::bind(&Morphology::Dilate_, this, _1, boost::cref(in_image), out_image, window_size));
     threader.Wait();
   }
    void Erode(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
     ImageThreader threader;
-    threader.ThreadImageChunks(in_image.GetBounds(), boost::bind(&Morphology::Erode_, this, _1, boost::cref(in_image), out_image, window_size));
+    threader.ThreadRowChunks(in_image.GetBounds(), boost::bind(&Morphology::Erode_, this, _1, boost::cref(in_image), out_image, window_size));
     threader.Wait();
   }
 
@@ -123,16 +123,16 @@ public:
 
     afx::ImageThreader threader;
     if (out_region.x1() < in_region.x1()) {
-      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::Constant_, this, _1, out_image, value));
+      threader.ThreadRowChunks(left_region, boost::bind(&BorderExtender::Constant_, this, _1, out_image, value));
     }
     if (out_region.x2() > in_region.x2()) {
-      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::Constant_, this, _1, out_image, value));
+      threader.ThreadRowChunks(right_region, boost::bind(&BorderExtender::Constant_, this, _1, out_image, value));
     }
     if (out_region.y1() < in_region.y1()) {
-      threader.ThreadImageChunks(bottom_region, boost::bind(&BorderExtender::Constant_, this, _1, out_image, value));
+      threader.ThreadRowChunks(bottom_region, boost::bind(&BorderExtender::Constant_, this, _1, out_image, value));
     }
     if (out_region.y2() > in_region.y2()) {
-      threader.ThreadImageChunks(top_region, boost::bind(&BorderExtender::Constant_, this, _1, out_image, value));
+      threader.ThreadRowChunks(top_region, boost::bind(&BorderExtender::Constant_, this, _1, out_image, value));
     }
     out_image->MemCpyIn(in_image);
     threader.Wait();
@@ -146,16 +146,16 @@ public:
 
     afx::ImageThreader threader;
     if (out_region.x1() < in_region.x1()) {
-      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
+      threader.ThreadRowChunks(left_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
     }
     if (out_region.x2() > in_region.x2()) {
-      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
+      threader.ThreadRowChunks(right_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
     }
     if (out_region.y1() < in_region.y1()) {
-      threader.ThreadImageChunks(bottom_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
+      threader.ThreadRowChunks(bottom_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
     }
     if (out_region.y2() > in_region.y2()) {
-      threader.ThreadImageChunks(top_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
+      threader.ThreadRowChunks(top_region, boost::bind(&BorderExtender::Constant_, this, _1, image, value));
     }
     threader.Wait();
   }
@@ -167,16 +167,16 @@ public:
     CalculateBounds_(in_region, out_region, &left_region, &right_region, &bottom_region, &top_region);
     afx::ImageThreader threader;
     if (out_region.x1() < in_region.x1()) {
-      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::RepeatX_, this, _1, boost::cref(in_image), out_image, LeftBorder));
+      threader.ThreadRowChunks(left_region, boost::bind(&BorderExtender::RepeatX_, this, _1, boost::cref(in_image), out_image, LeftBorder));
     }
     if (out_region.x2() > in_region.x2()) {
-      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::RepeatX_, this, _1, boost::cref(in_image), out_image, RightBorder));
+      threader.ThreadRowChunks(right_region, boost::bind(&BorderExtender::RepeatX_, this, _1, boost::cref(in_image), out_image, RightBorder));
     }
     if (out_region.y1() < in_region.y1()) {
-      threader.ThreadImageChunksY(bottom_region, boost::bind(&BorderExtender::RepeatY_, this, _1, boost::cref(in_image), out_image, BottomBorder));
+      threader.ThreadColumnChunks(bottom_region, boost::bind(&BorderExtender::RepeatY_, this, _1, boost::cref(in_image), out_image, BottomBorder));
     }
     if (out_region.y2() > in_region.y2()) {
-      threader.ThreadImageChunksY(top_region, boost::bind(&BorderExtender::RepeatY_, this, _1, boost::cref(in_image), out_image, TopBorder));
+      threader.ThreadColumnChunks(top_region, boost::bind(&BorderExtender::RepeatY_, this, _1, boost::cref(in_image), out_image, TopBorder));
     }
     out_image->MemCpyIn(in_image);
     threader.Wait();
@@ -192,16 +192,16 @@ public:
 
     afx::ImageThreader threader;
     if (out_region.x1() < in_region.x1()) {
-      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(in_image), out_image, falloff, LeftBorder));
+      threader.ThreadRowChunks(left_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(in_image), out_image, falloff, LeftBorder));
     }
     if (out_region.x2() > in_region.x2()) {
-      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(in_image), out_image, falloff, RightBorder));
+      threader.ThreadRowChunks(right_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(in_image), out_image, falloff, RightBorder));
     }
     if (out_region.y1() < in_region.y1()) {
-      threader.ThreadImageChunksY(bottom_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(in_image), out_image, falloff, BottomBorder));
+      threader.ThreadColumnChunks(bottom_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(in_image), out_image, falloff, BottomBorder));
     }
     if (out_region.y2() > in_region.y2()) {
-      threader.ThreadImageChunksY(top_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(in_image), out_image, falloff, TopBorder));
+      threader.ThreadColumnChunks(top_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(in_image), out_image, falloff, TopBorder));
     }
     out_image->MemCpyIn(in_image.GetPtr(), in_image.GetPitch(), in_image.GetBounds());
     threader.Wait();
@@ -216,16 +216,16 @@ public:
 
     afx::ImageThreader threader;
     if (out_region.x1() < in_region.x1()) {
-      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(*image), image, falloff, LeftBorder));
+      threader.ThreadRowChunks(left_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(*image), image, falloff, LeftBorder));
     }
     if (out_region.x2() > in_region.x2()) {
-      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(*image), image, falloff, RightBorder));
+      threader.ThreadRowChunks(right_region, boost::bind(&BorderExtender::RepeatFalloffX_, this, _1, boost::cref(*image), image, falloff, RightBorder));
     }
     if (out_region.y1() < in_region.y1()) {
-      threader.ThreadImageChunksY(bottom_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(*image), image, falloff, BottomBorder));
+      threader.ThreadColumnChunks(bottom_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(*image), image, falloff, BottomBorder));
     }
     if (out_region.y2() > in_region.y2()) {
-      threader.ThreadImageChunksY(top_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(*image), image, falloff, TopBorder));
+      threader.ThreadColumnChunks(top_region, boost::bind(&BorderExtender::RepeatFalloffY_, this, _1, boost::cref(*image), image, falloff, TopBorder));
     }
     threader.Wait();
   }
@@ -238,16 +238,16 @@ public:
 
     afx::ImageThreader threader;
     if (out_region.x1() < in_region.x1()) {
-      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(in_image), out_image, LeftBorder));
+      threader.ThreadRowChunks(left_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(in_image), out_image, LeftBorder));
     }
     if (out_region.x2() > in_region.x2()) {
-      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(in_image), out_image, RightBorder));
+      threader.ThreadRowChunks(right_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(in_image), out_image, RightBorder));
     }
     if (out_region.y1() < in_region.y1()) {
-      threader.ThreadImageChunksY(bottom_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(in_image), out_image, BottomBorder));
+      threader.ThreadColumnChunks(bottom_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(in_image), out_image, BottomBorder));
     }
     if (out_region.y2() > in_region.y2()) {
-      threader.ThreadImageChunksY(top_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(in_image), out_image, TopBorder));
+      threader.ThreadColumnChunks(top_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(in_image), out_image, TopBorder));
     }
     out_image->MemCpyIn(in_image.GetPtr(), in_image.GetPitch(), in_image.GetBounds());
     threader.Wait();
@@ -260,16 +260,16 @@ public:
 
     afx::ImageThreader threader;
     if (out_region.x1() < in_region.x1()) {
-      threader.ThreadImageChunks(left_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(*image), image, LeftBorder));
+      threader.ThreadRowChunks(left_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(*image), image, LeftBorder));
     }
     if (out_region.x2() > in_region.x2()) {
-      threader.ThreadImageChunks(right_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(*image), image, RightBorder));
+      threader.ThreadRowChunks(right_region, boost::bind(&BorderExtender::MirrorX_, this, _1, boost::cref(*image), image, RightBorder));
     }
     if (out_region.y1() < in_region.y1()) {
-      threader.ThreadImageChunksY(bottom_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(*image), image, BottomBorder));
+      threader.ThreadColumnChunks(bottom_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(*image), image, BottomBorder));
     }
     if (out_region.y2() > in_region.y2()) {
-      threader.ThreadImageChunksY(top_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(*image), image, TopBorder));
+      threader.ThreadColumnChunks(top_region, boost::bind(&BorderExtender::MirrorY_, this, _1, boost::cref(*image), image, TopBorder));
     }
     threader.Wait();
   }
@@ -451,7 +451,7 @@ class Compliment {
   }
   void Compute(afx::Image* image, const afx::Bounds& region) {
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(region, boost::bind(&Compliment::ComplimentTile_, this, _1, image));
+    threader.ThreadRowChunks(region, boost::bind(&Compliment::ComplimentTile_, this, _1, image));
     threader.Wait();
   }
  private:
@@ -471,29 +471,29 @@ public:
   void ThresholdLayer(afx::ImageLayer* layer, const afx::Image& mask, float threshold, float falloff) {
     afx::Bounds region = layer->GetChannel(0)->GetBounds();
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdLayerTile_, this, _1, layer, boost::cref(mask), threshold, falloff));
+    threader.ThreadRowChunks(region, boost::bind(&Threshold::ThresholdLayerTile_, this, _1, layer, boost::cref(mask), threshold, falloff));
     threader.Wait();
   }
   void ThresholdImage(afx::Image* image, float threshold, float falloff) {
     afx::Bounds region = image->GetBounds();
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, threshold, falloff));
+    threader.ThreadRowChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, threshold, falloff));
     threader.Wait();
   }
   void ThresholdImage(afx::Image* image, const afx::Image& mask, float threshold, float falloff) {
     afx::Bounds region = image->GetBounds();
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, boost::cref(mask), threshold, falloff));
+    threader.ThreadRowChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, boost::cref(mask), threshold, falloff));
     threader.Wait();
   }
   void ThresholdImage(afx::Image* image, float threshold, float falloff, afx::Bounds region) {
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, threshold, falloff));
+    threader.ThreadRowChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, threshold, falloff));
     threader.Wait();
   }
   void ThresholdImage(afx::Image* image, const afx::Image& mask, float threshold, float falloff, afx::Bounds region) {
     afx::ImageThreader threader;
-    threader.ThreadImageChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, boost::cref(mask), threshold, falloff));
+    threader.ThreadRowChunks(region, boost::bind(&Threshold::ThresholdImageTile_, this, _1, image, boost::cref(mask), threshold, falloff));
     threader.Wait();
   }
 private:

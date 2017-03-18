@@ -277,7 +277,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
               in_imgs_.Add(glow_bnds);
               in_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
             }
-            threader_.ThreadImageChunks(glow_bnds, boost::bind(&ThisClass::GetInputRGB, this, _1, boost::cref(in_plane), boost::cref(matte_plane), boost::cref(rgb_chan)));
+            threader_.ThreadRowChunks(glow_bnds, boost::bind(&ThisClass::GetInputRGB, this, _1, boost::cref(in_plane), boost::cref(matte_plane), boost::cref(rgb_chan)));
             for (int i = 0; i < 3; ++i) {
               out_imgs_.Add(req_bnds_);
               out_imgs_.GetBackPtr()->AddAttribute("channel", rgb_chan[i]);
@@ -288,7 +288,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
           done += z;
           in_imgs_.Add(glow_bnds);
           in_imgs_.GetBackPtr()->AddAttribute("channel", z);
-          threader_.ThreadImageChunks(glow_bnds, boost::bind(&ThisClass::GetInput, this, _1, boost::cref(in_plane), boost::cref(matte_plane), z));
+          threader_.ThreadRowChunks(glow_bnds, boost::bind(&ThisClass::GetInput, this, _1, boost::cref(in_plane), boost::cref(matte_plane), z));
           out_imgs_.Add(req_bnds_);
           out_imgs_.GetBackPtr()->AddAttribute("channel", z);
         }

@@ -45,7 +45,7 @@ class NoiseMap {
     afx::Convolution cv;
     cv.Seperable(in_image, &temp1, bior44);
 
-    threader.ThreadImageChunks(out_image->GetBounds(), boost::bind(&NoiseMap::MAD_, this, _1, boost::cref(temp1), &temp2, window_size));
+    threader.ThreadRowChunks(out_image->GetBounds(), boost::bind(&NoiseMap::MAD_, this, _1, boost::cref(temp1), &temp2, window_size));
     threader.Wait();
 
     afx::Morphology morph;
