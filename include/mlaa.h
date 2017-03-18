@@ -20,18 +20,20 @@
 
 namespace afx {
 
-enum DisFlags {
-  kDisPosDown   = 0x01,  // pixel - bottom pixel is less than 0
-  kDisNegDown   = 0x02,  // pixel - bottom pixel is greater than 0
-  kDisPosRight  = 0x04,  // pixel - right pixel less than 0
-  kDisNegRight  = 0x08,  // pixel - right pixel greater than 0
+enum DiscontinuityFlags {
+  kDownPositive   = 0x01,  // pixel - bottom pixel is less than 0
+  kDownNegative   = 0x02,  // pixel - bottom pixel is greater than 0
+  kRightPositive  = 0x04,  // pixel - right pixel less than 0
+  kRightNegative  = 0x08,  // pixel - right pixel greater than 0
+  kDown           = kDownPositive | kDownNegative,
+  kRight          = kRightPositive | kRightNegative,
 };
 
 struct PixelInfo {
   half blend_x;
   half blend_y;
-  std::uint8_t flags;
-  PixelInfo() : blend_x(0.0f), blend_y(0.0f), flags(0) {}
+  std::uint8_t disc;
+  PixelInfo() : blend_x(0.0f), blend_y(0.0f), disc(0) {}
 };
 
 class ImageInfo : public ImageBase<PixelInfo> {};
@@ -45,8 +47,8 @@ class MorphAA {
   float Diff_(float a, float b);
   float CalcTrapArea_(int pos, float length);
   void MarkDisc_(const Bounds& region, const Image& input);
-  void FindXLines_(const Bounds& region, const Image& input);
-  void FindYLines_(const Bounds& region, const Image& input);
+  void FindRowLines_(const Bounds& region, const Image& input);
+  void FindColumnLines_(const Bounds& region, const Image& input);
   void SetXLine_(PixelInfo* info_ptr, int length, int x, int y);
   void SetYLine_(PixelInfo* info_ptr, int length, int x, int y);
   void BlendPixels_(const Bounds& region, const Image& input, Image* output);
