@@ -26,11 +26,6 @@
 namespace afx {
 
 template <class T> class ImageBase : public AttributeBase {
- private:
-  T* ptr_;
-  std::size_t pitch_;
-  afx::Bounds region_;
-
  public:
   ImageBase<T>() : ptr_(nullptr), pitch_(0), region_(afx::Bounds()) {}
   explicit ImageBase<T>(const afx::Bounds& region) : ptr_(nullptr), pitch_(0) {
@@ -179,6 +174,11 @@ template <class T> class ImageBase : public AttributeBase {
     IppiSize size = {static_cast<int>(region_.GetWidth()), static_cast<int>(region_.GetHeight())};
     return size;
   }
+
+private:
+  T* ptr_;
+  std::size_t pitch_;
+  afx::Bounds region_;
 };
 
 typedef ImageBase<float> Image;
