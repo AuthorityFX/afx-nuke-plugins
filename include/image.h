@@ -37,7 +37,7 @@ template <class T> class ImageBase : public AttributeBase {
     Allocate(region);
   }
   ImageBase<T>(unsigned int width, unsigned int height) : ptr_(nullptr), pitch_(0) {
-    Allocate(afx::Bounds(0, 0, width - 1, height - 1));
+    Allocate(width, height);
   }
   ImageBase<T>(const ImageBase<T>& other) : ptr_(nullptr), pitch_(0) {
     Copy(other);
