@@ -31,49 +31,21 @@
 
 namespace afx {
 
-class CudaFFT {
- private:
-  cufftHandle plan_;
-
- public:
-  CudaFFT() {}
-  ~CudaFFT() { DisposePlan(); }
-  void CreatPlanR2C(const CudaImage& src, const CudaComplex& dst) {
-    DisposePlan();
-    int rank = 2;
-    int n[] = {src.GetWidth(), src.GetHeight()};
-    int istride = 1, ostride = 1;
-    int idist = 1, odist = 1;
-    int inembed[] = {src.GetPitch() / sizeof(float), src.GetHeight()};
-    int onembed[] = {dst.GetPitch() / sizeof(cufftComplex), dst.GetHeight()};
-    int batch = 1;
-    cufftPlanMany(&plan_, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_R2C, batch);
-  }
-  void CreatPlanC2R(const CudaComplex& src, const CudaImage& dst) {
-    DisposePlan();
-    int rank = 2;
-    int n[] = {src.GetWidth(), src.GetHeight()};
-    int istride = 1, ostride = 1;
-    int idist = 1, odist = 1;
-    int inembed[] = {src.GetPitch() / sizeof(cufftComplex), src.GetHeight()};
-    int onembed[] = {dst.GetPitch() / sizeof(float), dst.GetHeight()};
-    int batch = 1;
-    cufftPlanMany(&plan_, rank, n, inembed, istride, idist, onembed, ostride, odist, CUFFT_C2R, batch);
-  }
-  void Forward(const CudaImage& src, CudaComplex* dst) {
-    cufftExecR2C(plan_, src.GetPtr(), dst->GetPtr());
-  }
-  void Inverse(const CudaComplex& src, CudaImage* dst) {
-    cufftExecC2R(plan_, src.GetPtr(), dst->GetPtr());
-  }
-  void DisposePlan() {
-    cufftDestroy(plan_);
-  }
-};
-
-
 class FindFFTSize {
- private:
+public:
+  FindFFTSize() { CalculateSizes_(); }
+  unsigned int GetNextSize(unsigned int size, float pow2_threshold = 1.2) {
+    unsigned int next_size = NextPowerOfTwo_(size);
+    if (static_cast<float>(next_size) / static_cast<float>(size) > pow2_threshold) {
+      auto it = std::lower_bound(sizes_.begin() + 1, sizes_.end(), size);
+      if (it != sizes_.end()) {
+        next_size = *it;
+      }
+    }
+    return next_size;
+  }
+
+private:
   std::vector<unsigned int> sizes_;
 
   // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
@@ -117,63 +89,11 @@ class FindFFTSize {
       }
     }
     std::sort(sizes_.begin(), sizes_.end());
-    sizes_.erase(sizes_.begin());  // Erase pow 2^0
-  }
-
- public:
-  FindFFTSize() { CalculateSizes_(); }
-
-  unsigned int GetNextSize(unsigned int size, float pow2_threshold = 1.2) {
-    unsigned int next_size = NextPowerOfTwo_(size);
-    if (static_cast<float>(next_size) / static_cast<float>(size) > pow2_threshold) {
-      std::vector<unsigned int>::iterator it = std::lower_bound(sizes_.begin(), sizes_.end(), size);
-      if (it != sizes_.end()) {
-        next_size = *it;
-      }
-    }
-    return next_size;
   }
 };
 
 
 class GlowBase {
- protected:
-  static const int iterations_ = 200;
-  float** gauss_ptr_ptr_;
-  float* sigma_ptr_;  // Glow size
-  int* gauss_size_ptr_;  // Size of half gauss + 1
-
-  int max_gauss_size_;  // Max size of guass_size_
-
-  void AllocateGaussians_() {
-    DisposeGaussians_();
-    for (int i = 0; i < iterations_; ++i) {
-      gauss_ptr_ptr_[i] = reinterpret_cast<float*>(ippMalloc(gauss_size_ptr_[i] * sizeof(float)));
-    }
-  }
-  void DisposeGaussians_() {
-    if (gauss_ptr_ptr_ != nullptr) {
-      for (int i = 0; i < iterations_; ++i) {
-        if (gauss_ptr_ptr_[i] != nullptr) {
-          ippFree(gauss_ptr_ptr_[i]);
-          gauss_ptr_ptr_[i] = nullptr;
-        }
-      }
-    }
-  }
-  void CreateGauss_(const Bounds& region) {
-    float sqrt_of_two_pi = sqrtf(2.0f * static_cast<float>(M_PI));
-    for (int size = region.y2(); size >= region.y1(); --size) {
-      for (int i = region.x2(); i >= region.x1(); --i) {
-        if (size > gauss_size_ptr_[i] - 1) { break; }
-        float sigma = sigma_ptr_[i];
-        float one_over_two_sigma_squared = 1.0f / (2.0f * sigma * sigma);
-        float a = 1.0f / (sigma * sqrt_of_two_pi);
-        gauss_ptr_ptr_[i][size] = a * expf(-powf(static_cast<float>(gauss_size_ptr_[i] - 1 - size), 2.0f) * one_over_two_sigma_squared);
-      }
-    }
-  }
-
  public:
   GlowBase() : gauss_ptr_ptr_(nullptr), gauss_size_ptr_(nullptr), sigma_ptr_(nullptr) {
     gauss_ptr_ptr_ = reinterpret_cast<float**>(ippMalloc(iterations_ * sizeof(float*)));
@@ -211,11 +131,79 @@ class GlowBase {
       sigma_ptr_ = nullptr;
     }
   }
+  int GetKernelPadding() const { return max_gauss_size_ - 1; }
+
+ protected:
+  static const int iterations_ = 200;
+  float** gauss_ptr_ptr_;
+  float* sigma_ptr_;  // Glow size
+  int* gauss_size_ptr_;  // Size of half gauss + 1
+
+  int max_gauss_size_;  // Max size of guass_size_
+
+  void AllocateGaussians_() {
+    DisposeGaussians_();
+    for (int i = 0; i < iterations_; ++i) {
+      gauss_ptr_ptr_[i] = reinterpret_cast<float*>(ippMalloc(gauss_size_ptr_[i] * sizeof(float)));
+    }
+  }
+  void DisposeGaussians_() {
+    if (gauss_ptr_ptr_ != nullptr) {
+      for (int i = 0; i < iterations_; ++i) {
+        if (gauss_ptr_ptr_[i] != nullptr) {
+          ippFree(gauss_ptr_ptr_[i]);
+          gauss_ptr_ptr_[i] = nullptr;
+        }
+      }
+    }
+  }
+  void CreateGauss_(const Bounds& region) {
+    float sqrt_of_two_pi = sqrtf(2.0f * static_cast<float>(M_PI));
+    for (int size = region.y2(); size >= region.y1(); --size) {
+      for (int i = region.x2(); i >= region.x1(); --i) {
+        if (size > gauss_size_ptr_[i] - 1) { break; }
+        float sigma = sigma_ptr_[i];
+        float one_over_two_sigma_squared = 1.0f / (2.0f * sigma * sigma);
+        float a = 1.0f / (sigma * sqrt_of_two_pi);
+        gauss_ptr_ptr_[i][size] = a * expf(-powf(static_cast<float>(gauss_size_ptr_[i] - 1 - size), 2.0f) * one_over_two_sigma_squared);
+      }
+    }
+  }
+
 };
 
 
 class Glow : public GlowBase {
- private:
+ public:
+  Glow() {}
+  ~Glow() {}
+
+  void InitKernel(float exposure, afx::ImageThreader* threader) {
+    AllocateGaussians_();
+    threader->ThreadRowChunks(Bounds(0, 0, iterations_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateGauss_, this, _1));
+    kernel_.Allocate(max_gauss_size_ * 2 - 1, max_gauss_size_ * 2 - 1);
+    threader->Wait();
+
+    boost::atomic<double> kernel_sum(0.0);
+    threader->ThreadRowChunks(Bounds(0, 0, max_gauss_size_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateKernel_, this, _1, &kernel_sum));
+    threader->Wait();
+
+    threader->ThreadRowChunks(kernel_.GetBounds(), boost::bind(&Glow::NormalizeKernel_, this, _1, 2.0f * powf(2.0f, exposure) / kernel_sum));
+    DisposeGaussians_();
+  }
+
+  void Convolve(const Image& in_padded, Image* out) {
+    int buffer_size;
+    Ipp8u* buffer_ptr = nullptr;
+    ippiConvGetBufferSize(in_padded.GetSize(), in_padded.GetSize(), ipp32f, 1, ippiROIValid, &buffer_size);
+    boost::scoped_ptr<Ipp8u> buffer(new Ipp8u[buffer_size]);
+    ippiConv_32f_C1R(in_padded.GetPtr(), in_padded.GetPitch(), in_padded.GetSize(),
+                     kernel_.GetPtr(), kernel_.GetPitch(), kernel_.GetSize(),
+                     out->GetPtr(), out->GetPitch(), ippiROIValid, buffer.get());
+
+  }
+
+private:
   Image kernel_;
 
   void CreateKernel_(const Bounds& region, boost::atomic<double>* kernel_sum) {
@@ -273,36 +261,6 @@ class Glow : public GlowBase {
       }
     }
   }
-
- public:
-  Glow() {}
-  ~Glow() {}
-
-  void InitKernel(float exposure, afx::ImageThreader* threader) {
-    AllocateGaussians_();
-    threader->ThreadRowChunks(Bounds(0, 0, iterations_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateGauss_, this, _1));
-    kernel_.Allocate(max_gauss_size_ * 2 - 1, max_gauss_size_ * 2 - 1);
-    threader->Wait();
-
-    boost::atomic<double> kernel_sum(0.0);
-    threader->ThreadRowChunks(Bounds(0, 0, max_gauss_size_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateKernel_, this, _1, &kernel_sum));
-    threader->Wait();
-
-    threader->ThreadRowChunks(kernel_.GetBounds(), boost::bind(&Glow::NormalizeKernel_, this, _1, 2.0f * powf(2.0f, exposure) / kernel_sum));
-    DisposeGaussians_();
-  }
-
-  void Convolve(const Image& in_padded, Image* out) {
-    int buffer_size;
-    Ipp8u* buffer_ptr = nullptr;
-    ippiConvGetBufferSize(in_padded.GetSize(), in_padded.GetSize(), ipp32f, 1, ippiROIValid, &buffer_size);
-    boost::scoped_ptr<Ipp8u> buffer(new Ipp8u[buffer_size]);
-    ippiConv_32f_C1R(in_padded.GetPtr(), in_padded.GetPitch(), in_padded.GetSize(),
-                     kernel_.GetPtr(), kernel_.GetPitch(), kernel_.GetSize(),
-                     out->GetPtr(), out->GetPitch(), ippiROIValid, buffer.get());
-
-  }
-  int GetKernelPadding() const { return max_gauss_size_ - 1; }
 };
 
 }  // namespace afx
