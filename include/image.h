@@ -44,7 +44,7 @@ template <class T> class ImageBase : public AttributeBase {
   }
   ImageBase<T>(ImageBase<T>&& other) : ptr_(other.ptr_),
                                        pitch_(other.pitch_),
-                                       region_(other.region) {
+                                       region_(other.region_) {
     other.ptr_ = nullptr;
     other.pitch_ = 0;
     other.region_ = afx::Bounds();
