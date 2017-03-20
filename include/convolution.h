@@ -21,11 +21,11 @@ namespace afx {
 
 void NormalizeKernel(std::vector<float>* kernel, float scale = 1.0f) {
   float sum = 0.0f;
-  for(std::vector<float>::iterator it = kernel->begin(); it != kernel->end(); ++it) {
+  for(auto it = kernel->begin(); it != kernel->end(); ++it) {
     sum += fabsf(*it);
   }
   float nomalize_scale_factor = scale / sum;
-  for(std::vector<float>::iterator it = kernel->begin(); it != kernel->end(); ++it) {
+  for(auto it = kernel->begin(); it != kernel->end(); ++it) {
     *it = *it * nomalize_scale_factor;
   }
 }
@@ -71,10 +71,10 @@ class Convolution {
       for (int x = region.x1(); x <= region.x2(); ++x) {
         float sum = 0.0f;
         const float* in_ptr = in_image.GetPtr(x - kernel.size() - 1, y);
-        for (std::vector<float>::const_reverse_iterator it = kernel.rbegin(); it != kernel.rend(); ++it) {
+        for (auto it = kernel.rbegin(); it != kernel.rend(); ++it) {
           sum += *it * *in_ptr++;
         }
-        for (std::vector<float>::const_iterator it = kernel.begin() + 1; it != kernel.end(); ++it) {
+        for (auto it = kernel.begin() + 1; it != kernel.end(); ++it) {
           sum += *it * *in_ptr++;;
         }
         *out_ptr++ = sum;
@@ -88,11 +88,11 @@ class Convolution {
       for (int y = region.y1(); y <= region.y2(); ++y) {
         float sum = 0.0f;
         const float* in_ptr = in_image.GetPtr(x, y - kernel.size() - 1);
-        for (std::vector<float>::const_reverse_iterator it = kernel.rbegin(); it != kernel.rend(); ++it) {
+        for (auto it = kernel.rbegin(); it != kernel.rend(); ++it) {
           sum += *it * *in_ptr;
           in_ptr = in_image.GetNextRow(in_ptr);
         }
-        for (std::vector<float>::const_iterator it = kernel.begin() + 1; it != kernel.end(); ++it) {
+        for (auto it = kernel.begin() + 1; it != kernel.end(); ++it) {
           sum += *it * *in_ptr;
           in_ptr = in_image.GetNextRow(in_ptr);
         }

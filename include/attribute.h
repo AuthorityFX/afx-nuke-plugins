@@ -37,8 +37,7 @@ class AttributeBase {
     attributes_.insert(attributes_.end(), attributes.begin(), attributes.end());
   }
   int GetAttribute(const std::string& name) const {
-    std::vector<Attribute>::const_iterator it;
-    it = std::find_if(attributes_.begin(), attributes_.end(), [name](const Attribute& attr) { return attr.name.compare(name) == 0; });
+    auto it = std::find_if(attributes_.begin(), attributes_.end(), [name](const Attribute& attr) { return attr.name.compare(name) == 0; });
     if (it != attributes_.end()) {
       return it->value;
     } else {
