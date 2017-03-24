@@ -26,11 +26,18 @@ On Linux, Cuda and Boost can be installed from your distros package management s
 6. make -j{N} (where N is the num of threads)
 7. make install
 
-To tell Nuke where to find the plugins, you need to add some python code to an init.py script, or put the plugins into your Nuke home directory. https://www.thefoundry.co.uk/products/nuke/developers/63/pythondevguide/installing_plugins.html
+To tell Nuke where to find the plugins...
 
-I have a custom init.py on my network drive. In my .profile script I added "export NUKE_PATH="path to my nuke folder with the custon init.py".  In the init.py I aded:
+init.py must call nuke.pluginAddPath({CMAKE_INSTALL_PREFIX}/afx-nuke-plugins)
 
-nuke.pluginAddPath(wherever-you-installed/afx-nuke-plugins)
+This link explains init.py and directory search priority
+https://www.thefoundry.co.uk/products/nuke/developers/105/pythondevguide/startup.html
+
+More info on installing plugins
+https://www.thefoundry.co.uk/products/nuke/developers/105/pythondevguide/installing_plugins.html
+
+If you want init.py in a location outside of Nuke default plugin path, export an ENV variable - export NUKE_PATH="path to my nuke folder with the custon init.py
+
 
 Plugin Descriptions
 ===================
