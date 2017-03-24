@@ -13,7 +13,7 @@ endif()
 
 find_path(
   Ipp_INCLUDE_DIR
-  NAME ipp.h
+  NAMES ipp.h
   PATHS ${IPP_ROOT}/include/
   NO_DEFAULT_PATH
 )
@@ -23,7 +23,7 @@ if(Ipp_INCLUDE_DIR)
 
   find_file(
     _Ipp_VERSION_H
-    NAME ippversion.h
+    NAMES ippversion.h
     PATHS ${Ipp_INCLUDE_DIR}
     NO_DEFAULT_PATH
     )
@@ -61,7 +61,7 @@ endif()
 find_library(
   _Ipp_CORE_LIBRARY
   NAMES ippcore
-  HINTS ${IPP_ROOT}
+  PATHS ${IPP_ROOT}
   PATH_SUFFIXES
     lib
     lib/intel64

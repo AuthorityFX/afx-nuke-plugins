@@ -15,15 +15,17 @@ endif()
 
 string(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\v([0-9]+)" "\\0;\\1;\\2;\\3" _nuke_VERSION_LIST ${NUKE_ROOT})
 
-list(GET _nuke_VERSION_LIST 1 Nuke_VERSION_MAJOR)
-list(GET _nuke_VERSION_LIST 2 Nuke_VERSION_MINOR)
-list(GET _nuke_VERSION_LIST 3 Nuke_VERSION_PATCH)
-
-set(Nuke_VERSION "${Nuke_VERSION_MAJOR}.${Nuke_VERSION_MINOR}v${Nuke_VERSION_PATCH}")
+list(LENGTH _nuke_VERSION_LIST _list_LENGTH)
+if(_list_LENGTH GREATER 2)
+  list(GET _nuke_VERSION_LIST 1 Nuke_VERSION_MAJOR)
+  list(GET _nuke_VERSION_LIST 2 Nuke_VERSION_MINOR)
+  list(GET _nuke_VERSION_LIST 3 Nuke_VERSION_PATCH)
+  set(Nuke_VERSION "${Nuke_VERSION_MAJOR}.${Nuke_VERSION_MINOR}v${Nuke_VERSION_PATCH}")
+endif()
 
 find_path(
   Nuke_INCLUDE_DIR
-  NAME DDImage/Iop.h
+  NAMES DDImage/Iop.h
   PATHS ${NUKE_ROOT}/include/
   NO_DEFAULT_PATH
 )

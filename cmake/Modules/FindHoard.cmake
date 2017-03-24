@@ -14,10 +14,9 @@ endif()
 # Find Hoard library
 find_library(
   Hoard_LIBRARY
-  NAME hoard
-  HINTS ${HOARD_ROOT}
+  NAMES hoard
+  PATHS ${HOARD_ROOT}
   PATH_SUFFIXES lib
-  NO_DEFAULT_PATH
 )
 # Set library directory
 get_filename_component(_dir ${Hoard_LIBRARY} PATH)
