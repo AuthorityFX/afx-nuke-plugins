@@ -13,7 +13,13 @@ if(NOT DEFINED NUKE_ROOT)
   list(GET _nuke_ROOT_DIRS 0 NUKE_ROOT)
 endif()
 
-string(REGEX MATCHALL "[0-9]+\\.[0-9]+v[0-9]" Nuke_VERSION ${NUKE_ROOT})
+string(REGEX REPLACE "([0-9]+)\\.([0-9]+)\\v([0-9]+)" "\\0;\\1;\\2;\\3" _nuke_VERSION_LIST ${NUKE_ROOT})
+
+list(GET _nuke_VERSION_LIST 1 Nuke_VERSION_MAJOR)
+list(GET _nuke_VERSION_LIST 2 Nuke_VERSION_MINOR)
+list(GET _nuke_VERSION_LIST 3 Nuke_VERSION_PATCH)
+
+set(Nuke_VERSION "${Nuke_VERSION_MAJOR}.${Nuke_VERSION_MINOR}v${Nuke_VERSION_PATCH}")
 
 find_path(
   Nuke_INCLUDE_DIR
