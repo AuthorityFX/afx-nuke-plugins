@@ -103,20 +103,40 @@ target_link_libraries(afx_glow core cuda)
 add_dependencies(afx_glow core cuda)
 list(APPEND afx_PLUGINS afx_glow)
 
+# Nuke home directory
+get_filename_component(Nuke_HOME_DIR "$ENV{HOME}/.nuke/" ABSOLUTE)
 
-install(
-  TARGETS ${afx_LIBRARIES}
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-  )
-install(
-  TARGETS ${afx_PLUGINS}
-  DESTINATION ${CMAKE_INSTALL_PREFIX}
-  )
-install(
-  DIRECTORY icons/
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/icons
-  )
-install(
-  FILES menu.py
-  DESTINATION ${CMAKE_INSTALL_PREFIX}
-  )
+# Set default install prefix
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${Nuke_HOME_DIR}/afx-nuke-plugins" CACHE PATH "Install path prefix" FORCE)
+  message("CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
+endif()
+
+# Create init.py for $HOME/.nuke
+if(EXISTS ${Nuke_HOME_DIR}/init.py)
+  set(_pluginAddPath_FOUND "")
+  file(READ ${Nuke_HOME_DIR}/init.py _nuke_INIT)
+  if(_nuke_INIT)
+    string(REGEX REPLACE "nuke.pluginAddPath\\(['\"]?(.+afx-nuke-plugins\\/?)['\"]?\\)" "\\0;\\1;" _afx_PLUGIN_PATH_LIST ${_nuke_INIT})
+    list(LENGTH _afx_PLUGIN_PATH_LIST _afx_PLUGIN_PATH_LIST_LENGTH)
+    if(${_afx_PLUGIN_PATH_LIST_LENGTH} GREATER 1)
+      list(GET _afx_PLUGIN_PATH_LIST 1 _afx_PLUGIN_PATH)
+      string(REGEX MATCH ${CMAKE_INSTALL_PREFIX} _afx_PLUGIN_PATH_MATCH ${_afx_PLUGIN_PATH})
+      if(_afx_PLUGIN_PATH_MATCH)
+        set(_pluginAddPath_FOUND "FOUND")
+      endif()
+    endif()
+  endif()
+  if(NOT _pluginAddPath_FOUND)
+    set(_nuke_INIT "${_nuke_INIT}nuke.pluginAddPath('${CMAKE_INSTALL_PREFIX}')\n\n")
+  endif()
+  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/init.py ${_nuke_INIT})
+else()
+  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/init.py "import nuke\n\nnuke.pluginAddPath('${CMAKE_INSTALL_PREFIX}')\n\n")
+endif()
+
+install(TARGETS ${afx_LIBRARIES} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+install(TARGETS ${afx_PLUGINS} DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(DIRECTORY icons/ DESTINATION ${CMAKE_INSTALL_PREFIX}/icons)
+install(FILES menu.py DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/init.py DESTINATION ${Nuke_HOME_DIR})
