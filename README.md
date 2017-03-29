@@ -26,7 +26,10 @@ On Linux, Cuda and Boost can be installed from your distros package management s
 6. make -j{N} (where N is the num of threads)
 7. make install
 
-nuke.pluginAddPath('{CMAKE_INSTALL_PREFIX}') will be added to $HOME/.nuke/init.py on install.
+The following code will be appended to $HOME/.nuke/init.py on install, where {CMAKE_INSTALL_PREFIX} will be the absolute path of the CMAKE_INSTALL_PREFIX variable.
+```
+nuke.pluginAddPath('{CMAKE_INSTALL_PREFIX}')
+```
 
 If you need init.py in a location outside of Nuke default plugin path, export an ENV variable
 * export NUKE_PATH="path-to-dir-containing-init.py"
@@ -62,7 +65,6 @@ Redistributable Libraries
 * libcudart.so
 * libippi.so
 * libippcore.so
-* libjemalloc.so
 * libHalf.so
 * libhoard.so
 
@@ -71,12 +73,8 @@ TODO
 
 * Write documentation
 * Create youtube videos for suggested usage and tips
-* Add expand border bbox option to afx_glow
 * Finish writing cufft implementation for afx_glow
-* Update AFXChromaKey to use non-convex hull and kdtree search
-* Polish cmake
-* Improve mlaa algorithm
+* Update AFXChromaKey to use non-convex hull
 * Make icons for plugins
-* Add MacOS support to CMakeLists.txt
 
 If you like these plugins, help me make them better. Help me write more!
