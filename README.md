@@ -11,7 +11,27 @@
 * Hoard
 
 ## Build and Install
+```
+git clone https://github.com/AuthorityFX/afx-nuke-plugins.git
+cd afx-nuke-plugins
+mkdir build
+cd build
+cmake ..
+make install
+```
 
+On installation, the following code will be appended to $HOME/.nuke/init.py, where {CMAKE_INSTALL_PREFIX} will be the absolute path of the CMAKE_INSTALL_PREFIX variable:
+```
+nuke.pluginAddPath('{CMAKE_INSTALL_PREFIX}')
+```
+{CMAKE_INSTALL_PREFIX} defaults to: "{HOME}/.nuke/"
+
+For custom install location, use:
+```
+cmake -DCMAKE_INSTALL_PREFIX="$HOME/.nuke/afx-nuke-plugins" ..
+```
+
+### Notes
 **Linux** — "Plug-ins compiled with GCC versions 4.1 through 4.8.2 without C++11 support should be compatible...The use of C++11 via GCC, clang or the Intel compiler is untested and unsupported, especially in terms of passing standard library objects targeted at C++11 through the plug-in interface."
 [(NDK Dev Guide)](https://www.thefoundry.co.uk/products/nuke/developers/105/ndkdevguide/appendixa/linux.html)<br>
 
@@ -20,21 +40,6 @@
 
 **Mac OS X** — "On Mac OS X, NUKE is built on Snow Leopard, using GCC 4.0. We recommend third-party developers to do the same."
 [(NDK Dev Guide)](https://www.thefoundry.co.uk/products/nuke/developers/105/ndkdevguide/appendixa/osx.html)<br>
-
-### CMake Build
-
-1. git clone https://github.com/AuthorityFX/afx-nuke-plugins.git
-2. cd afx-nuke-plugins
-3. mkdir build
-4. cd build
-5. cmake -DCMAKE_INSTALL_PREFIX="$HOME/.nuke/afx-nuke-plugins" ..
-6. make -j{N} (where N is the num of threads)
-7. make install
-
-On installation, the following code will be appended to $HOME/.nuke/init.py, where {CMAKE_INSTALL_PREFIX} will be the absolute path of the CMAKE_INSTALL_PREFIX variable:
-```
-nuke.pluginAddPath('{CMAKE_INSTALL_PREFIX}')
-```
 
 ### Advanced
 
