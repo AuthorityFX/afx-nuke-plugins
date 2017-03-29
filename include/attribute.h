@@ -12,8 +12,6 @@
 
 #include <boost/ptr_container/ptr_list.hpp>
 
-#include <assert.h>
-
 #include <type_traits>
 
 #include <vector>

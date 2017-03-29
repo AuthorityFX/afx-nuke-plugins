@@ -8,7 +8,13 @@
 #      www.authorityfx.com
 
 if(NOT DEFINED NUKE_ROOT)
-  file(GLOB _nuke_ROOT_DIRS "/usr/local/Nuke*")
+  if(WIN32 OR CYGWIN)
+    file(GLOB _nuke_ROOT_DIRS "C:\Program Files\Nuke*")
+  elseif(APPLE)
+    file(GLOB _nuke_ROOT_DIRS "/Applications/Nuke*")
+  else()
+    file(GLOB _nuke_ROOT_DIRS "/usr/local/Nuke*")
+  endif()
   list(SORT _nuke_ROOT_DIRS)
   list(GET _nuke_ROOT_DIRS 0 NUKE_ROOT)
 endif()
