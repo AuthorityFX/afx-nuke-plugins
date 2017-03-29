@@ -1,22 +1,27 @@
-﻿afx-nuke-plugins
-================
+﻿# afx-nuke-plugins
 
-Requirements
-------------
-* Cuda
-* Intel IPP (Community Licensing is free https://registrationcenter.intel.com/en/forms/?productid=2558)
-* BOOST
-* Nuke NDK
-* IlmBase
+## Requirements
+* [CUDA](https://developer.nvidia.com/cuda-downloads)
+* [Intel IPP](https://registrationcenter.intel.com/en/forms/?productid=2558) (Free Community Licensing)
+* [BOOST](https://sourceforge.net/projects/boost/files/boost/)
+* [IlmBase](http://www.openexr.com/downloads.html)
+* Nuke NDK (Installed with Nuke)
 
-Optional
---------
+#### Optional
 * Hoard
 
-Build and Install
------------------
+## Build and Install
 
-On Linux, Cuda and Boost can be installed from your distros package management system. I perfer to download the latest version of CUDA from https://developer.nvidia.com/cuda-downloads and BOOST from https://sourceforge.net/projects/boost/files/boost/; though not required.  Intel IPP is quick to install with no addional setup required.
+**Linux** — "Plug-ins compiled with GCC versions 4.1 through 4.8.2 without C++11 support should be compatible...The use of C++11 via GCC, clang or the Intel compiler is untested and unsupported, especially in terms of passing standard library objects targeted at C++11 through the plug-in interface."
+[(NDK Dev Guide)](https://www.thefoundry.co.uk/products/nuke/developers/105/ndkdevguide/appendixa/linux.html)<br>
+
+**Windows** — "NUKE on Windows is compatible with plug-ins built with: *Visual Studio 2010 - (Manifest Version: 10.0.30319)*"
+[(NDK Dev Guide)](https://www.thefoundry.co.uk/products/nuke/developers/105/ndkdevguide/appendixa/windows.html)<br>
+
+**Mac OS X** — "On Mac OS X, NUKE is built on Snow Leopard, using GCC 4.0. We recommend third-party developers to do the same."
+[(NDK Dev Guide)](https://www.thefoundry.co.uk/products/nuke/developers/105/ndkdevguide/appendixa/osx.html)<br>
+
+### CMake Build
 
 1. git clone https://github.com/AuthorityFX/afx-nuke-plugins.git
 2. cd afx-nuke-plugins
@@ -26,55 +31,52 @@ On Linux, Cuda and Boost can be installed from your distros package management s
 6. make -j{N} (where N is the num of threads)
 7. make install
 
-The following code will be appended to $HOME/.nuke/init.py on install, where {CMAKE_INSTALL_PREFIX} will be the absolute path of the CMAKE_INSTALL_PREFIX variable.
+On installation, the following code will be appended to $HOME/.nuke/init.py, where {CMAKE_INSTALL_PREFIX} will be the absolute path of the CMAKE_INSTALL_PREFIX variable:
 ```
 nuke.pluginAddPath('{CMAKE_INSTALL_PREFIX}')
 ```
 
-If you need init.py in a location outside of Nuke default plugin path, export an ENV variable
-* export NUKE_PATH="path-to-dir-containing-init.py"
+### Advanced
 
-This link explains init.py and directory search priority
-https://www.thefoundry.co.uk/products/nuke/developers/105/pythondevguide/startup.html
-More info on installing plugins
-https://www.thefoundry.co.uk/products/nuke/developers/105/pythondevguide/installing_plugins.html
+Nuke will search for init.py in the default plugin paths.  To add an additional search path, modify the NUKE_PATH enviroment variable:
+```
+export NUKE_PATH=$NUKE_PATH:{location-of-init.py}
+```
 
+Additional info on [Nuke start-up scripts](https://www.thefoundry.co.uk/products/nuke/developers/105/pythondevguide/startup.html), init.py and menu.py<br>
+Additional info on [installing plugins](https://www.thefoundry.co.uk/products/nuke/developers/105/pythondevguide/installing_plugins.html)
 
-Plugin Descriptions
-===================
+## Plugin Descriptions
 
-AFXGlow — A beautiful glow with realistic falloff.  The extremely intuitive controls yield predictable results.
+AFXGlow — A beautiful glow with realistic falloff.  The extremely intuitive controls yield predictable results. [Youtube example](https://www.youtube.com/watch?v=nkY4S2smK_U)
 
 AFXSoftClip — Non-linearly reduce exposure.  The algorithm was originally written for use in Eyeon Fusion.  It’s much more intuitive than the Native Nuke implementation.
 
 AFXToneMap — Exposure control, soft clipping, and dark contrast.
 
-AFXMedian — Extremely fast median filter with sharpness parameter to reduce unwanted morphological changes and floating point size control.  Faster than Nuke’s native median filter by an order of magnitude.
+AFXMedian — Extremely fast median filter with sharpness parameter to reduce unwanted morphological changes and floating point size control.  Faster than Nuke’s native median filter by an order of magnitude. [Youtube example](https://www.youtube.com/watch?v=SspTyatPAPg)
 
 AFXChromaKey — Generates a 2D polygon with CIELab (A, B) Cartesian coordinates to represent the chroma screen.  Alpha is 0 for pixels within polygon, otherwise, alpha is function of distance to polygon.  Matte is invariant to lighting and grading changes due to per frame chroma analysis.
 
 AFXDespill — Uses Rodrigues rotation to shift screen hue to either 1/3 or 2/3.  Spill suppression is is calculated using simple RGB based de-sill algorithms. Outputs a normalized spill matte.
 
-AFXAntiAlias — Morphological anti-aliasing to smooth ‘jaggies’ that are a very common problem with keying. Extremely useful for monitor comps.
+AFXAntiAlias — Morphological anti-aliasing to smooth ‘jaggies’ that are a very common problem with keying. Extremely useful for monitor comps. [Youtube example](https://www.youtube.com/watch?v=SspTyatPAPg)
 
-Redistributable Libraries
--------------------------
+## Redistributable Libraries
 
-* libboost_system.so
-* libboost_thread.so
-* libcudart.so
-* libippi.so
-* libippcore.so
-* libHalf.so
-* libhoard.so
+* libboost_system
+* libboost_thread
+* libcudart
+* libippi
+* libippcore
+* libHalf
+* libhoard
 
-TODO
---------------------------------------------------
+## TODO
 
 * Write documentation
+* Test on Windows and Mac OS
 * Create youtube videos for suggested usage and tips
 * Finish writing cufft implementation for afx_glow
 * Update AFXChromaKey to use non-convex hull
 * Make icons for plugins
-
-If you like these plugins, help me make them better. Help me write more!
