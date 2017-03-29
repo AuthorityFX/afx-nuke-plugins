@@ -84,7 +84,6 @@ if(IlmBase_INCLUDE_DIR)
     endif()
 
     if(NOT IlmBase_VERSION_MAJOR OR NOT IlmBase_VERSION_MINOR OR NOT IlmBase_VERSION_PATCH)
-      set(_IlmBase_VERSION_STRING "asasfasfasfasfafsasfd")
       file(
         STRINGS ${_IlmBase_CONFIG} _IlmBase_VERSION_STRING
         REGEX "#define[ ]+VERSION[ ]+[\"]?[0-9]+\\.[0-9]+\\.[0-9]+[\"]?"
@@ -96,7 +95,6 @@ if(IlmBase_INCLUDE_DIR)
         list(GET _IlmBase_VERSION_LIST 2 IlmBase_VERSION_MINOR)
         list(GET _IlmBase_VERSION_LIST 3 IlmBase_VERSION_PATCH)
       endif()
-
     endif()
 
     set(IlmBase_VERSION "${IlmBase_VERSION_MAJOR}.${IlmBase_VERSION_MINOR}.${IlmBase_VERSION_PATCH}" CACHE STRING "Version of IlmBase computed from IlmBaseConfig.h")
