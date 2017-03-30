@@ -10,11 +10,24 @@
 cmake_minimum_required(VERSION 2.6)
 project(afx-nuke-plugins)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8.1)
+    message(FATAL_ERROR "Need GCC 4.8.1 or above for C++11")
+  endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  if(NOT MSVC_VERSION MATCHES "1600")
+    message(FATAL_ERROR "Need MSVC 1600 - Visual C++ 2010")
+  endif()
+endif()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -DNDEBUG")
+endif()
+
+# Enable C++11
+if(UNIX)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
 
 # Set install RPATH
