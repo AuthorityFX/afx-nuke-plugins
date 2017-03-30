@@ -8,8 +8,8 @@
 #      www.authorityfx.com
 
 if(NOT DEFINED NUKE_ROOT)
-  if(WIN32 OR CYGWIN)
-    file(GLOB _nuke_ROOT_DIRS "C:\Program Files\Nuke*")
+  if(WIN32)
+    file(GLOB _nuke_ROOT_DIRS "C:/Program Files/Nuke*")
   elseif(APPLE)
     file(GLOB _nuke_ROOT_DIRS "/Applications/Nuke*")
   else()
