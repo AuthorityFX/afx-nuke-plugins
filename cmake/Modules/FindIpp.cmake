@@ -8,7 +8,13 @@
 #      www.authorityfx.com
 
 if(NOT DEFINED IPP_ROOT)
-  set(IPP_ROOT "/opt/intel/ipp")
+  if(WIN32)
+    file(GLOB _ipp_WIN_ROOT_DIRS "C:/Program Files (x86)/IntelSWTools/parallel_studio_xe_2017*/compilers_and_libraries_2017/windows/ipp")
+    list(SORT _ipp_WIN_ROOT_DIRS)
+    list(GET _ipp_WIN_ROOT_DIRS 0 IPP_ROOT)
+  else()
+    set(IPP_ROOT "/opt/intel/ipp")
+  endif()
 endif()
 
 find_path(

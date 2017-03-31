@@ -26,7 +26,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Enable C++11
-if(UNIX)
+if(UNIX AND NOT CYGWIN)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 endif()
 
@@ -53,10 +53,11 @@ if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
 endif()
 find_package(CUDA REQUIRED)
-list(APPEND CUDA_NVCC_FLAGS "-std=c++11;-O3")
+list(APPEND CUDA_NVCC_FLAGS "-std=c++11;-O2")
 SET(CUDA_PROPAGATE_HOST_FLAGS ON)
 find_package(IlmBase COMPONENTS Haflf)
 if(IlmBase_FOUND)
+  # USE_HALF checked by preprocessor in mlaa.h
   add_definitions(-DUSE_HALF)
 endif()
 find_package(Hoard)
@@ -120,7 +121,11 @@ add_dependencies(afx_glow core cuda)
 list(APPEND afx_PLUGINS afx_glow)
 
 # Nuke home directory
-get_filename_component(Nuke_HOME_DIR "$ENV{HOME}/.nuke/" ABSOLUTE)
+if(WIN32 AND NOT CYGWIN)
+  get_filename_component(Nuke_HOME_DIR "$ENV{HOMEPATH}/.nuke/" ABSOLUTE)
+else()
+  get_filename_component(Nuke_HOME_DIR "$ENV{HOME}/.nuke/" ABSOLUTE)
+endif()
 
 # Set default install prefix
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
