@@ -85,6 +85,8 @@ endforeach()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Ipp
+  FOUND_VAR
+    Ipp_FOUND
   REQUIRED_VARS
     IPP_ROOT
     Ipp_INCLUDE_DIR

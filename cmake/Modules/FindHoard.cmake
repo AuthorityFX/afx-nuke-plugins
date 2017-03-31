@@ -24,6 +24,8 @@ set(Hoard_LIBRARY_DIR "${_dir}" CACHE PATH "Hoard library directory")
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Hoard
+  FOUND_VAR
+    Hoard_FOUND
   REQUIRED_VARS
     Hoard_LIBRARY
     Hoard_LIBRARY_DIR

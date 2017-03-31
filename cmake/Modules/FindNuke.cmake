@@ -42,6 +42,8 @@ endif()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Nuke
+  FOUND_VAR
+    Nuke_FOUND
   REQUIRED_VARS
     NUKE_ROOT
     Nuke_INCLUDE_DIR

@@ -116,6 +116,8 @@ endforeach()
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(IlmBase
+  FOUND_VAR
+    IlmBase_FOUND
   REQUIRED_VARS
     IlmBase_ROOT_DIR
     IlmBase_INCLUDE_DIR
