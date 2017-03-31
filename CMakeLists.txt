@@ -54,7 +54,6 @@ if(Boost_FOUND)
 endif()
 find_package(CUDA REQUIRED)
 list(APPEND CUDA_NVCC_FLAGS "-std=c++11;-O2")
-SET(CUDA_PROPAGATE_HOST_FLAGS ON)
 find_package(IlmBase COMPONENTS Haflf)
 if(IlmBase_FOUND)
   # USE_HALF checked by preprocessor in mlaa.h
