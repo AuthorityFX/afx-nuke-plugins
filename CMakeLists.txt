@@ -7,7 +7,7 @@
 #      Authority FX, Inc.
 #      www.authorityfx.com
 
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8)
 project(afx-nuke-plugins)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
