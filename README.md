@@ -4,11 +4,11 @@
 * [CUDA](https://developer.nvidia.com/cuda-downloads)
 * [Intel IPP](https://registrationcenter.intel.com/en/forms/?productid=2558) (Free Community Licensing)
 * [BOOST](https://sourceforge.net/projects/boost/files/boost/)
-* [IlmBase](http://www.openexr.com/downloads.html)
 * Nuke NDK (Installed with Nuke)
 
 #### Optional
-* Hoard
+* [Hoard](https://github.com/emeryberger/Hoard/releases)
+* [IlmBase](http://www.openexr.com/downloads.html)
 
 ## Build and Install
 ```

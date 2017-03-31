@@ -10,7 +10,9 @@
 #ifndef AFX_MLAA_H_
 #define AFX_MLAA_H_
 
-#include <OpenEXR/half.h>
+#if defined USE_HALF
+  #include <OpenEXR/half.h>
+#endif
 
 #include <cstdint>
 
@@ -31,8 +33,13 @@ enum DiscontinuityFlags {
 };
 
 struct Discontinuity {
-  half vert_weight;
-  half horiz_weight;
+  #if defined USE_HALF
+    half vert_weight;
+    half horiz_weight;
+  #else
+    float vert_weight;
+    float horiz_weight;
+  #endif
   std::uint8_t direction;
   Discontinuity() : vert_weight(0.0f), horiz_weight(0.0f), direction(kNone) {}
 };
