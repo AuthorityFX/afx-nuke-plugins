@@ -95,7 +95,7 @@ private:
 
 class GlowBase {
  public:
-  GlowBase() : gauss_ptr_ptr_(nullptr), gauss_size_ptr_(nullptr), sigma_ptr_(nullptr) {
+   GlowBase() : gauss_ptr_ptr_(nullptr), sigma_ptr_(nullptr), gauss_size_ptr_(nullptr) {
     gauss_ptr_ptr_ = reinterpret_cast<float**>(ippMalloc(iterations_ * sizeof(float*)));
     for (int i = 0; i < iterations_; ++i) { gauss_ptr_ptr_[i] = nullptr; }
     gauss_size_ptr_ = reinterpret_cast<int*>(ippMalloc(iterations_ * sizeof(int)));
@@ -194,7 +194,6 @@ class Glow : public GlowBase {
 
   void Convolve(const Image& in_padded, Image* out) {
     int buffer_size;
-    Ipp8u* buffer_ptr = nullptr;
     ippiConvGetBufferSize(in_padded.GetSize(), in_padded.GetSize(), ipp32f, 1, ippiROIValid, &buffer_size);
     boost::scoped_ptr<Ipp8u> buffer(new Ipp8u[buffer_size]);
     ippiConv_32f_C1R(in_padded.GetPtr(), in_padded.GetPitch(), in_padded.GetSize(),

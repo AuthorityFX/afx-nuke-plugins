@@ -246,16 +246,17 @@ void RGBtoLab(const float (&rgb)[3], float (&lab)[3]) {
 }
 void LabtoRGB(const float (&lab)[3], float (&rgb)[3]) {
   // https://en.wikipedia.org/wiki/Lab_color_space
-  float X = 95.047f  * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f) + (1.0f / 500.0f) * lab[1]);
-  float Y = 100.0f   * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f));
-  float Z = 108.883f * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f) + (1.0f / 200.0f) * lab[2]);
+//   float X = 95.047f  * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f) + (1.0f / 500.0f) * lab[1]);
+//   float Y = 100.0f   * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f));
+//   float Z = 108.883f * f_inv((1.0f / 116.0f)*(lab[0] + 16.0f) + (1.0f / 200.0f) * lab[2]);
 }
 
 float SpillSuppression(const float (&rgb)[3], int algorithm, ScreenColor color) {
   float temp = 0.0f;
   float suppression = 0.0f;
 
-  float s, other;
+  float s = 0;
+  float other = 0;
   switch (color) {
     case kGreen: {
       s = rgb[1];

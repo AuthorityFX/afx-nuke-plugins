@@ -147,7 +147,7 @@ void ThisClass::_validate(bool) {
   float ref_rgb[3];
   for (int i = 0; i < 3; i++) { ref_rgb[i] = k_screen_color_[i]; }
   afx::RGBtoHSV(ref_rgb, hsv);
-  float center;
+  float center = 0;
   if (ref_rgb[1] > ref_rgb[2]) {
     center = 1.0f/3.0f;
     color_ = afx::kGreen;

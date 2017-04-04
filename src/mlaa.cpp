@@ -64,8 +64,8 @@ void MorphAA::FindRowLines_(const Bounds& region, const Image& input) {
   Discontinuity* disc_ptr = nullptr;
   for (int y = region.y1(); y <= region.y2(); ++y) {
     disc_ptr = disc_image_.GetPtr(region.x1(), y);
-    int length = 0;  // Length of line, also used to determine if looking for new line or end of line.
-    std::uint8_t start_disc;
+    unsigned int length = 0;  // Length of line, also used to determine if looking for new line or end of line.
+    std::uint8_t start_disc = 0;
     for (int x = region.x1(); x <= region.x2(); ++x) {
       switch (length) {  // if new line found
         case 0: {
@@ -94,8 +94,8 @@ void MorphAA::FindColumnLines_(const Bounds& region, const Image& input) {
   Discontinuity* disc_ptr = nullptr;
   for (int x = region.x1(); x <= region.x2(); ++x) {
     disc_ptr = disc_image_.GetPtr(x, region.y1());
-    int length = 0;  // Length of line, also used to determine if looking for new line or end of line.
-    std::uint8_t start_disc;
+    unsigned int length = 0;  // Length of line, also used to determine if looking for new line or end of line.
+    std::uint8_t start_disc = 0;
     for (int y = region.y1(); y <= region.y2(); ++y) {
       switch (length) {  // if new line found
         case 0: {

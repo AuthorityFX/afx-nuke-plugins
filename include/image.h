@@ -198,14 +198,14 @@ public:
     return GetChannel(channel);
   }
   Image* GetChannel(int channel) const {
-    if (channel > channels_.size() - 1) {
+    if (static_cast<unsigned int>(channel) > channels_.size() - 1) {
       throw std::runtime_error("afx::Image - channel does not exist");
     }
     return channels_[channel].get();
   }
   afx::Pixel<const float> GetPixel(int x, int y) const {
     afx::Pixel<const float> pixel(channels_.size());
-    for (int i = 0; i < channels_.size(); ++i) {
+    for (unsigned int i = 0; i < channels_.size(); ++i) {
       const float* ptr = channels_[i].get()->GetPtr(x, y);
       pixel.SetPtr(ptr, i);
     }
@@ -213,7 +213,7 @@ public:
   }
   afx::Pixel<float> GetWritePixel(int x, int y) const {
     afx::Pixel<float> pixel(channels_.size());
-    for (int i = 0; i < channels_.size(); ++i) {
+    for (unsigned int i = 0; i < channels_.size(); ++i) {
       float* ptr = channels_[i].get()->GetPtr(x, y);
       pixel.SetPtr(ptr, i);
     }

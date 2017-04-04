@@ -70,8 +70,6 @@ class Morphology {
 
  private:
   void Dilate_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
-    unsigned int window_array_size = 4 * (window_size * window_size + window_size) + 1;
-    float window_array[window_array_size];
     for (int y = region.y1(); y <= region.y2(); ++y) {
       float* in_ptr = in_image.GetPtr(region.x1(), y);
       float* out_ptr = out_image->GetPtr(region.x1(), y);
@@ -90,8 +88,6 @@ class Morphology {
   }
 
   void Erode_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
-    unsigned int window_array_size = 4 * (window_size * window_size + window_size) + 1;
-    float window_array[window_array_size];
     for (int y = region.y1(); y <= region.y2(); ++y) {
       float* in_ptr = in_image.GetPtr(region.x1(), y);
       float* out_ptr = out_image->GetPtr(region.x1(), y);
@@ -429,7 +425,6 @@ private:
     }
     for (int x = region.x1(); x <= region.x2(); ++x) {
       float* out_ptr = out_image->GetPtr(x, region.y1());
-      const float* border_ptr = in_image.GetPtr(x, in_region.y1());
       for (int y = region.y1(); y <= region.y2(); ++y) {
         *out_ptr = *in_image.GetPtrBnds(x, y_offset - y);
         out_ptr = out_image->GetNextRow(out_ptr);

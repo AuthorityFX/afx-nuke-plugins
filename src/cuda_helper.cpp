@@ -73,7 +73,12 @@ void CudaProcess::SetFastestDevice() {
 }
 int CudaProcess::GetDevice() const { return dev_id_; }
 cudaDeviceProp CudaProcess::GetProp() const { return prop_; }
-bool CudaProcess::CheckReady() const { if (!ready_) { throw cudaErrorDevicesUnavailable; } }
+bool CudaProcess::CheckReady() const{
+  if (!ready_) {
+    throw cudaErrorDevicesUnavailable;
+  }
+  return true;
+}
 void CudaProcess::CheckError() { CudaCheckError(); }
 
 
@@ -241,6 +246,7 @@ CudaComplex::CudaComplex(const CudaComplex& other) : ptr_(nullptr) {
 CudaComplex& CudaComplex::operator= (const CudaComplex& other) {
   Create(other.GetHeight(), other.GetHeight());
   CudaSafeCall(cudaMemcpy2D(ptr_, pitch_, other.GetPtr(), other.GetPitch(), width_ * sizeof(cufftComplex), height_, cudaMemcpyHostToHost));
+  return *this;
 }
 CudaComplex::~CudaComplex() { Dispose(); }
 void CudaComplex::Create(unsigned int width, unsigned int height) {

@@ -93,7 +93,7 @@ void ImageThreader::ThreadRowChunks(const Bounds& region, boost::function<void(B
   unsigned int num_chunks = Threads();
   num_chunks = std::min(num_chunks, region.GetHeight());
   Bounds thread_region = region;
-  for (int i = 0; i < num_chunks; ++i) {
+  for (unsigned int i = 0; i < num_chunks; ++i) {
     thread_region.SetY1(static_cast<int>(ceil(static_cast<float>(region.GetHeight()) * static_cast<float>(i)     / static_cast<float>(num_chunks))      + region.y1()));
     thread_region.SetY2(static_cast<int>(ceil(static_cast<float>(region.GetHeight()) * static_cast<float>(i + 1) / static_cast<float>(num_chunks)) - 1  + region.y1()));
     AddWork(boost::bind(function, thread_region));
@@ -103,7 +103,7 @@ void ImageThreader::ThreadColumnChunks(const Bounds& region, boost::function<voi
   unsigned int num_chunks = Threads();
   num_chunks = std::min(num_chunks, region.GetWidth());
   Bounds thread_region = region;
-  for (int i = 0; i < num_chunks; ++i) {
+  for (unsigned int i = 0; i < num_chunks; ++i) {
     thread_region.SetX1(static_cast<int>(ceil(static_cast<float>(region.GetWidth()) * static_cast<float>(i)     / static_cast<float>(num_chunks))      + region.x1()));
     thread_region.SetX2(static_cast<int>(ceil(static_cast<float>(region.GetWidth()) * static_cast<float>(i + 1) / static_cast<float>(num_chunks)) - 1  + region.x1()));
     AddWork(boost::bind(function, thread_region));

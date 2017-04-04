@@ -78,7 +78,7 @@ class NoiseMap {
           }
         }
         float median = MedianQuickSelect(window_array, window_array_size);
-        for (int i = 0; i < window_array_size; ++i) {
+        for (unsigned int i = 0; i < window_array_size; ++i) {
           window_array[i] = fabsf(window_array[i] - median);
         }
         // Adapting to Unknown Smoothness via Wavelet Shrinkage David L. Donoho Iain M. Johnstone
@@ -94,9 +94,9 @@ class NoiseMap {
         unsigned int n = 0;
         float mean = 0.0f;
         float s = 0.0f;
-        for (int window_y = y - window_size; window_y <= y + window_size; ++window_y) {
-          const float* in_ptr = in_image.GetPtrBnds(x - window_size, window_y);
-          for (int window_x = x - window_size; window_x <= x + window_size; ++window_x) {
+        for (int window_y = y - static_cast<int>(window_size); window_y <= y + static_cast<int>(window_size); ++window_y) {
+          const float* in_ptr = in_image.GetPtrBnds(x - static_cast<int>(window_size), window_y);
+          for (int window_x = x - static_cast<int>(window_size); window_x <= x + static_cast<int>(window_size); ++window_x) {
             // Welford variance algorithm for numerical stability
             n++;
             float delta = *in_ptr - mean;

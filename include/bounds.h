@@ -28,7 +28,10 @@ T Clamp(T value, T min_v, T max_v) {
 
 class Bounds {
  private:
-  int x1_, x2_, y1_, y2_;
+   int x1_;
+   int y1_;
+   int x2_;
+   int y2_;
 
  public:
   __host__ __device__
@@ -117,10 +120,10 @@ class Bounds {
   void ErodeBounds(unsigned int size) {
     unsigned int max_x_size = (GetWidth() + 1) / 2 - 1;
     unsigned int max_y_size = (GetHeight() + 1) / 2 - 1;
-    x1_ += std::min(size, max_x_size);
-    y1_ += std::min(size, max_x_size);
-    x2_ -= std::min(size, max_y_size);
-    y2_ -= std::min(size, max_y_size);
+    x1_ += size <= max_x_size ? size : max_x_size;
+    y1_ += size <= max_x_size ? size : max_x_size;
+    x2_ -= size <= max_y_size ? size : max_y_size;
+    y2_ -= size <= max_y_size ? size : max_y_size;
   }
   __host__ __device__
   void PadBounds(unsigned int x, unsigned int y) {

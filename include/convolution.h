@@ -56,8 +56,8 @@ class Convolution {
 
  private:
   bool CheckPadding_(const afx::Bounds& in_region, const afx::Bounds& out_region, unsigned int size) {
-    if (out_region.x1() - in_region.x1() < size || in_region.x2() - out_region.x2() < size ||
-        out_region.y1() - in_region.y1() < size || in_region.y2() - out_region.y2() < size
+    if (out_region.x1() - in_region.x1() < static_cast<int>(size) || in_region.x2() - out_region.x2() < static_cast<int>(size) ||
+        out_region.y1() - in_region.y1() < static_cast<int>(size) || in_region.y2() - out_region.y2() < static_cast<int>(size)
        ) {
       return false;
     } else {
