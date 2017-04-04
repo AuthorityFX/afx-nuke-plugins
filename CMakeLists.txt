@@ -22,7 +22,11 @@ endif()
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
-  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -DNDEBUG -Wall")
+  if(WIN32)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -DNDEBUG")
+  else()
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O3 -DNDEBUG -Wall")
+  endif()
 endif()
 
 # Enable C++11
@@ -35,7 +39,7 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN/lib")
 # Build with with install RPATH
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 # Add RPATHS outside of the build tree to install RPATH
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 
 # Append project Modules directory
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
@@ -54,7 +58,7 @@ if(Boost_FOUND)
 endif()
 find_package(CUDA REQUIRED)
 list(APPEND CUDA_NVCC_FLAGS "-std=c++11;-O2")
-find_package(IlmBase COMPONENTS Haflf)
+find_package(IlmBase COMPONENTS Half)
 if(IlmBase_FOUND)
   # USE_HALF checked by preprocessor in mlaa.h
   add_definitions(-DUSE_HALF)
@@ -157,8 +161,40 @@ else()
   file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/init.py "import nuke\n\nnuke.pluginAddPath('${CMAKE_INSTALL_PREFIX}')\n\n")
 endif()
 
+
 install(TARGETS ${afx_LIBRARIES} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 install(TARGETS ${afx_PLUGINS} DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(DIRECTORY icons/ DESTINATION ${CMAKE_INSTALL_PREFIX}/icons)
 install(FILES menu.py DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/init.py DESTINATION ${Nuke_HOME_DIR})
+
+foreach(_lib ${Boost_LIBRARIES})
+  get_filename_component(_name ${_lib} NAME_WE)
+  file(GLOB _files "${Boost_LIBRARY_DIR}/${_name}*.so*")
+  list(APPEND Redist_LIBRARIES ${_files})
+endforeach()
+foreach(_lib ${Ipp_LIBRARIES})
+  get_filename_component(_name ${_lib} NAME_WE)
+  file(GLOB _files FOLLOW_SYMLINKS "${Ipp_LIBRARY_DIR}/${_name}*.so*")
+  list(APPEND Redist_LIBRARIES ${_files})
+endforeach()
+foreach(_lib ${CUDA_LIBRARIES})
+  get_filename_component(_name ${_lib} NAME_WE)
+  file(GLOB _files "${CUDA_LIBRARY_DIR}/${_name}*.so*")
+  list(APPEND Redist_LIBRARIES ${_files})
+endforeach()
+foreach(_lib ${IlmBase_LIBRARIES})
+  get_filename_component(_name ${_lib} NAME_WE)
+  file(GLOB _files "${IlmBase_LIBRARY_DIR}/${_name}*.so*")
+  list(APPEND Redist_LIBRARIES ${_files})
+endforeach()
+foreach(_lib ${Hoard_LIBRARIES})
+  get_filename_component(_name ${_lib} NAME_WE)
+  file(GLOB _files "${Hoard_LIBRARY_DIR}/${_name}*.so*")
+  list(APPEND Redist_LIBRARIES ${_files})
+endforeach()
+
+install(
+  CODE "
+    EXECUTE_PROCESS(COMMAND cp -Rp ${Redist_LIBRARIES} ${CMAKE_INSTALL_PREFIX}/lib)
+")
