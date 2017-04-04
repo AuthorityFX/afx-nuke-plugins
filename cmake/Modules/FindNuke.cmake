@@ -40,6 +40,13 @@ if(Nuke_INCLUDE_DIR)
   include_directories(${Nuke_INCLUDE_DIR})
 endif()
 
+find_library(
+  Nuke_LIBRARIES
+  NAMES DDImage
+  PATHS ${NUKE_ROOT}
+  NO_DEFAULT_PATH
+)
+
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Nuke
   FOUND_VAR
@@ -47,6 +54,7 @@ find_package_handle_standard_args(Nuke
   REQUIRED_VARS
     NUKE_ROOT
     Nuke_INCLUDE_DIR
+    Nuke_LIBRARIES
   VERSION_VAR
     Nuke_VERSION
  )
