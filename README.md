@@ -1,4 +1,4 @@
-﻿afx-nuke-plugins
+﻿afx-nuke-plugins﻿afx-nuke-plugins
 ================
 ## Requirements
 * [CUDA](https://developer.nvidia.com/cuda-downloads)
@@ -57,8 +57,8 @@ Download and install the following build tools:
 Launch Cmd.exe
 ```dos
 C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.Cmd" /Release /x64
-git clone https://github.com/AuthorityFX/altus-nuke.git
-cd altus-nuke
+git clone https://github.com/AuthorityFX/afx-nuke-plugins.git
+cd afx-nuke-plugins
 mkdir build
 cd build
 cmake -G "Visual Studio 10 2010 Win64" ..
@@ -67,8 +67,8 @@ cmake --build . --target INSTALL --config Release
 ##### With Visual Studio 2010:
 Launch Cmd.exe
 ```dos
-git clone https://github.com/AuthorityFX/altus-nuke.git
-cd altus-nuke
+git clone https://github.com/AuthorityFX/afx-nuke-plugins.git
+cd afx-nuke-plugins
 mkdir build
 cd build
 cmake -G "Visual Studio 10 2010 Win64" ..
@@ -87,6 +87,12 @@ Installation order:
 2. Windows SDK 7.1
 3. Visual Studio SP1
 4. [Visual C++ 2010 SP1 Compiler Update for the Windows SDK 7.1](https://www.microsoft.com/en-us/download/details.aspx?id=4422)
+
+### Mac OS
+"On Mac OS X, NUKE is built on Snow Leopard, using GCC 4.0. We recommend third-party developers to do the same."
+[(NDK Dev Guide)](https://www.thefoundry.co.uk/products/nuke/developers/105/ndkdevguide/appendixa/osx.html)
+
+Ancient compiler...
 
 ### Plugin Install Notes
 On installation, the following code will be appended to $HOME/.nuke/init.py, where {CMAKE_INSTALL_PREFIX} will be the absolute path of the CMAKE_INSTALL_PREFIX variable:
