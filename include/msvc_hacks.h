@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
-// Copyright (C) 2012-2016, Ryan P. Wilson
+// Copyright (C) 2017, Ryan P. Wilson
 //
 //      Authority FX, Inc.
 //      www.authorityfx.com
