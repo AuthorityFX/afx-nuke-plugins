@@ -10,6 +10,12 @@
 #ifndef AFX_IMAGE_H_
 #define AFX_IMAGE_H_
 
+#ifdef _WIN32
+  #include <malloc.h>
+#else
+  #include <stdlib.h>
+#endif
+
 #include <ipp.h>
 
 #include <boost/ptr_container/ptr_list.hpp>
@@ -70,7 +76,11 @@ template <class T> class ImageBase : public AttributeBase {
     Deallocate();
     region_ = region;
     pitch_ = (((region_.GetWidth() * sizeof(T) + 63) / 64) * 64);
-    ptr_ = reinterpret_cast<T*>(aligned_alloc(64, pitch_ *  region_.GetHeight()));
+    #ifdef _WIN32
+      ptr_ = reinterpret_cast<T*>(_aligned_malloc(64, pitch_ *  region_.GetHeight()));
+    #else
+      ptr_ = reinterpret_cast<T*>(aligned_alloc(64, pitch_ *  region_.GetHeight()));
+    #endif
   }
   void Copy(const ImageBase<T>& other) {
     region_ = other.region_;
@@ -204,7 +214,7 @@ public:
     return channels_[channel].get();
   }
   afx::Pixel<const float> GetPixel(int x, int y) const {
-    afx::Pixel<const float> pixel(channels_.size());
+    afx::Pixel<const float> pixel(static_cast<unsigned int>(channels_.size()));
     for (unsigned int i = 0; i < channels_.size(); ++i) {
       const float* ptr = channels_[i].get()->GetPtr(x, y);
       pixel.SetPtr(ptr, i);
@@ -212,7 +222,7 @@ public:
     return pixel;
   }
   afx::Pixel<float> GetWritePixel(int x, int y) const {
-    afx::Pixel<float> pixel(channels_.size());
+    afx::Pixel<float> pixel(static_cast<unsigned int>(channels_.size()));
     for (unsigned int i = 0; i < channels_.size(); ++i) {
       float* ptr = channels_[i].get()->GetPtr(x, y);
       pixel.SetPtr(ptr, i);

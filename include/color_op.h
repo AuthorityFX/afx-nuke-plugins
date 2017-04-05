@@ -14,6 +14,8 @@
 
 #include <algorithm>
 
+#include "include/msvc_hacks.h"
+
 namespace afx {
 
 enum SuppresionAlgorithm {
@@ -107,7 +109,7 @@ RotateColor::RotateColor(const float (&axis)[3], float deg) {
   BuildMatrix(axis, deg);
 }
 void RotateColor::BuildMatrix(const float (&axis)[3], float deg) {
-  float angle = deg * M_PI / 180.0f;
+  float angle = deg * static_cast<float>(M_PI) / 180.0f;
   float cosA = cos(angle);
   float sinA = sin(angle);
   float x = axis[0];
@@ -132,7 +134,7 @@ void RotateColor::BuildMatrix(const float (&axis)[3], float deg) {
   m_[2][2] = cosA + (zz) * (1 - cosA);
 }
 void RotateColor::BuildMatrix(float deg) {
-  float angle = deg * M_PI / 180.0f;
+  float angle = deg * static_cast<float>(M_PI) / 180.0f;
   float cosA = cos(angle);
   float sinA = sin(angle);
   float x = 1.0f / sqrt(3.0f);
@@ -173,7 +175,7 @@ float RotateColor::GetMatrix(int r, int c) {
 float Hue(const float (&rgb)[3]) {
   float a = 0.5f * (2 * rgb[0] - rgb[1] - rgb[2]);
   float b = (sqrtf(3) / 2) * (rgb[1] - rgb[2]);
-  float hue = atan2f(b, a) / (2.0f * M_PI);
+  float hue = atan2f(b, a) / (2.0f * static_cast<float>(M_PI));
   hue = fmod(hue, 1.0f);
   if (hue < 0) { hue += 1.0f; }
   return hue;
@@ -181,7 +183,7 @@ float Hue(const float (&rgb)[3]) {
 void RGBtoHSV(const float (&rgb)[3], float* hsv) {
   float a = 0.5f * (2 * rgb[0] - rgb[1] - rgb[2]);
   float b = (sqrtf(3) / 2) * (rgb[1] - rgb[2]);
-  hsv[0] = atan2f(b, a) / (2.0f * M_PI);
+  hsv[0] = atan2f(b, a) / (2.0f * static_cast<float>(M_PI));
   hsv[0] = fmod(hsv[0], 1.0f);
   if (hsv[0] < 0) { hsv[0] += 1.0f; }
   hsv[1] = sqrtf(powf(a, 2.0f) + powf(b, 2.0f));
@@ -189,8 +191,8 @@ void RGBtoHSV(const float (&rgb)[3], float* hsv) {
 }
 void HSVtoRGB(const float (&hsv)[3], float* rgb) {
   float C = hsv[2] * hsv[1];
-  double Ho = 6.0f * hsv[0];
-  float X = C * (1.0f - fabsf(fmodf(Ho, 2.0) - 1.0f));
+  float Ho = 6.0f * hsv[0];
+  float X = C * (1.0f - fabsf(fmodf(Ho, 2.0f) - 1.0f));
   if (Ho >= 0 && Ho < 1) {
     rgb[0] = C;
     rgb[1] = X;

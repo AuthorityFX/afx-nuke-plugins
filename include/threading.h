@@ -18,9 +18,18 @@
 
 #include "include/bounds.h"
 
+#ifdef _WIN32
+  #ifdef _MSC_VER
+    #pragma warning(disable: 4251)
+  #endif
+  #define WINLIB_EXPORT __declspec(dllexport)
+#else
+  #define WINLIB_EXPORT
+#endif
+
 namespace afx {
 
-class Threader {
+class WINLIB_EXPORT Threader {
  private:
   boost::asio::io_service io_service_;
   boost::thread_group thread_pool_;
@@ -56,7 +65,7 @@ class Threader {
   unsigned int Threads() const;
 };
 
-class ImageThreader : public Threader {
+class WINLIB_EXPORT ImageThreader : public Threader {
  public:
   // Split bounds into rows.
   void ThreadRows(const Bounds& region, boost::function<void(Bounds)> function);

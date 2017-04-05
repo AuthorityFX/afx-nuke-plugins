@@ -29,6 +29,8 @@
 #include "include/bounds.h"
 #include "include/image.h"
 
+#include "include/msvc_hacks.h"
+
 namespace afx {
 
 class FindFFTSize {

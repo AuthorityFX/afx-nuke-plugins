@@ -32,8 +32,8 @@ namespace bgi = boost::geometry::index;
 
 typedef bg::model::point<float, 2, boost::geometry::cs::cartesian> Point;
 typedef bg::model::multi_point<Point> PointCloud;
-typedef bg::model::polygon<Point> Polygon;
-typedef bg::model::multi_polygon<Polygon> MultiGon;
+typedef bg::model::polygon<Point> Polygony;  // MSVC was complaining abour redefinition of "Polygon"
+typedef bg::model::multi_polygon<Polygony> MultiGon;
 typedef bg::model::box<Point> BoundingBox;
 
 enum inputs {
@@ -63,8 +63,8 @@ class ThisClass : public nuke::Iop {
 
   PointCloud out_pc_;
   PointCloud in_pc_;
-  Polygon out_hull_;
-  Polygon in_hull_;
+  Polygony out_hull_;
+  Polygony in_hull_;
   MultiGon out_hull_buffer_;
   MultiGon in_hull_buffer_;
   BoundingBox out_box_;
@@ -172,7 +172,7 @@ void ThisClass::_validate(bool) {
     format_f_bnds_ = afx::BoxToBounds(input(0)->full_size_format());
     proxy_scale_ = static_cast<float>(format_bnds_.GetWidth()) / static_cast<float>(format_f_bnds_.GetWidth());
 
-    out_falloff_ = fmaxf(1.0f + (1.0f - afx::math::Clamp(k_out_falloff_, 0.0f, 1.0f)), 0.008);
+    out_falloff_ = fmaxf(1.0f + (1.0f - afx::math::Clamp(k_out_falloff_, 0.0f, 1.0f)), 0.008f);
     in_falloff_ = afx::math::Clamp(1.0f + k_in_falloff_, 0.008f, 125.0f);
     out_dilate_ = 50.0f * afx::math::Clamp(k_out_dilate_, 0.0f, 1.0f);
     in_dilate_ = 50.0f * afx::math::Clamp(k_in_dilate_, 0.0f, 1.0f);
@@ -289,14 +289,14 @@ void ThisClass::engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Ro
         if (bg::within(p, out_hull_)) {
           matte = 0;
         } else {
-          matte = 1.0f - pow(out_falloff_, -bg::distance(p, out_hull_));
+          matte = 1.0f - powf(out_falloff_, -bg::distance(p, out_hull_));
           if (input(iInMatte) != nullptr) {
             if (bg::within(p, in_box_)) {
               if (bg::within(p, in_hull_buffer_)) {
                 if (bg::within(p, in_hull_)) {
                   matte = 1.0f;
                 } else {
-                  matte = fmaxf(matte, pow(in_falloff_, -bg::distance(p, in_hull_)));
+                  matte = fmaxf(matte, powf(in_falloff_, -bg::distance(p, in_hull_)));
                 }
               }
             }

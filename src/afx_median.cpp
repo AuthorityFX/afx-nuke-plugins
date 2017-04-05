@@ -19,6 +19,7 @@
 #include <cuda_runtime.h>
 #include <math.h>
 
+#include <vector>
 #include <algorithm>
 
 #include "include/threading.h"
@@ -83,7 +84,7 @@ ThisClass::ThisClass(Node* node) : Iop(node) {
 
   try {
     cuda_process_.MakeReady();
-  } catch (cudaError err) {}
+  } catch (cudaError err) {} // TODO printf
 
   // initialize knobs
   k_size_ = 1.0f;
@@ -210,8 +211,10 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
     float* out_ptr = row.writable(z) + row_bnds.x1();
     for (int row_x = row_bnds.x1(); row_x <= row_bnds.x2(); ++row_x) {
       float sum_i = 0.0f, sum_o = 0.0f, sum_sq_i = 0.0f, sum_sq_o = 0.0f;
-      float list_i[med_n_i_], list_o[med_n_o_];
-      int n_i = 0, n_o = 0;  // Counters to index median arrays
+      std::vector<float> v_i;
+      std::vector<float> v_o;
+      v_i.reserve(med_n_i_);
+      v_o.reserve(med_n_o_);
       int y_i = 0;  // Counter to find border pixels of median window
       for (int y0 = (row_bnds.y1() - med_size_o_); y0 <= (row_bnds.y2() + med_size_o_); ++y0) {
         int x_i = 0;  // Counter to find border pixels of median window
@@ -227,23 +230,23 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
           } else {  // If on inside ring of pixels
             sum_i += value;
             sum_sq_i += value * value;
-            list_i[n_i] = value;
-            n_i++;
+            v_i.push_back(value);
           }
-          list_o[n_o] = value;
-          n_o++;
+          v_o.push_back(value);
           x_i++;
         }
         y_i++;
       }
-      float median = 0.0f, mean = 0.0f, std_dev = 0.0f;
+      float median = 0.0f;
+      float mean = 0.0f;
+      float std_dev = 0.0f;
       if (m_lerp_ == 0) {  // Integer median size, use outside list for stats
-        median = afx::MedianQuickSelect(list_o, med_n_o_);
+        median = afx::MedianQuickSelect(v_o.data(), v_o.size());
         mean = sum_o / std::max(med_n_o_, 1);
         std_dev = sqrtf(fmaxf((sum_sq_o) / std::max(med_n_o_, 1) - mean * mean, 0.0f));
       } else {  // Lerp inner and outter stats
-        float median_i = afx::MedianQuickSelect(list_i, med_n_i_);
-        float median_o = afx::MedianQuickSelect(list_o, med_n_o_);
+        float median_i = afx::MedianQuickSelect(v_i.data(), v_o.size());
+        float median_o = afx::MedianQuickSelect(v_o.data(), v_o.size());
         // lerp between inner median and full median
         median = m_i_lerp_ * median_i + m_lerp_ * median_o;
         float mean_i = sum_i / std::max(med_n_i_, 1);

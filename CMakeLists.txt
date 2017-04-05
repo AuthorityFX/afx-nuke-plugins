@@ -47,22 +47,42 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 # afx include files
 include_directories(${CMAKE_SOURCE_DIR})
 
+# Nuke
 find_package(Nuke REQUIRED)
+# Ipp
 find_package(Ipp REQUIRED COMPONENTS ippcore ippi)
+# Boost
 if(NOT DEFINED BOOST_ROOT)
-  set(BOOST_ROOT "/usr/local/boost")
+  if(WIN32)
+    set(BOOST_ROOT "C:/boost")
+  else()
+    set(BOOST_ROOT "/usr/local/boost")
+  endif()
 endif()
+set(Boost_NO_SYSTEM_PATHS true)
+set(Boost_USE_STATIC_LIBS OFF CACHE BOOL "No static Boost libraries")
+set(Boost_USE_MULTITHREADED ON)
 find_package(Boost REQUIRED COMPONENTS system thread)
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
+  if(WIN32)
+    # Disable autolinking in boost
+    add_definitions(-DBOOST_ALL_NO_LIB)
+    # Resolve WinSock ASIO issue
+    add_definitions(-D_WIN32_WINNT=0x0501)
+    add_definitions(-DWIN32_LEAN_AND_MEAN)
+  endif()
 endif()
+# CUDA
 find_package(CUDA REQUIRED)
 list(APPEND CUDA_NVCC_FLAGS "-std=c++11;-O2")
+# IlmBase
 find_package(IlmBase COMPONENTS Half)
 if(IlmBase_FOUND)
   # USE_HALF checked by preprocessor in mlaa.h
   add_definitions(-DUSE_HALF)
 endif()
+# Hoard
 find_package(Hoard)
 if(Hoard_FOUND)
   set(Hoard_LIBRARIES ${Hoard_LIBRARY})

@@ -163,7 +163,7 @@ void MorphAA::RowBlendWeights_(Discontinuity* disc_ptr, int length, int x, int y
   // Loop back through line and pos and length based on end orientations
   Discontinuity* line_disc_ptr = disc_ptr;
   if (start_blend && end_blend) {  // Both ends blend
-    float half_length = length / 2.0f + 0.5;
+    float half_length = length / 2.0f + 0.5f;
     int max_pos = static_cast<int>(half_length) - 1;
     std::vector<float> weights(static_cast<int>(half_length));
     for (int pos = max_pos; pos >= 0; --pos) {
@@ -178,12 +178,12 @@ void MorphAA::RowBlendWeights_(Discontinuity* disc_ptr, int length, int x, int y
   } else if (start_blend && !end_blend) {  // Start blends, end does NOT blend
     for (int pos = 0; pos <= length - 1; ++pos) {
       line_disc_ptr--;
-      line_disc_ptr->vert_weight = BlendWeight_(pos, length);
+      line_disc_ptr->vert_weight = BlendWeight_(pos, static_cast<float>(length));
     }
   } else if (!start_blend && end_blend) {  // Start does NOT blend, end does blend
     for (int pos = length - 1; pos >= 0; --pos) {
       line_disc_ptr--;
-      line_disc_ptr->vert_weight = BlendWeight_(pos, length);
+      line_disc_ptr->vert_weight = BlendWeight_(pos, static_cast<float>(length));
     }
   }
 }
@@ -231,7 +231,7 @@ void MorphAA::ColumnBlendWeights_(Discontinuity* disc_ptr, int length, int x, in
   // Loop back through line and pos and length based on end orientations
   Discontinuity* line_disc_ptr = disc_ptr;
   if (start_blend && end_blend) {  // Both ends blend
-    float half_length = length / 2.0f + 0.5;
+    float half_length = length / 2.0f + 0.5f;
     int max_pos = static_cast<int>(half_length) - 1;
     std::vector<float> weights(static_cast<int>(half_length));
     for (int pos = max_pos; pos >= 0; --pos) {
@@ -246,12 +246,12 @@ void MorphAA::ColumnBlendWeights_(Discontinuity* disc_ptr, int length, int x, in
   } else if (start_blend && !end_blend) {  // Start blends, end does NOT blend
     for (int pos = 0; pos <= length - 1; ++pos) {
       line_disc_ptr = disc_image_.GetPreviousRow(line_disc_ptr);
-      line_disc_ptr->horiz_weight = BlendWeight_(pos, length);
+      line_disc_ptr->horiz_weight = BlendWeight_(pos, static_cast<float>(length));
     }
   } else if (!start_blend && end_blend) {  // Start does NOT blend, end does blend
     for (int pos = length - 1; pos >= 0; --pos) {
       line_disc_ptr = disc_image_.GetPreviousRow(line_disc_ptr);
-      line_disc_ptr->horiz_weight = BlendWeight_(pos, length);
+      line_disc_ptr->horiz_weight = BlendWeight_(pos, static_cast<float>(length));
     }
   }
 }
