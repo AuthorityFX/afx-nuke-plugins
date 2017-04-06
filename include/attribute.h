@@ -51,6 +51,7 @@ template <typename T>
 class Array {
  public:
   typedef typename boost::ptr_list<T>::iterator ptr_list_it;
+  typedef typename boost::ptr_list<T>::reverse_iterator ptr_list_rit;
 
   virtual void Add() { array_.push_back(new T()); }
   void Clear() { array_.clear(); }
@@ -116,8 +117,8 @@ class Array {
   }
   ptr_list_it GetBegin() { return array_.begin(); }
   ptr_list_it GetEnd() { return array_.end(); }
-  ptr_list_it GetRBegin() { return array_.rbegin(); }
-  ptr_list_it GetREnd() { return array_.rend(); }
+  ptr_list_rit GetRBegin() { return array_.rbegin(); }
+  ptr_list_rit GetREnd() { return array_.rend(); }
 
 private:
   static_assert(std::is_base_of<AttributeBase, T>::value, "T must inherit from AttributeBase");

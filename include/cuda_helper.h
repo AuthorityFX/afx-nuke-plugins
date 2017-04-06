@@ -17,6 +17,15 @@
 #include "include/bounds.h"
 #include "include/attribute.h"
 
+#ifdef _WIN32
+  #ifdef _MSC_VER
+    #pragma warning(disable: 4251)
+  #endif
+  #define WINLIB_EXPORT __declspec(dllexport)
+#else
+  #define WINLIB_EXPORT
+#endif
+
 namespace afx {
 
 // Cuda error handling functions
@@ -28,7 +37,7 @@ void CudaCheckError() {
   CudaSafeCall(err);
 }
 
-class CudaProcess {
+class WINLIB_EXPORT CudaProcess {
  private:
   int dev_id_;
   int dev_count_;
@@ -52,7 +61,7 @@ class CudaProcess {
 
 // Cuda device array wrapper class
 template <typename T>
-class CudaArray : public AttributeBase {
+class WINLIB_EXPORT CudaArray : public AttributeBase {
  private:
   T*  ptr_;
   size_t size_;
@@ -75,7 +84,7 @@ class CudaArray : public AttributeBase {
 };
 
 // Cuda image wrapper class
-class CudaImage : public AttributeBase {
+class WINLIB_EXPORT CudaImage : public AttributeBase {
  private:
   // Image members
   float* ptr_;
@@ -116,7 +125,7 @@ class CudaImage : public AttributeBase {
   cudaTextureObject_t GetTexture() const;
 };
 
-class CudaComplex : public AttributeBase {
+class WINLIB_EXPORT CudaComplex : public AttributeBase {
  private:
   cufftComplex* ptr_;
   size_t pitch_;
@@ -139,13 +148,13 @@ class CudaComplex : public AttributeBase {
 };
 
 
-class CudaImageArray : public Array<CudaImage> {
+class WINLIB_EXPORT CudaImageArray : public Array<CudaImage> {
  public:
   void AddImage(const Bounds& region);
   void CreateTextures();
 };
 
-class CudaStream : public AttributeBase {
+class WINLIB_EXPORT CudaStream : public AttributeBase {
  private:
   cudaStream_t stream_;
  public:
@@ -158,7 +167,7 @@ class CudaStream : public AttributeBase {
 };
 
 
-class CudaStreamArray : public Array<CudaStream> {};
+class WINLIB_EXPORT CudaStreamArray : public Array<CudaStream> {};
 
 }  // namespace afx
 

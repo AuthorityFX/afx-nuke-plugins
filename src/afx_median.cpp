@@ -27,6 +27,8 @@
 #include "include/nuke_helper.h"
 #include "include/median.h"
 
+#include "include/msvc_hacks.h"
+
 #define ThisClass AFXMedian
 
 namespace nuke = DD::Image;
