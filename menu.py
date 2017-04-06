@@ -28,9 +28,10 @@ if os.path.isfile(os.path.join(afx_plugin_path, 'afx_median' + lib_extension)):
     nuke.knobDefault('AFXMedian.channels', 'alpha')
     nuke.menu('Nodes').addCommand('Authority FX/AFXMedian', lambda: nuke.createNode('AFXMedian'), icon='afx.png')
     nuke.load('afx_median' + lib_extension)
-if os.path.isfile(os.path.join(afx_plugin_path, 'afx_noise_map' + lib_extension)):
-    nuke.menu('Nodes').addCommand('Authority FX/AFXNoiseMap', lambda: nuke.createNode('AFXNoiseMap'), icon='afx.png')
-    nuke.load('afx_noise_map' + lib_extension)
+# Noise map is only partially implemented
+#if os.path.isfile(os.path.join(afx_plugin_path, 'afx_noise_map' + lib_extension)):
+    #nuke.menu('Nodes').addCommand('Authority FX/AFXNoiseMap', lambda: nuke.createNode('AFXNoiseMap'), icon='afx.png')
+    #nuke.load('afx_noise_map' + lib_extension)
 if os.path.isfile(os.path.join(afx_plugin_path, 'afx_chroma_key' + lib_extension)):
     nuke.menu('Nodes').addCommand('Authority FX/AFXChromaKey', lambda: nuke.createNode('AFXChromaKey'), icon='afx.png')
     nuke.load('afx_chroma_key' + lib_extension)
