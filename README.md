@@ -1,4 +1,4 @@
-﻿afx-nuke-plugins﻿afx-nuke-plugins
+﻿afx-nuke-plugins﻿
 ================
 ## Requirements
 * [CUDA](https://developer.nvidia.com/cuda-downloads)
@@ -15,15 +15,16 @@
 *"Plug-ins compiled with GCC versions 4.1 through 4.8.2 without C++11 support should be compatible...The use of C++11 via GCC, clang or the Intel compiler is untested and unsupported, especially in terms of passing standard library objects targeted at C++11 through the plug-in interface."*
 [(NDK Dev Guide)](https://www.thefoundry.co.uk/products/nuke/developers/105/ndkdevguide/appendixa/linux.html)
 
-These plugins use some C++11 language features and therefore requires GCC 4.8. GCC 4.8.1 was the first feature-complete implementation of the 2011 C++11 standard.  Although The Foundry states that the use of C++11 is untested and unsupported, the usage of C++11 in afx-nuke-plugins has not caused any issues in testing.
+These plugins use some C++11 language features and therefore requires GCC 4.8. GCC 4.8.1 was the first feature-complete implementation of the 2011 C++11 standard.  Although The Foundry states that the use of C++11 is untested and unsupported, the usage of C++11 in afx-nuke-plugins has not caused any issues in testing. GCC 4.8.2 is the recommended version.
 
 To check the system version of GCC:
 ```bash
 gcc --version
 ```
-If GCC version not 4.8.2, download [GCC 4.8.2 source.](https://gcc.gnu.org/mirrors.html)
 
-Build and install GCC 4.8.2:
+GCC 4.8.2:
+
+* Download [GCC 4.8.2 source.](https://gcc.gnu.org/mirrors.html)
 ```bash
 tar -xvzf gcc-4.8.2.tar.gz
 cd gcc-4.8.2
@@ -34,7 +35,25 @@ make -j$(nproc) bootstrap
 make -j$(nproc)
 sudo make install
 ```
-Build and install afx-nuke-plugins:
+
+Boost:
+
+* Download [boost source](http://www.boost.org/users/download/)
+* Extract and cd into boost root
+```bash
+export BOOST_VERSION=${PWD##*/}
+cd tools/build
+./bootstrap.sh
+./b2 install --prefix=../../boost.build
+cd ../..
+echo "using gcc : 4.8.2 : /usr/local/gcc-4.8.2/bin/g++ : root=/usr/local/gcc-4.8.2 : <cxxflags>-std=c++11 ;" >> boost.build/user-config.jam
+export BOOST_BUILD_PATH=$(pwd)/boost.build
+sudo -E boost.build/bin/b2 --prefix=/usr/local/${BOOST_VERSION} --build-dir=$(pwd)/build --with-thread toolset=gcc-4.8.2 variant=release link=shared threading=multi runtime-link=shared install
+sudo ln -s /usr/local/${BOOST_VERSION} /usr/local/boost
+```
+
+afx-nuke-plugins:
+
 ```bash
 git clone https://github.com/AuthorityFX/afx-nuke-plugins.git
 cd afx-nuke-plugins
