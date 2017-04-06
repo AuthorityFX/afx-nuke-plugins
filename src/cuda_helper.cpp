@@ -49,6 +49,7 @@ void CudaProcess::SetDevice(int id) {
 void CudaProcess::SetFastestDevice() {
   ready_ = false;
   // Compute capability required
+  // Using Bindless textures that requires Kepler
   int major_req = 3;
   int minor_req = 0;
 
