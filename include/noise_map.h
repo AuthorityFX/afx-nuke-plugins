@@ -20,18 +20,32 @@
 
 #include "include/convolution.h"
 
-static const std::vector<float> bior44 = {
-  0.0,
-  -0.06453888262869706,
-  0.04068941760916406,
-  0.41809227322161724,
-  -0.7884856164055829,
-  0.41809227322161724,
-  0.04068941760916406,
-  -0.06453888262869706,
-  0.0,
-  0.0,
+static const float bior44_array[] = {
+  0.0f,
+  -0.06453888262869706f,
+  0.04068941760916406f,
+  0.41809227322161724f,
+  -0.7884856164055829f,
+  0.41809227322161724f,
+  0.04068941760916406f,
+  -0.06453888262869706f,
+  0.0f,
+  0.0f,
 };
+
+// No go in VC10
+// static const std::vector<float> bior44 = {
+//   0.0f,
+//   -0.06453888262869706f,
+//   0.04068941760916406f,
+//   0.41809227322161724f,
+//   -0.7884856164055829f,
+//   0.41809227322161724f,
+//   0.04068941760916406f,
+//   -0.06453888262869706f,
+//   0.0f,
+//   0.0f,
+// };
 
 namespace afx {
 
@@ -39,6 +53,8 @@ class NoiseMap {
  public:
   void Calculate(const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
     ImageThreader threader;
+
+    std::vector<float> bior44(bior44_array, bior44_array + sizeof(bior44_array) / sizeof(bior44_array[0]));
 
     afx::Image temp1(out_image->GetBounds());
     afx::Image temp2(out_image->GetBounds());
@@ -63,26 +79,24 @@ class NoiseMap {
 
  private:
   void MAD_(const afx::Bounds& region, const afx::Image& in_image, afx::Image* out_image, unsigned int window_size) {
-    unsigned int window_array_size = 4 * (window_size * window_size + window_size) + 1;
-    float window_array[window_array_size];
+    std::vector<float> window_v;
+    window_v.reserve(4 * (window_size * window_size + window_size) + 1);
     for (int y = region.y1(); y <= region.y2(); ++y) {
       float* out_ptr = out_image->GetPtr(region.x1(), y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
-        unsigned int index = 0;
         for (int window_y = y - static_cast<int>(window_size); window_y <= y + static_cast<int>(window_size); ++window_y) {
           const float* in_ptr = in_image.GetPtrBnds(x - window_size, window_y);
           for (int window_x = x - static_cast<int>(window_size); window_x <= x + static_cast<int>(window_size); ++window_x) {
-            window_array[index] = *in_ptr;
-            index++;
+            window_v.push_back(*in_ptr);
             if (window_x >= in_image.GetBounds().x1() && window_x < in_image.GetBounds().x2()) { in_ptr++; }
           }
         }
-        float median = MedianQuickSelect(window_array, window_array_size);
-        for (unsigned int i = 0; i < window_array_size; ++i) {
-          window_array[i] = fabsf(window_array[i] - median);
+        float median = MedianQuickSelect(window_v.data(), static_cast<int>(window_v.size()));
+        for (auto it = window_v.begin(); it != window_v.end(); ++it) {
+          *it = fabsf(*it - median);
         }
         // Adapting to Unknown Smoothness via Wavelet Shrinkage David L. Donoho Iain M. Johnstone
-        *out_ptr++ = MedianQuickSelect(window_array, window_array_size) / 0.6745;
+        *out_ptr++ = MedianQuickSelect(window_v.data(), static_cast<int>(window_v.size())) / 0.6745f;
       }
     }
   }

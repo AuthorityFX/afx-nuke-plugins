@@ -13,8 +13,6 @@
 #include <DDImage/ImagePlane.h>
 #include <DDImage/Thread.h>
 
-#include <math.h>
-
 #include <boost/geometry.hpp>
 
 #include "include/threading.h"
@@ -289,14 +287,14 @@ void ThisClass::engine(int y, int x, int r, nuke::ChannelMask channels, nuke::Ro
         if (bg::within(p, out_hull_)) {
           matte = 0;
         } else {
-          matte = 1.0f - powf(out_falloff_, -bg::distance(p, out_hull_));
+          matte = 1.0f - powf(out_falloff_, -static_cast<float>(bg::distance(p, out_hull_)));
           if (input(iInMatte) != nullptr) {
             if (bg::within(p, in_box_)) {
               if (bg::within(p, in_hull_buffer_)) {
                 if (bg::within(p, in_hull_)) {
                   matte = 1.0f;
                 } else {
-                  matte = fmaxf(matte, powf(in_falloff_, -bg::distance(p, in_hull_)));
+                  matte = fmaxf(matte, powf(in_falloff_, -static_cast<float>(bg::distance(p, in_hull_))));
                 }
               }
             }

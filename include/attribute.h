@@ -19,6 +19,15 @@
 #include <string>
 #include <sstream>
 
+#ifdef _WIN32
+  #ifdef _MSC_VER
+    #pragma warning(disable: 4251)
+  #endif
+  #define WINLIB_EXPORT __declspec(dllexport)
+#else
+  #define WINLIB_EXPORT
+#endif
+
 namespace afx {
 
 // Attribute to store adhoc info like thread ids, channel names, etc
@@ -28,7 +37,7 @@ struct Attribute {
   Attribute(std::string name, int value) : name(name), value(value) {}
 };
 
-class AttributeBase {
+class WINLIB_EXPORT AttributeBase {
  public:
   void AddAttribute(const std::string& name, int value) { attributes_.push_back(Attribute(name, value)); }
   void AddAttributes(std::vector<Attribute> attributes) {

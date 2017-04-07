@@ -201,7 +201,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
     float lightness_2 = 0.0f;
     float lightness_adjust = 0.0f;
     if (k_lightness_adj > 0) {
-      lightness_1 = powf(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2], 1.0f / 3.0f);  // Lightness - cubic root of relative luminance
+      lightness_1 = powf(0.2126f * rgb[0] + 0.7152f * rgb[1] + 0.0722f * rgb[2], 1.0f / 3.0f);  // Lightness - cubic root of relative luminance
     }
     hue_shifter_.Rotate(rgb);  // Shift hue so mean hue is center on ideal screen hue
     float suppression = k_amount_ * (*m_ptr) * afx::SpillSuppression(rgb, k_algorithm_, color_);  // Calculate suppression
@@ -217,7 +217,7 @@ void ThisClass::ProcessCPU(int y, int x, int r, nuke::ChannelMask channels, nuke
     }
     hue_shifter_inv_.Rotate(rgb);
     if (k_lightness_adj > 0) {
-      lightness_2 = powf(0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2], 1.0f / 3.0f);
+      lightness_2 = powf(0.2126f * rgb[0] + 0.7152f * rgb[1] + 0.0722f * rgb[2], 1.0f / 3.0f);
       lightness_adjust = k_lightness_adj * (lightness_1 / lightness_2 - 1) + 1;
       for (int i = 0; i < 3; i++) { rgb[i] = fmaxf(rgb[i] * lightness_adjust, 0.0f); }
     }

@@ -33,7 +33,7 @@ void NormalizeKernel(std::vector<float>* kernel, float scale = 1.0f) {
 class Convolution {
  public:
   void Seperable(const afx::Image& in_image, afx::Image* out_image, const std::vector<float>& kernel) {
-    if (!CheckPadding_(in_image.GetBounds(), out_image->GetBounds(), kernel.size() - 1)) {
+    if (!CheckPadding_(in_image.GetBounds(), out_image->GetBounds(), static_cast<unsigned int>(kernel.size()) - 1)) {
       throw std::runtime_error("afx::Convolution - in_image must be padded by kernel size - 1");
     }
     if (kernel.size() < 2) {
@@ -70,7 +70,7 @@ class Convolution {
       float* out_ptr = out_image->GetPtr(region.x1(), y);
       for (int x = region.x1(); x <= region.x2(); ++x) {
         float sum = 0.0f;
-        const float* in_ptr = in_image.GetPtr(x - kernel.size() - 1, y);
+        const float* in_ptr = in_image.GetPtr(x - static_cast<int>(kernel.size()) - 1, y);
         for (auto it = kernel.rbegin(); it != kernel.rend(); ++it) {
           sum += *it * *in_ptr++;
         }
@@ -87,7 +87,7 @@ class Convolution {
       float* out_ptr = out_image->GetPtr(x, region.y1());
       for (int y = region.y1(); y <= region.y2(); ++y) {
         float sum = 0.0f;
-        const float* in_ptr = in_image.GetPtr(x, y - kernel.size() - 1);
+        const float* in_ptr = in_image.GetPtr(x, y - static_cast<int>(kernel.size()) - 1);
         for (auto it = kernel.rbegin(); it != kernel.rend(); ++it) {
           sum += *it * *in_ptr;
           in_ptr = in_image.GetNextRow(in_ptr);

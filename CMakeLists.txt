@@ -23,7 +23,9 @@ endif()
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
   if(WIN32)
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -DNDEBUG")
+    # Was getting LNK4098: defaultlib 'MSCVRT' conflicts with use of other libs
+    # It took many hours to figure out the -MT flag
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O2 -DNDEBUG -MT")
   else()
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS} -O3 -DNDEBUG -Wall")
   endif()
@@ -75,7 +77,16 @@ if(Boost_FOUND)
 endif()
 # CUDA
 find_package(CUDA REQUIRED)
-list(APPEND CUDA_NVCC_FLAGS "-std=c++11;-O2")
+set(CUDA_PROPAGATE_HOST_FLAGS OFF)
+# TODO seperable compilation is not working with SHARED library
+# Adding PROPERTIES PREFIX = "" fixing the linking issue on linux
+#set(CUDA_SEPARABLE_COMPILATION ON)
+set(CUDA_SEPERAL)
+if(UNIX AND NOT CYGWIN)
+  list(APPEND CUDA_NVCC_FLAGS "-std=c++11;-O3")
+else()
+  list(APPEND CUDA_NVCC_FLAGS "-O2")
+endif()
 # IlmBase
 find_package(IlmBase COMPONENTS Half)
 if(IlmBase_FOUND)
@@ -89,15 +100,32 @@ if(Hoard_FOUND)
 endif()
 
 add_library(core SHARED src/threading.cpp)
-set_target_properties(core PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
+set_target_properties(
+  core
+  PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY
+      ${PROJECT_BINARY_DIR}/lib
+    INSTALL_RPATH
+      "$ORIGIN"
+)
 target_link_libraries(core ${Ipp_LIBRARIES} ${Boost_LIBRARIES} ${IlmBase_LIBRARIES} ${Hoard_LIBRARIES})
 list(APPEND afx_LIBRARIES core)
 
-cuda_add_library(cuda src/cuda_helper.cpp SHARED)
-set_target_properties(cuda PROPERTIES PREFIX "" LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
-target_link_libraries(cuda core)
-add_dependencies(cuda core)
-list(APPEND afx_LIBRARIES cuda)
+# cuda_add_library(cuda src/cuda_helper.cpp SHARED)
+# set_target_properties(
+#   cuda
+#   PROPERTIES
+#     # TODO fixes the linking issue stripping symbols
+#     #PREFIX
+#     #  ""
+#     LIBRARY_OUTPUT_DIRECTORY
+#       ${PROJECT_BINARY_DIR}/lib
+#     INSTALL_RPATH
+#       "$ORIGIN"
+# )
+# target_link_libraries(cuda ${CUDA_LIBRARIES} core)
+# add_dependencies(cuda core)
+# list(APPEND afx_LIBRARIES cuda)
 
 add_library(afx_soft_clip SHARED src/afx_soft_clip.cpp)
 set_target_properties(afx_soft_clip PROPERTIES PREFIX "")
@@ -135,14 +163,14 @@ list(APPEND afx_PLUGINS afx_despill)
 
 cuda_add_library(afx_median src/afx_median.cpp src/afx_median.cu SHARED)
 set_target_properties(afx_median PROPERTIES PREFIX "")
-target_link_libraries(afx_median ${Nuke_LIBRARIES} core cuda)
-add_dependencies(afx_median core cuda)
+target_link_libraries(afx_median ${Nuke_LIBRARIES} core ${CUDA_LIBRARIES})
+add_dependencies(afx_median core)
 list(APPEND afx_PLUGINS afx_median)
 
 add_library(afx_glow SHARED src/afx_glow.cpp)
 set_target_properties(afx_glow PROPERTIES PREFIX "")
-target_link_libraries(afx_glow ${Nuke_LIBRARIES} core cuda)
-add_dependencies(afx_glow core cuda)
+target_link_libraries(afx_glow ${Nuke_LIBRARIES} core ${CUDA_LIBRARIES})
+add_dependencies(afx_glow core)
 list(APPEND afx_PLUGINS afx_glow)
 
 # Nuke home directory
@@ -181,14 +209,61 @@ else()
   file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/init.py "import nuke\n\nnuke.pluginAddPath('${CMAKE_INSTALL_PREFIX}')\n\n")
 endif()
 
-
-install(TARGETS ${afx_LIBRARIES} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
-install(TARGETS ${afx_PLUGINS} DESTINATION ${CMAKE_INSTALL_PREFIX})
+install(
+  TARGETS
+    ${afx_LIBRARIES}
+  RUNTIME DESTINATION
+    ${CMAKE_INSTALL_PREFIX}/lib
+  LIBRARY DESTINATION
+    ${CMAKE_INSTALL_PREFIX}/lib
+  COMPONENT
+    runtime
+)
+install(
+  TARGETS
+    ${afx_PLUGINS}
+  RUNTIME DESTINATION
+    ${CMAKE_INSTALL_PREFIX}
+  LIBRARY DESTINATION
+    ${CMAKE_INSTALL_PREFIX}
+  COMPONENT
+    runtime
+)
 install(DIRECTORY icons/ DESTINATION ${CMAKE_INSTALL_PREFIX}/icons)
 install(FILES menu.py DESTINATION ${CMAKE_INSTALL_PREFIX})
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/init.py DESTINATION ${Nuke_HOME_DIR})
 
-if(UNIX)
+if(WIN32)
+  # Boost redist
+  foreach(_lib ${Boost_LIBRARIES})
+    get_filename_component(_name ${_lib} NAME_WE)
+    get_filename_component(_dir ${_lib} DIRECTORY)
+    list(APPEND Redist_LIBRARIES "${_dir}/${_name}.dll")
+  endforeach()
+  # Ipp redist
+  file(GLOB _ipp_DLLS "${IPP_ROOT}/../redist/intel64/ipp/ippc*.dll" "${IPP_ROOT}/../redist/intel64/ipp/ippi*.dll")
+  foreach(_lib ${_ipp_DLLS})
+    list(APPEND Redist_LIBRARIES ${_lib})
+  endforeach()
+  # Cuda redist
+  file(GLOB _cuda_DLLS "${CUDA_TOOLKIT_ROOT_DIR}/bin/cudart64*.dll")
+  foreach(_lib ${_cuda_DLLS})
+    list(APPEND Redist_LIBRARIES ${_lib})
+  endforeach()
+  # IlmBase redist
+  foreach(_lib ${IlmBase_LIBRARIES})
+    get_filename_component(_name ${_lib} NAME_WE)
+    get_filename_component(_dir ${_lib} DIRECTORY)
+    list(APPEND Redist_LIBRARIES "${_dir}/${_name}.dll")
+  endforeach()
+  # Hoard redist
+  foreach(_lib ${Hoard_LIBRARIES})
+    get_filename_component(_name ${_lib} NAME_WE)
+    get_filename_component(_dir ${_lib} DIRECTORY)
+    list(APPEND Redist_LIBRARIES "${_dir}/${_name}.dll")
+  endforeach()
+  install(FILES ${Redist_LIBRARIES} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+elseif(UNIX)
   foreach(_lib ${Boost_LIBRARIES})
     get_filename_component(_name ${_lib} NAME_WE)
     file(GLOB _files "${Boost_LIBRARY_DIR}/${_name}*.so*")

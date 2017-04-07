@@ -38,10 +38,10 @@ public:
     y_ = y;
   }
   float Distance(const Point& other) {
-    return sqrtf(powf(x_ - other.x_, 2.0f) + powf(y_ - other.y_, 2.0f));
+    return sqrtf(powf(static_cast<float>(x_ - other.x_), 2.0f) + powf(static_cast<float>(y_ - other.y_), 2.0f));
   }
   float Distance(int x, int y) {
-    return sqrtf(powf(x_ - x, 2.0f) + powf(y_ - y, 2.0f));
+    return sqrtf(powf(static_cast<float>(x_ - x), 2.0f) + powf(static_cast<float>(y_ - y), 2.0f));
   }
   int x() const {
     return x_;
@@ -362,7 +362,7 @@ private:
         } else if (y < in_region.y1()) {
           distance_falloff = expf(-border_point.Distance(x, y) * falloff);
         } else {
-          float distance = (side & LeftBorder) ? (in_region.x1() - x) : (x - in_region.x2());
+          float distance = (side & LeftBorder) ? static_cast<float>(in_region.x1() - x) : static_cast<float>(x - in_region.x2());
           distance_falloff = expf(-distance * falloff);
         }
         *out_ptr++ = *border_ptr * distance_falloff;
@@ -381,7 +381,7 @@ private:
       float* out_ptr = out_image->GetPtr(x, region.y1());
       const float* border_ptr = in_image.GetPtr(in_region.ClampX(x), border_pixel_y);
       for (int y = region.y1(); y <= region.y2(); ++y) {
-        float distance = (side & BottomBorder) ? (in_region.y1() - y) : (y - in_region.y2());
+        float distance = (side & BottomBorder) ? static_cast<float>(in_region.y1() - y) : static_cast<float>(y - in_region.y2());
         *out_ptr = *border_ptr * expf(-distance * falloff);
         out_ptr = out_image->GetNextRow(out_ptr);
       }

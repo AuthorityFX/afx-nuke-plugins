@@ -190,7 +190,7 @@ class Glow : public GlowBase {
     threader->ThreadRowChunks(Bounds(0, 0, max_gauss_size_ - 1, max_gauss_size_ - 1), boost::bind(&Glow::CreateKernel_, this, _1, &kernel_sum));
     threader->Wait();
 
-    threader->ThreadRowChunks(kernel_.GetBounds(), boost::bind(&Glow::NormalizeKernel_, this, _1, 2.0f * powf(2.0f, exposure) / kernel_sum));
+    threader->ThreadRowChunks(kernel_.GetBounds(), boost::bind(&Glow::NormalizeKernel_, this, _1, static_cast<float>(2.0 * powf(2.0, exposure) / kernel_sum)));
     DisposeGaussians_();
   }
 
@@ -198,9 +198,9 @@ class Glow : public GlowBase {
     int buffer_size;
     ippiConvGetBufferSize(in_padded.GetSize(), in_padded.GetSize(), ipp32f, 1, ippiROIValid, &buffer_size);
     boost::scoped_ptr<Ipp8u> buffer(new Ipp8u[buffer_size]);
-    ippiConv_32f_C1R(in_padded.GetPtr(), in_padded.GetPitch(), in_padded.GetSize(),
-                     kernel_.GetPtr(), kernel_.GetPitch(), kernel_.GetSize(),
-                     out->GetPtr(), out->GetPitch(), ippiROIValid, buffer.get());
+    ippiConv_32f_C1R(in_padded.GetPtr(), static_cast<int>(in_padded.GetPitch()), in_padded.GetSize(),
+                     kernel_.GetPtr(), static_cast<int>(kernel_.GetPitch()), kernel_.GetSize(),
+                     out->GetPtr(), static_cast<int>(out->GetPitch()), ippiROIValid, buffer.get());
 
   }
 
