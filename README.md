@@ -48,7 +48,7 @@ cd tools/build
 ./bootstrap.sh
 ./b2 install --prefix=../../boost.build
 cd ../..
-echo "using gcc : 4.8.2 : /usr/local/gcc-4.8.2/bin/g++ : root=/usr/local/gcc-4.8.2 : <cxxflags>-std=c++11 ;" >> boost.build/user-config.jam
+echo "using gcc : 4.8.2 : /usr/local/gcc-4.8.2/bin/g++ : root=/usr/local/gcc-4.8.2 <cxxflags>-std=c++11 ;" >> boost.build/user-config.jam
 export BOOST_BUILD_PATH=$(pwd)/boost.build
 sudo -E boost.build/bin/b2 --prefix=/usr/local/${BOOST_VERSION} --build-dir=$(pwd)/build --with-thread toolset=gcc-4.8.2 variant=release link=shared threading=multi runtime-link=shared install
 sudo ln -s /usr/local/${BOOST_VERSION} /usr/local/boost
