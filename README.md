@@ -24,6 +24,8 @@ gcc --version
 
 GCC 4.8.2:
 
+dependencies: libgmp-dev libmpc-dev 
+
 * Download [GCC 4.8.2 source.](https://gcc.gnu.org/mirrors.html)
 ```bash
 tar -xvzf gcc-4.8.2.tar.gz
