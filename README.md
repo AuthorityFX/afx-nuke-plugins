@@ -24,9 +24,10 @@ gcc --version
 
 GCC 4.8.2:
 
-dependencies: libgmp-dev libmpc-dev 
+dependencies: libgmp-dev libmpc-dev
 
 * Download [GCC 4.8.2 source.](https://gcc.gnu.org/mirrors.html)
+
 ```bash
 tar -xvzf gcc-4.8.2.tar.gz
 cd gcc-4.8.2
@@ -42,6 +43,7 @@ Boost:
 
 * Download [boost source](http://www.boost.org/users/download/)
 * Extract and cd into boost root
+
 ```bash
 export BOOST_VERSION=${PWD##*/}
 cd tools/build
@@ -52,6 +54,17 @@ echo "using gcc : 4.8.2 : /usr/local/gcc-4.8.2/bin/g++ : root=/usr/local/gcc-4.8
 export BOOST_BUILD_PATH=$(pwd)/boost.build
 sudo -E boost.build/bin/b2 --prefix=/usr/local/${BOOST_VERSION} --build-dir=$(pwd)/build --with-thread toolset=gcc-4.8.2 variant=release link=shared threading=multi runtime-link=shared install
 sudo ln -s /usr/local/${BOOST_VERSION} /usr/local/boost
+```
+
+IlmBase:
+```bash
+wget http://download.savannah.nongnu.org/releases/openexr/ilmbase-2.2.0.tar.gz
+tar -xvzf ilmbase-2.2.0.tar.gz
+cd ilmbase-2.2.0
+mkdir build
+cd build
+../configure --prefix=/usr/local/IlmBase CC=/usr/local/gcc-4.8.2/bin/gcc CXX=/usr/local/gcc-4.8.2/bin/g++
+sudo make -j$(nproc) install
 ```
 
 afx-nuke-plugins:
